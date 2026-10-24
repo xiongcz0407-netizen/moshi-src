@@ -392,8 +392,8 @@ export function createFB(ctx) {
       else if (e.e === 'drag') { const L = hyp(e.x1 - e.x0, e.z1 - e.z0); if (L > 1) { const s = Math.sin(e.yaw), c = Math.cos(e.yaw); for (const sd of [-0.55, 0.55]) mark(T.drag, (e.x0 + e.x1) / 2 + c * sd, (e.z0 + e.z1) / 2 - s * sd, L, 4, e.yaw, 0.7) } }
       else if (e.e === 'bump') { part(T.star, e.x, 1.6, e.z, { size: 2.2, grow: 1.5, life: 0.4, add: true }); dust(e.x, e.z, 8, 1.1, 3, 1.3); ctx.shake(0.5); ctx.UI.floatText(new THREE.Vector3(e.x, 3.4, e.z), '撞到掩体，晕了', 'good') }
       else if (e.e === 'knock' && e.star) { part(T.star, P.x, 1.4, P.z, { size: 1.6, grow: 1.6, life: 0.35, add: true }); ctx.shake(0.35) }
-      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 8 : 5.7, stg ? ARENA.z0 : B.z), '打断！', 'x10');
-      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 8 : 5.7, stg ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
+      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '打断！', 'x10');
+      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
       else if (e.e === 'stunShot') { shock(e.x, e.z, 7, 0x9fe8ff); part(T.star, e.x, 2.2, e.z, { size: 2, grow: 1.4, life: 0.4, add: true, color: 0x9fe8ff }) }
       else if (e.e === 'roll') { rollFx = 0.32; dust(P.x, P.z, 3, 0.9, 1) }
       else if (e.e === 'nadeThrow') { const m = new THREE.Mesh(nadeGeo, nadeMat); m.position.set(e.x0, 1.2, e.z0); scene.add(m); nades.push({ m, ...e, t: 0 }) }
@@ -404,10 +404,10 @@ export function createFB(ctx) {
       else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
       else if (e.e === 'rage') { rageT = 0.01; ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}狂暴了！伤害 ×2`, 'bad', 3000) }
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
-      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 9 : 6.4, stg ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
+      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 6.3 : 6.4, stg ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
-    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (stg ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 3, 6.5, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
+    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (stg ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
     /* 预警 */
     const live = new Set(fight.warns.map(w => w.id));
     for (const [id, o] of warnObjs) if (!live.has(id)) { scene.remove(o); disposeTree(o); warnObjs.delete(id) }

@@ -21,7 +21,7 @@ export const STAGES = {
     covers: [{ k: 'block', x: 0, z: 0.5, hx: 1.05, hz: 0.85 }, { k: 'cart', x: -5.4, z: 6.5, hx: 1.2, hz: 0.7 }, { k: 'crates', x: 5.65, z: -3.2, hx: 0.95, hz: 0.95 }, { k: 'barrels', x: -5.7, z: -6.6, hx: 0.9, hz: 0.9 }],
     walk: { stuck: 2, stuckGain: 1, replan: 0.3, replanMove: 1 } },
   /* 第 2 关毒囊：毒雾断崖。台地宽 14、长 38（北边 z −16 是崖边，毒囊在崖下 z −17.6，露上半身、手扒崖边）；南边接破铁桥。掩体两边错开 */
-  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 3.6, hitY: 4.2, lockZ: -5,   /* 设计 95：主角往北走过 z = -5 才开打，身后封死，只在北边 11 米里打（毒囊一直在画面里） */
+  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 2.5, hitY: 2.8, lockZ: -5,   /* 设计 95：毒囊缩到 0.7（bossR 3.6 → 2.5，受击高度 4.2 → 2.8）。 */   /* 设计 95：主角往北走过 z = -5 才开打，身后封死，只在北边 11 米里打（毒囊一直在画面里） */
     covers: [{ k: 'rock', x: -3.9, z: -7.5, hx: 1.0, hz: 0.95 }, { k: 'barrels', x: 3.8, z: -6.9, hx: 0.95, hz: 1.1 }, { k: 'pipe', x: -3.4, z: 2.8, hx: 1.45, hz: 0.5 }, { k: 'stump', x: 3.6, z: 8.2, hx: 0.7, hz: 0.75 }] },
 };
 export let ARENA = null, COVERS = null;
@@ -40,12 +40,15 @@ const CFG = {
 };
 export { CFG as FB_CFG };
 /* 设计 81：毒囊的数（招式表见设计81 第 5 节）。普通技能 = BOSSES[2].dmg（205），大招 = ult（340） */
+/* 设计 95：毒囊整只缩到 0.7（以崖下的原点缩，露出来约 4.3 米，主角的 2.5 倍），拍地的位置、长度跟着手缩 */
+export const TOX_K = 0.7;
 export const TOX_CFG = {
   spitR: 13, spitA: 0.55, spitK: 0.6, spitWarn: 1.3, spitRange: 12, spitCd: [3, 4], calm: 2.5, calmRage: 2,   /* 设计 92：喷吐读条 0.8 → 1.3 秒；任意两个技能之间至少安静 2.5 秒（狂暴 2 秒） */
   bolts: 3, bolts2: 5, boltR: 1.6, boltGap: 0.5, boltWarn: 1.2, boltFly: 0.6, boltK: 1,
-  poolR: 1.7, poolLife: 8, poolLife2: 10, poolMax: 8, poolK: 0.25, poolSlow: 0.3,
+  poolR: 1.4, poolLife: 6, poolLife2: 8, poolMax: 6,   /* 设计 95：区域只剩 11 米深，原 1.7 / 8 / 10 / 8 */
+  poolK: 0.25, poolSlow: 0.3,
   pusN: [4, 5], pusR: 2.5, pusFill: 3, pusFly: 0.6, pusK: 1.2, pusHp: 0.015,
-  slamX: 3.5, slamW: 6, slamL: 7, slamK: 1.3, surgeWarn: 2.0, surgeLife: 4, surgeK: 0.15,
+  slamX: 2.45, slamW: 4.2, slamL: 4.5,   /* 设计 95：原 3.5 / 6 / 7，跟着毒囊缩 0.7（手落地离崖边 4.5 米） */ slamK: 1.3, surgeWarn: 2.0, surgeLife: 4, surgeK: 0.15,
   shrinkEvery: 25, shrinkStep: 0.6, shrinkMax: 2, shrinkWarn: 3,
   first: 4, gap: 7, gapRage: 5.5, order: ['bolt', 'burst', 'slam', 'bolt', 'surge', 'slam'], orderRage: ['bolt', 'surge', 'slam', 'burst', 'surge', 'slam'],
 };

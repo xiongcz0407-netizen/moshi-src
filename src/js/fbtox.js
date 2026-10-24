@@ -2,7 +2,7 @@
    战斗的数、招式在 fbcore.js（TOX_CFG）；这里建场地（台地、三面断崖、崖下流动的毒雾海、南边破铁桥、4 个掩体）、毒囊（骨骼动作 + 头跟着主角转 + 头上的特效）、
    每个招式的特效、毒池 / 毒雾 / 脓包的样子。fb.js 进第 2 关时用这里给的 hooks。 */
 import * as THREE from 'three';
-import { TOX_ANIM } from './fbcore.js';
+import { TOX_ANIM, TOX_K } from './fbcore.js';
 import * as FC from './fbcore.js';
 import { makeFog } from './fbfog.js';
 
@@ -71,10 +71,10 @@ export function buildTox(api) {
     m.scale.set(s, 1, s); m.rotation.y = Math.random() * 6.28; m.position.set(x, 0.014, z); m.renderOrder = 1; scene.add(m); return m };
   const free = (x, z, r) => COVERS.every(c => Math.abs(x - c.x) > c.hx + r || Math.abs(z - c.z) > c.hz + r);
   for (let i = 0, n = 0; i < 60 && n < 11; i++) { const x = X0 + 1 + Math.random() * (X1 - X0 - 2), z = Z0 + 4 + Math.random() * (Z1 - Z0 - 6); if (!free(x, z, 1.2)) continue; n++; n % 2 ? deco(T.mk.puddle, x, z, 1.1 + Math.random() * 0.9, 0.85, true) : deco(T.mk.corrode, x, z, 1.6 + Math.random() * 1.2, 0.75) }
-  for (const sx of [-1, 1]) { deco(T.mk.corrode, sx * 5.0, Z0 + 1.3, 3.4, 0.8); deco(T.mk.crater, sx * 4.6, Z0 + 0.9, 2.6, 0.7) }
+  for (const sx of [-1, 1]) { deco(T.mk.corrode, sx * 3.5, Z0 + 0.6, 2.4, 0.8); deco(T.mk.crater, sx * 3.2, Z0 + 0.4, 1.8, 0.7) }   // 设计 95：毒囊缩 0.7，手扒的地方跟着往里、往崖边挪
 
   /* ---------- 毒囊：上半身扒在北边崖边，腰以下藏在毒雾里 ---------- */
-  const boss = new THREE.Group(); const bm = g.toxic.scene; bm.scale.setScalar(TOX_SCALE); boss.add(bm); scene.add(boss);
+  const boss = new THREE.Group(); const bm = g.toxic.scene; bm.scale.setScalar(TOX_SCALE); boss.add(bm); scene.add(boss); boss.scale.setScalar(TOX_K);   /* 设计 95：整只缩 0.7（挂在骨头上的眼睛、脓包、嘴里的东西跟着缩） */
   const BZ = ARENA.boss.z; boss.position.set(ARENA.boss.x, -0.36, BZ);
   const U = { pus: { value: 0.35 }, rage: { value: 0 }, hit: { value: 0 }, skin: { value: new THREE.Vector3(...TOX_SKIN) } };
   const mats = [];
@@ -92,9 +92,9 @@ export function buildTox(api) {
   const mixer = new THREE.AnimationMixer(bm), acts = {};
   for (const clip of g.toxic.animations) { const a = mixer.clipAction(clip); if (!(TOX_ANIM[clip.name] || {}).loop) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true } acts[clip.name] = a }
   /* 腰下面接一截身子沉进毒雾里（模型底下是平切的，不接会看到空的）+ 腰上一圈毒雾 */
-  { const low = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 1.8, 9.5, 18, 1, true), new THREE.MeshLambertMaterial({ color: 0x3e4a30 })); low.scale.set(1.3, 1, 1); low.position.set(0, -4.9, BZ - 0.7); scene.add(low) }
+  { const low = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 1.8, 9.5, 18, 1, true), new THREE.MeshLambertMaterial({ color: 0x3e4a30 })); low.scale.set(1.3 * TOX_K, 1, TOX_K); low.position.set(0, -4.9, BZ - 0.7 * TOX_K); scene.add(low) }
   const waist = []; for (let i = 0; i < 9; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.fx.cloud, color: 0xc4dc9a, transparent: true, opacity: 0.5, depthWrite: false })); const a = i / 9 * Math.PI * 2;
-    s.userData = { a, r: 3.6 + Math.random() * 1.2, y: -0.9 + Math.random() * 0.7, ph: Math.random() * 6, sz: 3.6 + Math.random() * 1.6 }; scene.add(s); waist.push(s) }
+    s.userData = { a, r: (3.6 + Math.random() * 1.2) * TOX_K, y: -0.9 + Math.random() * 0.7, ph: Math.random() * 6, sz: (3.6 + Math.random() * 1.6) * TOX_K }; scene.add(s); waist.push(s) }
   /* 骨头 */
   const bone = {}; bm.traverse(c => { if (c.isBone) bone[c.name] = c });
   boss.updateMatrixWorld(true);
@@ -114,7 +114,7 @@ export function buildTox(api) {
   const chestP = onBone('Chest', B2T(0, -0.12, 0.30), new THREE.Object3D());
   const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _p = new THREE.Quaternion(), _a = new THREE.Vector3();
   const wpos = o => o.getWorldPosition(new THREE.Vector3());
-  const headTop = () => bone.Head.getWorldPosition(_v).y + 0.13 * TOX_SCALE;   // 头骨长 0.13 × 12 ≈ 1.56 米：头骨根往上到头顶
+  const headTop = () => bone.Head.getWorldPosition(_v).y + 0.13 * TOX_SCALE * TOX_K;   // 头骨长 0.13 × 12 ≈ 1.56 米：头骨根往上到头顶
 
   /* ---------- 动作 ---------- */
   let curAct = null;
@@ -164,12 +164,12 @@ export function buildTox(api) {
         spray(m, end, 3.2, 0.45); splash(m.x, m.y, m.z, 4, 2, 0.5); splash(end.x, 0.4, end.z, 8, 3.5, 0.7);
         mark(T.mk.acid, w.x + Math.sin(w.yaw) * w.r * 0.6, w.z + Math.cos(w.yaw) * w.r * 0.6, 4.4, 3, w.yaw); return true }
       if (e.k === 'slam') { const x = w.x, z = Z0 + 3.2; dust(x, z, 12, 1.4, 4, 1.4); rocks(x, z, 9); shock(x, z, 8, 0xe8f0c0, 0.6); mark(T.crack, x, z, 6, 4, Math.random() * 6); ctx.shake(0.65); flashEye(); return true }
-      if (e.k === 'burst') { const c = wpos(chestP); part(T.fx.pop, c.x, c.y, c.z, { size: 5, grow: 1.6, life: 0.4, add: true, color: 0xe0ff8a }); splash(c.x, c.y, c.z, 10, 5, 0.9); return true }
+      if (e.k === 'burst') { const c = wpos(chestP); part(T.fx.pop, c.x, c.y, c.z, { size: 5 * TOX_K, grow: 1.6, life: 0.4, add: true, color: 0xe0ff8a }); splash(c.x, c.y, c.z, 10, 5, 0.9); return true }
       if (e.k === 'surge') { ctx.shake(0.4); return true }
       return true;
     }
     if (e.e === 'boltLaunch') { const m = wpos(mouth), s = sprite(T.fx.bolt, 0xeaff9a, 1, true); s.scale.setScalar(1.7); flyers.push({ kind: 'bolt', s, from: m, to: new THREE.Vector3(e.x, 0.3, e.z), t: 0, life: e.fly });
-      part(T.fx.cloud, m.x, m.y, m.z, { size: 1.6, grow: 2, life: 0.6, add: true, color: 0x9aff4a, op: 0.6 }); return true }
+      part(T.fx.cloud, m.x, m.y, m.z, { size: 1.6 * TOX_K, grow: 2, life: 0.6, add: true, color: 0x9aff4a, op: 0.6 }); return true }
     if (e.e === 'boltLand') { part(T.fx.pop, e.x, 0.5, e.z, { size: 3.2, grow: 1.5, life: 0.35, add: true, color: 0xd8ff8a }); splash(e.x, 0.4, e.z, 7, 3, 0.6); return true }
     if (e.e === 'pusBoom') { part(T.fx.pop, e.x, 0.9, e.z, { size: e.r * 2.6, grow: 1.4, life: 0.4, add: true, color: 0xe6ff7a }); splash(e.x, 0.6, e.z, 12, 5, 0.9); shock(e.x, e.z, e.r * 2.2, 0xcfff6a, 0.8);
       mark(T.mk.crater, e.x, e.z, e.r * 1.7, 4, Math.random() * 6); ctx.shake(0.35); return true }
@@ -212,7 +212,7 @@ export function buildTox(api) {
     if (fight.rage && !B.dead) { rageT += dt; U.rage.value = 0.18 + 0.12 * Math.sin(rageT * 6) } else U.rage.value = 0;
     /* 嘴角一直往下滴绿液，偶尔冒一小缕毒气 */
     dripT -= dt; if (dripT <= 0 && sinkT < 0) { dripT = 0.28 + Math.random() * 0.35; const p = wpos(mouthC[Math.random() < 0.5 ? 0 : 1]); part(T.fx.drops, p.x, p.y, p.z, { vx: (Math.random() - 0.5) * 0.4, vy: -0.5, vz: 0.4, g: 9, size: 0.45, life: 1.7, add: true, color: 0xb8ff5a, noFloor: 1, grow: 0.9 }) }
-    puffT -= dt; if (puffT <= 0 && !B.dead) { puffT = 2 + Math.random() * 2.5; const p = wpos(mouth); part(T.fx.wisp, p.x, p.y + 0.3, p.z, { vy: 0.9, vz: 0.2, size: 1.6, grow: 1.8, life: 1.6, add: true, color: 0x9aff6a, op: 0.45 }) }
+    puffT -= dt; if (puffT <= 0 && !B.dead) { puffT = 2 + Math.random() * 2.5; const p = wpos(mouth); part(T.fx.wisp, p.x, p.y + 0.3, p.z, { vy: 0.9, vz: 0.2, size: 1.6 * TOX_K, grow: 1.8, life: 1.6, add: true, color: 0x9aff6a, op: 0.45 }) }
     /* 毒雾上涌：仰头时嘴里往上喷一大股毒雾 */
     if (c && c.k === 'surge' && c.t > c.dur * 0.45 && Math.random() < dt * 14) { const p = wpos(mouth); part(Math.random() < 0.5 ? T.fx.cloud : T.fx.wisp, p.x + (Math.random() - 0.5), p.y + 0.5, p.z, { vy: 3 + Math.random() * 2, vx: (Math.random() - 0.5) * 1.5, size: 2.2, grow: 2.4, life: 1.2, add: true, color: 0xa6ff5a, op: 0.7, topY: headTop() + 2.0 }) }   // 设计 84c：头顶往上约 1.5 个头高就开始淡
     /* 毒弹：每吐一发嘴边一团小绿雾（boltLaunch 里放了）；鼓腮的时候喉咙亮着 */
@@ -223,7 +223,7 @@ export function buildTox(api) {
       if (sinkT > 1.5 && !boss.userData.sunk) { boss.userData.sunk = 1; ctx.shake(0.4) } }
     else { boss.position.set(ARENA.boss.x, -0.36, BZ); boss.userData.sunk = 0 }
     /* 腰上那圈毒雾慢慢转 */
-    for (const s of waist) { const u = s.userData; u.a += dt * 0.08; s.position.set(Math.cos(u.a) * u.r, boss.position.y + 0.36 + u.y + 0.2 * Math.sin(clock + u.ph), BZ - 0.7 + Math.sin(u.a) * u.r * 0.55); s.scale.setScalar(u.sz); s.material.opacity = 0.45 + 0.1 * Math.sin(clock * 0.7 + u.ph) }
+    for (const s of waist) { const u = s.userData; u.a += dt * 0.08; s.position.set(Math.cos(u.a) * u.r, boss.position.y + 0.36 + u.y + 0.2 * Math.sin(clock + u.ph), BZ - 0.7 * TOX_K + Math.sin(u.a) * u.r * 0.55); s.scale.setScalar(u.sz); s.material.opacity = 0.45 + 0.1 * Math.sin(clock * 0.7 + u.ph) }
   }
   /* 设计 95：走进战斗区后，身后升起一道毒雾墙（封住南边）：跟场地两边一样的一团团软雾，慢慢翻滚、一胀一缩，没有硬边。
      自己的一组雾团（不占战斗粒子的名额），要淡、要矮，别挡住站在墙边的主角 */
@@ -304,6 +304,6 @@ export function buildTox(api) {
     for (const [, v] of pusVis) { scene.remove(v.o); scene.remove(v.glow); scene.remove(v.bar) } pusVis.clear();
   }
   /* 设计 94：镜头、红箭头用的毒囊的脸：头顶（上沿）、下巴（下沿），世界坐标 */
-  const face = () => { const h = bone.Head.getWorldPosition(new THREE.Vector3()); return { x: h.x, z: h.z, top: h.y + 0.13 * TOX_SCALE, chin: wpos(mouth).y } };
+  const face = () => { const h = bone.Head.getWorldPosition(new THREE.Vector3()); return { x: h.x, z: h.z, top: h.y + 0.13 * TOX_SCALE * TOX_K, chin: wpos(mouth).y } };
   return { face, fog, eyeRed, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus, pusFrame, chestSpot, reset, bone, look, castName: k => ({ spit: '酸液喷吐', bolt: '毒弹', burst: '毒囊爆裂', slam: '拍地', surge: '毒雾上涌（大招）' })[k] };
 }
