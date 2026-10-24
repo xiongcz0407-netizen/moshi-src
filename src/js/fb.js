@@ -295,6 +295,25 @@ export function createFB(ctx) {
     camTgt.set(P.x * 0.35, 0, Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 4.6, P.z - k)));
     camOff.copy(camOff0);   /* 设计 89：每关都用这一套（偏移、往北多看、南北边界），新关卡默认也是 */
     if (stg && stg.face && !B.dead) toxLook(P);
+    keyAvoid(P);
+  }
+  /* 设计 96：主角走到右下角时会躲到技能按钮后面（毒囊关区域浅、离底边近，最明显）。
+     主角越靠近按钮那一块的高度，镜头越往右挪，让主角整个人留在最左边那颗按钮的左边（再空 10px）；
+     离开那一块高度就慢慢不挪（按高度渐变，不会一下跳），往右挪多少是连续的，镜头本身还有平滑跟随，不晃 */
+  let keyBox = null, keyAt = 0;
+  function keyAvoid(P) {
+    if (--keyAt <= 0) { keyAt = 30; keyBox = null; const ks = hud ? [...hud.querySelectorAll('.fbkeys .fbk')].map(b => b.getBoundingClientRect()).filter(r => r.width > 0) : [];
+      if (ks.length && innerHeight > 0) keyBox = { l: Math.min(...ks.map(r => r.left)), t: Math.min(...ks.map(r => r.top)), W: innerWidth, H: innerHeight } }
+    if (!keyBox) return;
+    const cam = ctx.camera; _pc.fov = cam.fov; _pc.aspect = cam.aspect; _pc.near = cam.near; _pc.far = cam.far; _pc.updateProjectionMatrix();
+    const { l, t, W, H } = keyBox, tz = camTgt.z;
+    const scr = tx => { const sx = v => (v.x + 1) / 2 * W, sy = v => (1 - v.y) / 2 * H; camTgt.x = tx;
+      const a = ndc(tz, P.x + 0.45, 0, P.z), r = sx(a), bot = sy(a), b = ndc(tz, P.x + 0.45, 1.9, P.z); return { r: Math.max(r, sx(b)), bot } };
+    const x0 = camTgt.x, s0 = scr(x0), on = Math.max(0, Math.min(1, (s0.bot - (t - 40)) / 40));   // 脚在按钮最上沿往上 40px 开始渐渐要躲
+    const lim = (l - 10) + (1 - on) * (W - (l - 10));
+    if (on <= 0 || s0.r <= lim) { camTgt.x = x0; return }
+    let lo = x0, hi = x0 + 12; for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; if (scr(m).r <= lim) hi = m; else lo = m }
+    camTgt.x = hi;
   }
   /* 设计 94：毒囊不会走过来，镜头高度、角度、视角跟第 1 关一样，只加大「往北多看」：
      让毒囊的脸（头顶）露在顶上 BOSS 框下面；但主角的脚离画面底边至少 1/8 画面高，两个冲突时先保主角。 */
