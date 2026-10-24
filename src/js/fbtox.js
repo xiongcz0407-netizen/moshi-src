@@ -230,13 +230,14 @@ export function buildTox(api) {
   const lockW = (() => {
     const g = new THREE.Group(); g.visible = false; scene.add(g); const n = 16, puffs = [];
     for (let i = 0; i < n; i++) { const wisp = i % 4 === 3, s = new THREE.Sprite(new THREE.SpriteMaterial({ map: wisp ? T.fx.wisp : T.fx.cloud, color: wisp ? 0xc8ff8a : 0xd2f0a0, transparent: true, opacity: 0, depthWrite: false, fog: false }));
-      s.renderOrder = 6; s.userData = { x: X0 - 0.2 + (X1 - X0 + 0.4) * (i + Math.random() * 0.8) / n, dz: (Math.random() - 0.5) * 0.5, y: wisp ? 1.0 : 0.45 + Math.random() * 0.35, sz: wisp ? 1.3 : 1.6 + Math.random() * 0.8, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.35, rot: (Math.random() - 0.5) * 0.5, wisp };
+      s.renderOrder = 6; s.userData = { x: X0 - 0.2 + (X1 - X0 + 0.4) * (i + Math.random() * 0.8) / n, dz: wisp ? 1.6 + Math.random() * 0.3 : 1.0 + Math.random() * 0.4, y: wisp ? 0.6 : 0.25 + Math.random() * 0.15, sz: wisp ? 1.1 : 1.2 + Math.random() * 0.5, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.35, rot: (Math.random() - 0.5) * 0.5, wisp };
+      /* 设计 96：雾团整体放到封线南边 1～1.9 米、压低、小一点：镜头从南边斜着往下看，雾在主角前面（南边）时会盖住脚，往南挪、压低以后贴着封线站也看得清脚和腿 */
       s.material.rotation = Math.random() * 6.28; g.add(s); puffs.push(s) }
     let t0 = -1;
     return { on(z) { g.position.z = z; g.visible = true; t0 = 0 }, off() { g.visible = false; t0 = -1 },
       frame(dt) { if (t0 < 0) return; t0 += dt; const k = Math.min(1, t0 / 0.7), up = 1 - (1 - k) * (1 - k);
         for (const s of puffs) { const u = s.userData, w = t0 * u.sp + u.ph;
-          s.position.set(u.x + Math.sin(w * 0.7) * 0.35, (u.y + Math.sin(w) * 0.12) * up + (u.wisp ? (t0 * 0.3 + u.ph) % 1 * 0.6 : 0), u.dz + Math.cos(w * 0.8) * 0.15);
+          s.position.set(u.x + Math.sin(w * 0.7) * 0.35, (u.y + Math.sin(w) * 0.08) * up + (u.wisp ? (t0 * 0.3 + u.ph) % 1 * 0.5 : 0), u.dz + Math.cos(w * 0.8) * 0.12);
           s.material.rotation += u.rot * dt; s.scale.setScalar(u.sz * (0.92 + 0.1 * Math.sin(w * 1.3)) * (0.4 + 0.6 * up));
           s.material.opacity = up * (u.wisp ? 0.35 * Math.sin(((t0 * 0.3 + u.ph) % 1) * Math.PI) : 0.42 + 0.1 * Math.sin(w * 1.7)) } } };
   })();
