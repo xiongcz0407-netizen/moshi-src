@@ -157,12 +157,21 @@ export function goalText(S) {
 }
 
 /* ---------- 提示 ---------- */
-export function toast(msg, cls = '', ms = 2200) {
+/* 设计 97：打副本时超市那边来的飘字、横幅、提示（生产、暴击产出、卖货、员工、仓库满……）一律不显示，回超市也不补放。
+   在这里统一拦：main.js 设 mute = 「在副本里」；副本自己的飘字、提示走 raw（main.js 传给副本的 UI 用的是 raw） */
+let mute = () => false, userT = -1e9;
+export function setMute(f) { mute = f }
+/* 玩家自己点的（副本里「获得」框的穿上 / 收下 / 分解、确认框）照常提示：点完 0.4 秒内的提示不拦 */
+for (const ev of ['pointerdown', 'click', 'keydown']) document.addEventListener(ev, e => { if (e.target && e.target.closest && e.target.closest('#fbHud, #joyzone, #cv')) return; userT = performance.now() }, true);   // 打副本按的攻击、技能、摇杆不算
+const muted = () => mute() && performance.now() - userT > 400;
+export function toast(msg, cls = '', ms = 2200) { if (muted()) return; rawToast(msg, cls, ms) }
+function rawToast(msg, cls = '', ms = 2200) {
   const box = $('#toasts'); if (box.children.length >= 3) box.firstChild.remove();
   const d = document.createElement('div'); d.className = 'toast ' + cls; d.textContent = msg; box.appendChild(d);
   setTimeout(() => d.remove(), ms);
 }
-export function big(title, sub, cls = '') {
+export function big(title, sub, cls = '') { if (muted()) return; rawBig(title, sub, cls) }
+function rawBig(title, sub, cls = '') {
   const b = $('#big'); b.innerHTML = `<div class="bx ${cls}"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
 }
 export function flash() { const f = $('#flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on') }
@@ -211,7 +220,9 @@ const ftPool = [], ftLive = new Set();
 /* 37：暴击时工坊面板那条线闪一下（记下时间，面板重画时 1.5 秒内带 crit） */
 const critAt = {};
 export function critLine(k, i) { critAt[k + ':' + i] = performance.now(); if (cur === 'ws') refreshPanel(true) }
-export function floatText(pos, text, cls = '') {
+export function floatText(pos, text, cls = '') { if (muted()) return; rawFloat(pos, text, cls) }
+export const raw = { toast: (...a) => rawToast(...a), big: (...a) => rawBig(...a), floatText: (...a) => rawFloat(...a) };
+function rawFloat(pos, text, cls = '') {
   if (perfOpt('ft')) {
     if (ftLive.size >= 12) return;
     let o = ftPool.pop();

@@ -236,8 +236,9 @@ function handleEvents(ev) {
     if (e.type === 'rec') {
       if (!away()) W.recycler.onRec(e);
       const p = recTop.clone().setY(2.6);
-      if (e.kind === 'gem') { UI.big('变宝！', `${JUNK[e.t].name} → ${TREASURE[e.id].name}`, 'gem'); ft(p, TREASURE[e.id].name, 'gem'); shake = 0.35 }
-      else if (e.kind === 'x10') { UI.big('暴击 ×10', `+10 ${GOODS[e.id].name}`, 'x10'); ft(p, `×10 ${GOODS[e.id].name}`, 'x10'); shake = 0.25 }
+      const sk = FBV.active() ? () => {} : a => { shake = a };   // 设计 97：副本里超市暴击不晃镜头
+      if (e.kind === 'gem') { UI.big('变宝！', `${JUNK[e.t].name} → ${TREASURE[e.id].name}`, 'gem'); ft(p, TREASURE[e.id].name, 'gem'); sk(0.35) }
+      else if (e.kind === 'x10') { UI.big('暴击 ×10', `+10 ${GOODS[e.id].name}`, 'x10'); ft(p, `×10 ${GOODS[e.id].name}`, 'x10'); sk(0.25) }
       else if (e.kind === 'x3') ft(p, `3倍！+3 ${GOODS[e.id].name}`, 'x3');
       else ft(p, `+1 ${GOODS[e.id].name}`);
     } else if (e.type === 'staffJoin') { UI.toast(`营地空出位置，${e.name}住进来了`, 'good', 4500); SV.saveNow()   // 设计 60
@@ -787,7 +788,7 @@ W.obstacles.push({ x0: PORTAL_POS.x - 2.4, x1: PORTAL_POS.x - 0.78, z0: PORTAL_P
 const PORTAL_FRONT = new THREE.Vector3(PORTAL_POS.x, 0, PORTAL_POS.z + 2.3);
 let fbWalk = null, gotCb = null;
 const fbHero = () => ({ ...FL.fbHero(S, L.heroStats(S)), speed: PLAYER.speed });
-const FBV = createFB({ get player() { return player }, P, camera, moveDir, animH, aimArms, holdGun, UI,
+const FBV = createFB({ get player() { return player }, P, camera, moveDir, animH, aimArms, holdGun, UI: { ...UI, ...UI.raw },   /* 设计 97：副本自己的飘字、提示不受「副本里不显示超市飘字」影响 */
   muzzleOf: m => { const g = m.userData.gun; return g && g.visible ? (m.updateMatrixWorld(true), g.localToWorld(M16_TIP.clone())) : m.position.clone().setY(1.1) },
   mkZombie: i => mkHuman('zombie', i, { skin: 0x8fae7a, shirt: 0x5a5f6a, pants: 0x3a3a3a, hair: 0x2a2a2a, zombie: true }),
   shake: a => { shake = Math.max(shake, a) },
@@ -807,7 +808,7 @@ function fbPreload() { const now = performance.now(); if (now - fbPreT < 30000) 
 function fbLoad(txt, work, fail) {
   const ov = $('#scavLoad'), bar = $('#scavBarI'); $('#scavTxt').textContent = txt; $('#scavTip').textContent = '地上出红色预警就躲开，填满就打下来；震荡弹能打断白色施法条'; bar.style.width = '10%'; ov.classList.remove('hidden');
   const t0 = performance.now();
-  setTimeout(async () => { try { await work() } catch (e) { console.error(e); if (fail) fail(e); else UI.toast('副本没读出来，再试一次', 'bad') }
+  setTimeout(async () => { try { await work() } catch (e) { console.error(e); if (fail) fail(e); else UI.raw.toast('副本没读出来，再试一次', 'bad') }
     bar.style.width = '100%'; setTimeout(() => { ov.classList.add('hidden'); last = performance.now(); UI.flash() }, Math.max(150, 700 - (performance.now() - t0))) }, 60);
 }
 function fbGo(n) {
@@ -829,7 +830,7 @@ function fbFail(inFb) {
   cur = scene; if (player.parent !== scene) scene.add(player); player.rotation.set(0, 0, 0); player.scale.set(1, 1, 1); player.visible = true; UI.setLabelWorld('main'); $('#hud').classList.remove('hidden');
   if (inFb) { P.pos.copy(PORTAL_POS).setZ(PORTAL_POS.z + 0.2); P.kb.set(0, 0); snapCam() }
   fbWalk = { from: P.pos.clone(), to: PORTAL_FRONT.clone(), t: 0, dur: 0.8, done: () => {} };
-  UI.toast('副本没读出来（网络不好？），尸潮卷没扣，再试一次', 'bad', 5000);
+  UI.raw.toast('副本没读出来（网络不好？），尸潮卷没扣，再试一次', 'bad', 5000);
 }
 function fbLeave() {
   fbLoad('正在回超市…', async () => {
@@ -1273,6 +1274,7 @@ FG.initFishGame({
   onEnd: () => { reelT = 0 },
   onClose: () => { FI.setFloat(false); rod.visible = false; castT = reelT = -1 },
 });
+UI.setMute(() => FBV.active());   /* 设计 97：副本里超市来的飘字、横幅、提示一律不显示（副本自己的走 UI.raw） */
 /* 0.22 池塘：主角在池塘（或水桶）旁边 r 米以内 */
 const nearPond = r => { const [w, d] = FISHPOND_SIZE[S.lv.pond || 0]; return Math.abs(P.pos.x - POND_LOT.x) < w / 2 + r && Math.abs(P.pos.z - POND_LOT.z) < d / 2 + r };
 function showBtn(sel, on, txt) { const b = $(sel); b.classList.toggle('hidden', !on || UI.panelOpen() || scavBusy); if (txt && b.textContent !== txt) b.textContent = txt }
