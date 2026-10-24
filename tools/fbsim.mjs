@@ -13,11 +13,11 @@ const S = { fb: fbNew() };
 if (process.env.GEARSET === 'e3x2') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 1, st: 3 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 1, st: 3 } }
 const hero = { ...fbHero(S, hs), speed: 5 };
 const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
-let SL = null; const DBG = []; const res = [], SRC = {}, FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
+let SL = null; const DBG = []; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
 for (let r = 0; r < N; r++) {
   const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false;
   let fireOn = true, fireT = 0, stunWait = -1, dt = 1 / 30;
-  while (!st.over && st.t < 400) {
+  while (!st.over && st.t < 400 && (st.clk ?? st.t) < 460) {
     fireT -= dt; if (fireT <= 0) { fireOn = rng() < 0.8; fireT = 0.4 + rng() * 0.8 }
     /* 想站的位置：BOSS 南边 6.5 米 */
     let mx = 0, mz = 0;
@@ -27,6 +27,7 @@ for (let r = 0; r < N; r++) {
       for (let a = -0.42; a <= 0.42; a += 0.06) { const q = { x: B.x + Math.sin(a) * want, z: B.z + Math.cos(a) * want }; if (q.x < ARENA.x0 + 0.8 || q.x > ARENA.x1 - 0.8) continue; push(q, 0.42);
         const sc = Math.hypot(q.x - P.x, q.z - P.z) + (HZ.some(w => inWarn(w, q.x, q.z, 0.9)) ? 100 : 0); if (!best || sc < best.sc) best = { ...q, sc } }
       if (best) { const gx = best.x - P.x, gz = best.z - P.z, gl = Math.hypot(gx, gz); if (gl > 0.4) { mx = gx / gl; mz = gz / gl } }
+      if (!st.locked) { mx = -P.x * 0.1; mz = -1 }   /* 设计 95：先往北走进战斗区（走过封线才开打） */
     } else { if (Math.abs(d - want) > 0.8) { const k = d > want ? -1 : 1; mx = dx / d * k; mz = dz / d * k } mx += (0 - P.x) * 0.05; if (P.z < -9) mz += 0.4; if (P.z > 16) mz -= 0.4 }
     if (segHit(P.x, P.z, B.x, B.z) !== null) { const g = detour(P, B, 0.42); const l = Math.hypot(g.x - P.x, g.z - P.z) || 1; mx = (g.x - P.x) / l; mz = (g.z - P.z) / l }
     { let near = null, nd = 3.2; for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const q = Math.hypot(m.x - P.x, m.z - P.z); if (q < nd) { nd = q; near = m } }
@@ -50,6 +51,9 @@ for (let r = 0; r < N; r++) {
     const px0 = P.x, pz0 = P.z, yaw0 = P.yaw, rollB = !!P.roll || !!P.kb;
     if (process.env.DBG2 && r === 0 && st.t > 8 && st.t < 8.3) console.log('dbg', st.t.toFixed(2), P.x.toFixed(2), P.z.toFixed(2), mx.toFixed(2), mz.toFixed(2), skill, st.moveK, JSON.stringify(P.kb), !!P.roll, P.inv.toFixed(2), danger && danger.type);
     st.step(dt, { mx, mz, fire: fireOn, skill });
+    /* 设计 95：毒池占了多少场地（每 0.5 秒在区域里撒 0.5 米的点；上涌那半边单独算） */
+    if (STG === 2 && st.locked && Math.round(st.t * 30) % 15 === 0) { let tot = 0, pool = 0, any = 0; for (let x = ARENA.x0 + 0.25; x < ARENA.x1; x += 0.5) for (let z = ARENA.z0 + 0.25; z < ARENA.z1; z += 0.5) { tot++; const p = st.pools.some(w => inWarn(w, x, z, 0)), h = (st.hazards || []).some(w => inWarn(w, x, z, 0)); if (p) pool++; if (p || h) any++ }
+      POOLF.push(pool / tot); ANYF.push(any / tot); POOLN.push(st.pools.length) }
     /* 设计 92：两个技能之间的空档（上一个硬直结束 → 下一个开始读条）、喷吐预警时长 */
     if (STG === 2) { const busy = B.act === 'recover' || B.act === 'stun' || B.act === 'cast';
       if (GAP.wasBusy && !busy && !B.dead) GAP.end = st.t - dt;
@@ -57,7 +61,7 @@ for (let r = 0; r < N; r++) {
       GAP.wasBusy = busy || !!B.cast }
     { const want = Math.hypot(mx, mz), got = Math.hypot(P.x - px0, P.z - pz0) / dt; const intoWall = (P.x >= ARENA.x1 - 0.43 && mx > 0.5 * want) || (P.x <= ARENA.x0 + 0.43 && mx < -0.5 * want) || (P.z <= ARENA.z0 + 0.43 && mz < -0.5 * want) || (P.z >= ARENA.z1 - 0.43 && mz > 0.5 * want);
       if (want > 0.5 && !intoWall && !rollB && !P.roll && !P.kb && !P.dead && got < want * st.hero.speed * st.hero.spd * 0.15) { FT.stuck++; if (process.env.STK) { const why = Math.hypot(P.x - B.x, P.z - B.z) < 1.8 ? 'boss' : Math.abs(P.x) > 6.0 || P.z < ARENA.z0 + 0.6 || P.z > ARENA.z1 - 0.6 ? 'edge' : 'cover/other'; FT.why = FT.why || {}; FT.why[why] = (FT.why[why] || 0) + 1; if (FT.why[why] < 4) console.log('stuck', why, P.x.toFixed(2), P.z.toFixed(2), 'in', mx.toFixed(2), mz.toFixed(2), 'B', B.x.toFixed(1), B.z.toFixed(1)) } } let dy = P.yaw - yaw0; dy = Math.abs(Math.atan2(Math.sin(dy), Math.cos(dy))); if (dy > 70 * Math.PI / 180 && !P.roll) FT.flip++ }
-    FT.n++; if (P.target === B) FT.boss++; else if (P.target) FT.mob++; else if (fireOn) FT.none++; for (const e of st.ev) { if (e.e === 'shot' && e.blocked) FT.blk++; if (e.e === 'shot') FT.sh++ } for (const e of st.ev) { if (e.e === 'cast' && e.k === 'slam') SL = { d0: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x: P.x.toFixed(1), z: P.z.toFixed(1), ch: P.charges }; if (e.e === 'pdmg' && e.src === 'slam' && DBG.length < 8) DBG.push({ ...SL, d1: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x1: P.x.toFixed(1), z1: P.z.toFixed(1), ch1: P.charges, inv: P.inv.toFixed(2) }) } for (const e of st.ev) if (e.e === 'pdmg') SRC[e.src] = (SRC[e.src] || 0) + e.a / N;
+    FT.n++; if (P.target === B) FT.boss++; else if (P.target) FT.mob++; else if (fireOn) FT.none++; for (const e of st.ev) { if (e.e === 'shot' && e.blocked) FT.blk++; if (e.e === 'shot') FT.sh++ } for (const e of st.ev) { if (e.e === 'cast' && e.k === 'slam') SL = { d0: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x: P.x.toFixed(1), z: P.z.toFixed(1), ch: P.charges }; if (e.e === 'pdmg' && e.src === 'slam' && DBG.length < 8) DBG.push({ ...SL, d1: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x1: P.x.toFixed(1), z1: P.z.toFixed(1), ch1: P.charges, inv: P.inv.toFixed(2) }) } for (const e of st.ev) if (e.e === 'pdmg') { SRC[e.src] = (SRC[e.src] || 0) + e.a / N; HIT[e.src] = (HIT[e.src] || 0) + 1 / N }
   }
   res.push({ bhp: B.hp / B.max * 100, win: st.win, t: st.over || st.t, hp: P.hp / P.max, taken: st.stats.taken, casts: st.stats.casts, mobs: st.stats.mobsKilled, intr: st.stats.interrupts });
 }
@@ -67,7 +71,9 @@ const cast = {}; for (const r of res) for (const [k, v] of Object.entries(r.cast
 console.log(`${BOSSES[STG].name} 血 ${BOSSES[STG].hp}，角色页 ${LV} 级：血 ${hero.hp}（基础）伤害 ${hero.dmg.toFixed(1)}×3 发 / ${hero.rate.toFixed(3)} 秒，手雷 ${Math.round(hero.nadeDmg)} 每 ${hero.nadeCd.toFixed(1)} 秒`);
 console.log(`${N} 局：赢 ${wins.length}（${(wins.length / N * 100).toFixed(0)}%）  用时 平均 ${avg(ts).toFixed(1)} 秒，中位 ${ts[Math.floor(ts.length / 2)]?.toFixed(1)}，10%～90% ${ts[Math.floor(ts.length * 0.1)]?.toFixed(1)}～${ts[Math.floor(ts.length * 0.9)]?.toFixed(1)}`);
 console.log(`剩血 平均 ${(avg(wins.map(r => r.hp)) * 100).toFixed(0)}%，挨打 ${avg(res.map(r => r.taken)).toFixed(0)}，打小丧尸 ${avg(res.map(r => r.mobs)).toFixed(1)}，打断 ${avg(res.map(r => r.intr)).toFixed(1)}`);
-console.log('每局挨打（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));
+if (POOLF.length) { const q = (a, f) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(b.length * f))] }; console.log(`设计 95：毒池占场地 中位 ${(q(POOLF, 0.5) * 100).toFixed(0)}%，95% 的时候 ≤ ${(q(POOLF, 0.95) * 100).toFixed(0)}%，最多 ${(q(POOLF, 1) * 100).toFixed(0)}%（同时最多 ${q(POOLN, 1)} 个）；连上涌、收边一起最多 ${(q(ANYF, 1) * 100).toFixed(0)}%`) }
+console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
+console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));
 if (FT.why) console.log(JSON.stringify(FT.why));
 console.log(`设计 64：有输入但几乎没动 每局 ${(FT.stuck / res.length).toFixed(1)} 帧（翻滚、击退、自己往两边崖壁上顶不算）；脸一帧转超过 70°（翻滚不算）每局 ${(FT.flip / res.length).toFixed(1)} 次`);
 console.log(`时间：打 BOSS ${(FT.boss / FT.n * 100).toFixed(0)}%，打小怪 ${(FT.mob / FT.n * 100).toFixed(0)}%，按着但没目标 ${(FT.none / FT.n * 100).toFixed(0)}%；子弹被挡 ${(FT.blk / FT.sh * 100).toFixed(0)}%`);

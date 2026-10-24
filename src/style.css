@@ -1183,10 +1183,6 @@ body.kbon .cin{margin-top:4px}
 .fab.viewfab{bottom:calc(122px + var(--sb));background:#e8c06a;color:#3a2a1a;border:2px solid #a8762e;font-size:15px;padding:10px 18px;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fab.viewfab.hi2{bottom:calc(180px + var(--sb))}
 /* 设计 61：副本里 BOSS 出画面时的红色箭头 */
-#fbHud .fbarrow{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3}
-#fbHud .fbarrow i{position:absolute;left:-26px;top:-20px;width:52px;height:40px;background:#e8322a;clip-path:polygon(0 25%,55% 25%,55% 0,100% 50%,55% 100%,55% 75%,0 75%);filter:drop-shadow(0 0 4px rgba(0,0,0,.7));animation:fbArr .8s ease-in-out infinite}
-#fbHud .fbarrow.hidden{display:none}
-@keyframes fbArr{50%{transform:translateX(6px)}}
 .wcell .wstk{display:block;font-size:11px;color:#5a4028;white-space:nowrap}.wcell .wstk.full{color:#c0392b;font-weight:700}
 /* 设计 61：BOSS 框左边的屠夫头像（跟主角头像同样的木框，大一点） */
 .fbb .bav{position:absolute;left:0;top:-2px;width:58px;height:58px;border-radius:50%;border:3px solid #e8cf98;background:radial-gradient(circle at 50% 40%,#5a4a3a,#241a14);overflow:hidden;box-shadow:0 0 0 2px #6a4a2a,0 3px 8px rgba(0,0,0,.5)}

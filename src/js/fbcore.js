@@ -21,13 +21,13 @@ export const STAGES = {
     covers: [{ k: 'block', x: 0, z: 0.5, hx: 1.05, hz: 0.85 }, { k: 'cart', x: -5.4, z: 6.5, hx: 1.2, hz: 0.7 }, { k: 'crates', x: 5.65, z: -3.2, hx: 0.95, hz: 0.95 }, { k: 'barrels', x: -5.7, z: -6.6, hx: 0.9, hz: 0.9 }],
     walk: { stuck: 2, stuckGain: 1, replan: 0.3, replanMove: 1 } },
   /* 第 2 关毒囊：毒雾断崖。台地宽 14、长 38（北边 z −16 是崖边，毒囊在崖下 z −17.6，露上半身、手扒崖边）；南边接破铁桥。掩体两边错开 */
-  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 3.6, hitY: 4.2,
-    covers: [{ k: 'rock', x: -3.9, z: -7.5, hx: 1.0, hz: 0.95 }, { k: 'barrels', x: 3.8, z: -3.2, hx: 0.95, hz: 1.1 }, { k: 'pipe', x: -3.4, z: 2.8, hx: 1.45, hz: 0.5 }, { k: 'stump', x: 3.6, z: 8.2, hx: 0.7, hz: 0.75 }] },
+  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 2.5, hitY: 2.8, lockZ: -5,   /* 设计 95：毒囊缩到 0.7（bossR 3.6 → 2.5，受击高度 4.2 → 2.8）。 */   /* 设计 95：主角往北走过 z = -5 才开打，身后封死，只在北边 11 米里打（毒囊一直在画面里） */
+    covers: [{ k: 'rock', x: -3.9, z: -7.5, hx: 1.0, hz: 0.95 }, { k: 'barrels', x: 3.8, z: -6.9, hx: 0.95, hz: 1.1 }, { k: 'pipe', x: -3.4, z: 2.8, hx: 1.45, hz: 0.5 }, { k: 'stump', x: 3.6, z: 8.2, hx: 0.7, hz: 0.75 }] },
 };
 export let ARENA = null, COVERS = null;
 export function setStage(n) {
   const g = STAGES[n] || STAGES[1];
-  ARENA = { ...g.arena, start: { ...g.arena.start }, boss: { ...g.arena.boss } }; COVERS = g.covers.map(c => ({ ...c }));
+  ARENA = { ...g.arena, start: { ...g.arena.start }, boss: { ...g.arena.boss } }; if (g.lockZ != null) ARENA.start.z = g.lockZ + 5.5;   /* 设计 95：出生点在封线南边 5.5 米 */ COVERS = g.covers.map(c => ({ ...c }));
   return g;
 }
 setStage(1);
@@ -40,12 +40,15 @@ const CFG = {
 };
 export { CFG as FB_CFG };
 /* 设计 81：毒囊的数（招式表见设计81 第 5 节）。普通技能 = BOSSES[2].dmg（205），大招 = ult（340） */
+/* 设计 95：毒囊整只缩到 0.7（以崖下的原点缩，露出来约 4.3 米，主角的 2.5 倍），拍地的位置、长度跟着手缩 */
+export const TOX_K = 0.7;
 export const TOX_CFG = {
   spitR: 13, spitA: 0.55, spitK: 0.6, spitWarn: 1.3, spitRange: 12, spitCd: [3, 4], calm: 2.5, calmRage: 2,   /* 设计 92：喷吐读条 0.8 → 1.3 秒；任意两个技能之间至少安静 2.5 秒（狂暴 2 秒） */
   bolts: 3, bolts2: 5, boltR: 1.6, boltGap: 0.5, boltWarn: 1.2, boltFly: 0.6, boltK: 1,
-  poolR: 1.7, poolLife: 8, poolLife2: 10, poolMax: 8, poolK: 0.25, poolSlow: 0.3,
+  poolR: 1.4, poolLife: 6, poolLife2: 8, poolMax: 6,   /* 设计 95：区域只剩 11 米深，原 1.7 / 8 / 10 / 8 */
+  poolK: 0.25, poolSlow: 0.3,
   pusN: [4, 5], pusR: 2.5, pusFill: 3, pusFly: 0.6, pusK: 1.2, pusHp: 0.015,
-  slamX: 3.5, slamW: 6, slamL: 7, slamK: 1.3, surgeWarn: 2.0, surgeLife: 4, surgeK: 0.15,
+  slamX: 2.45, slamW: 4.2, slamL: 4.5,   /* 设计 95：原 3.5 / 6 / 7，跟着毒囊缩 0.7（手落地离崖边 4.5 米） */ slamK: 1.3, surgeWarn: 2.0, surgeLife: 4, surgeK: 0.15,
   shrinkEvery: 25, shrinkStep: 0.6, shrinkMax: 2, shrinkWarn: 3,
   first: 4, gap: 7, gapRage: 5.5, order: ['bolt', 'burst', 'slam', 'bolt', 'surge', 'slam'], orderRage: ['bolt', 'surge', 'slam', 'burst', 'surge', 'slam'],
 };
@@ -102,7 +105,7 @@ export function createFight(n, hero, opt = {}) {
   const SG = setStage(n), BR = SG.bossR, TOX = n === 2;   /* 设计 81：第 2 关毒囊（不走动，在北边崖下） */
   const B = BOSSES[n], rnd = opt.rng || Math.random, warnT = FB.warn(n);
   const st = {
-    n, t: 0, over: 0, win: false, rage: false, ev: [], warns: [], mobs: [], shots: [], nades: [], nid: 1, pools: [], zones: [], hazards: [], moveK: 1, half: false, shrink: 0, bossR: BR, hitY: SG.hitY,
+    n, t: 0, clk: 0, locked: SG.lockZ == null, lockZ: SG.lockZ ?? null, over: 0, win: false, rage: false, ev: [], warns: [], mobs: [], shots: [], nades: [], nid: 1, pools: [], zones: [], hazards: [], moveK: 1, half: false, shrink: 0, bossR: BR, hitY: SG.hitY,
     boss: { x: ARENA.boss.x, z: ARENA.boss.z, yaw: 0, look: null, hp: B.hp, max: B.hp, act: 'wait', at: 0, anim: 'idle', ts: 1, animId: 0, cast: null, stun: 0, slow: 0, swingCd: 3, skillT: CFG.firstSkill, summonT: 0, oi: 0, bleed: 0, bleedDps: 0, dead: false, interruptible: false },
     player: { x: ARENA.start.x, z: ARENA.start.z, yaw: Math.PI, hp: hero.hp, max: hero.hp, inv: 0, hurtT: 99, roll: null, cd: { focus: 0, roll: 0, stun: 0, nade: 0 }, charges: SKILLS.roll.charges(hero.sk.roll), focus: 0, focusT: 0, shotT: 0, aim: null, regen10: 0, firing: false, target: null, dead: false },
     stats: { shots: 0, dmg: 0, taken: 0, hits: 0, casts: {}, interrupts: 0, mobsKilled: 0 },
@@ -402,8 +405,10 @@ export function createFight(n, hero, opt = {}) {
         P.roll = null; P.kb = null; P.firing = false; P.target = null; P.burst = null; P.focus = 0; P.aimYaw = null;
         if (ml > 0.1) { P.x += mx * sp; P.z += mz * sp; push(P, 0.42); let d = Math.atan2(mx, mz) - P.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); const t = CFG.turn * dt; P.yaw += Math.max(-t, Math.min(t, d)) } }
       return st }
-    st.t += dt;
-    if (hyp(inp.mx || 0, inp.mz || 0) >= 0.2) st.lastMv = { x: inp.mx, z: inp.mz, t: st.t };   /* 设计 79：最近一次推摇杆的方向（翻滚用） */
+    const pre = !st.locked;   /* 设计 95：还没进战斗区：只能走路、翻滚，不计时，BOSS 不动，打不到 BOSS */
+    st.clk += dt; if (!pre) st.t += dt;
+    if (!pre && st.lockZ != null && ARENA.z1 > st.lockZ) ARENA.z1 = Math.max(st.lockZ, ARENA.z1 - 2.5 * dt);
+    if (hyp(inp.mx || 0, inp.mz || 0) >= 0.2) st.lastMv = { x: inp.mx, z: inp.mz, t: st.clk };   /* 设计 79：最近一次推摇杆的方向（翻滚用） */
     for (const k of ['focus', 'roll', 'stun', 'nade']) if (P.cd[k] > 0) P.cd[k] -= dt; if (P.heartT > 0) P.heartT -= dt;
     if (P.cd.roll <= 0 && P.charges < SKILLS.roll.charges(sk('roll'))) { P.charges++; if (P.charges < SKILLS.roll.charges(sk('roll'))) P.cd.roll = cdOf('roll') }
     P.inv -= dt; P.hurtT += dt;
@@ -412,12 +417,12 @@ export function createFight(n, hero, opt = {}) {
     if (s === 'roll' && P.charges > 0 && !P.roll) {
       /* 设计 79：方向 = 这一帧的摇杆；没推就用最近 0.3 秒里最后一次推的方向（iPhone 两根手指时摇杆可能被系统清零一下）；都没有才往面朝的反方向 */
       let ax = inp.mx || 0, az = inp.mz || 0, src = 'joy';
-      if (hyp(ax, az) < 0.2) { if (st.lastMv && st.t - st.lastMv.t <= 0.3 + 1e-6) { ax = st.lastMv.x; az = st.lastMv.z; src = 'recent' } else { ax = -Math.sin(P.yaw); az = -Math.cos(P.yaw); src = 'back' } }
-      const l = hyp(ax, az); ax /= l; az /= l; st.lastRoll = { ax, az, src, t: st.t, age: st.lastMv ? +(st.t - st.lastMv.t).toFixed(2) : null };
+      if (hyp(ax, az) < 0.2) { if (st.lastMv && st.clk - st.lastMv.t <= 0.3 + 1e-6) { ax = st.lastMv.x; az = st.lastMv.z; src = 'recent' } else { ax = -Math.sin(P.yaw); az = -Math.cos(P.yaw); src = 'back' } }
+      const l = hyp(ax, az); ax /= l; az /= l; st.lastRoll = { ax, az, src, t: st.t, age: st.lastMv ? +(st.clk - st.lastMv.t).toFixed(2) : null };
       P.roll = { ax, az, t: 0 }; P.inv = SKILLS.roll.inv; P.charges--; if (P.cd.roll <= 0) P.cd.roll = cdOf('roll'); P.yaw = Math.atan2(ax, az); E('roll', { ax, az });
     }
-    if (s === 'focus' && P.cd.focus <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
-    if (s === 'stun' && P.cd.stun <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) {
+    if (s === 'focus' && !pre && P.cd.focus <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
+    if (s === 'stun' && !pre && P.cd.stun <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) {
       P.cd.stun = cdOf('stun'); const dur = SKILLS.stun.stun(sk('stun'));
       if (Bo.cast && Bo.interruptible) { if (Bo.cast.cancel) Bo.cast.cancel(); else st.warns.splice(st.warns.indexOf(Bo.cast.w), 1); E('interrupt', { k: Bo.cast.k }); Bo.cast = null; Bo.act = 'stun'; Bo.at = dur; Bo.look = null; setAnim('hit', 0.35); st.stats.interrupts++ }
       else { Bo.slow = 2; E('slowed') }
@@ -425,7 +430,7 @@ export function createFight(n, hero, opt = {}) {
       E('stunShot', { x: Bo.x, z: Bo.z });
     }
     /* 设计 59：手雷也是按键扔（自动瞄小丧尸最多的地方，没有小丧尸就扔 BOSS） */
-    if (s === 'nade' && P.cd.nade <= 0) {
+    if (s === 'nade' && !pre && P.cd.nade <= 0) {
       let tx = null, tz = null, best = 0;
       for (const m of st.mobs) { if (m.dead || m.rise > 0 || hyp(m.x - P.x, m.z - P.z) > hero.range + 2) continue; const c = st.mobs.filter(o => !o.dead && hyp(o.x - m.x, o.z - m.z) < hero.nadeR).length; if (c > best) { best = c; tx = m.x; tz = m.z } }
       if (tx === null && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 3) { tx = Bo.x; tz = Bo.z }
@@ -452,10 +457,16 @@ export function createFight(n, hero, opt = {}) {
         let nx = headOn ? bn.x : P.x - (px0 + mx * sp), nz = headOn ? bn.z : P.z - (pz0 + mz * sp); const nl = hyp(nx, nz);
         const wall = Math.abs(P.x) >= ARENA.x1 - 0.43 || P.z <= ARENA.z0 + 0.43 || P.z >= ARENA.z1 - 0.43;
         if (nl > 1e-4 && !wall) { nx /= nl; nz /= nl; let tx = -nz, tz = nx; const side = (mx * tx + mz * tz) / ml;
-          if (Math.abs(side) < 0.15) { const keep = st.t - (P.slideAt || -9) < 0.3 ? P.slideS : 0, want = keep || (Math.abs(P.x + tx) > Math.abs(P.x - tx) ? -1 : 1); if (want < 0) { tx = -tx; tz = -tz } }   // 正对着：接着刚才滑的方向（不来回），刚开始滑就往场地中间那边
+          if (Math.abs(side) < 0.15) { const keep = st.clk - (P.slideAt || -9) < 0.3 ? P.slideS : 0, want = keep || (Math.abs(P.x + tx) > Math.abs(P.x - tx) ? -1 : 1); if (want < 0) { tx = -tx; tz = -tz } }   // 正对着：接着刚才滑的方向（不来回），刚开始滑就往场地中间那边
           else if (side < 0) { tx = -tx; tz = -tz }
-          P.slideS = Math.abs(side) < 0.15 ? (P.slideS && st.t - (P.slideAt || -9) < 0.3 ? P.slideS : (tx === -nz ? 1 : -1)) : (side > 0 ? 1 : -1); P.slideAt = st.t;
+          P.slideS = Math.abs(side) < 0.15 ? (P.slideS && st.clk - (P.slideAt || -9) < 0.3 ? P.slideS : (tx === -nz ? 1 : -1)) : (side > 0 ? 1 : -1); P.slideAt = st.clk;
           P.x += tx * sp * 0.85; P.z += tz * sp * 0.85; push(P, 0.42); bossPush() } } }
+    if (pre) {   /* 设计 95：走进战斗区（离线 0.6 米）就封死身后：南边界挪到封线，开始计时 */
+      if (P.z <= st.lockZ) { st.locked = true; ARENA.z1 = Math.max(st.lockZ, P.z + 0.43); E('lock', { z: st.lockZ }) }   // 过线：南边界先停在主角身后，下面几帧往北收到封线，把主角慢慢推进区域（不会卡在墙里）
+      P.firing = false; P.target = null; P.aimYaw = null; const mx = inp.mx || 0, mz = inp.mz || 0;
+      if (hyp(mx, mz) > 0.1 && !P.roll) { let d = Math.atan2(mx, mz) - P.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); const t = CFG.turn * dt; P.yaw += Math.max(-t, Math.min(t, d)) }
+      if (inp.fire) { P.farT = (P.farT || 0) - dt; if (P.farT <= 0) { P.farT = 0.5; E('far') } }
+      return st }
     /* 开枪：按住攻击才开；有小怪先打小怪 */
     /* 设计 64：按着攻击就一直朝目标（目标刚出射程也朝最后那个方向），松开才转回走路方向；转身每秒最多 720° */
     P.shotT -= dt; P.firing = false; const lk = !P.roll && inp.fire ? lockTarget(dt) : (P.lock && (P.lock.tg = null), { tg: null, shoot: null }), tg = lk.shoot; P.target = tg;

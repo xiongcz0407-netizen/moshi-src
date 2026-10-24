@@ -217,7 +217,7 @@ export function createFB(ctx) {
     const btn = (k, img) => `<button class="fbk ${k}" data-fbk="${k}"><i style="background-image:url(${A('img/fb/btn_' + img + '.png')})"></i><em class="cdv"></em><b class="cdn"></b>${k === 'roll' ? '<s class="chg"></s>' : ''}</button>`;
     el.innerHTML = `<div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
       <div class="fbb"><div class="bav"><img src="${A('img/fb/boss_' + 1 + '.png')}" alt=""></div><div class="bnm"><b></b><small></small></div><div class="bbar"><i class="lag"></i><i class="cur"></i><s style="left:75%"></s><s style="left:50%"></s><s style="left:25%"></s><span class="bpct"></span></div><div class="bcast hidden"><i></i><span></span></div></div>
-      <div class="fbarrow hidden"><i></i></div><div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
+      <div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
       <div class="fbend hidden"></div>
       <div class="fbkeys">${btn('attack', 'attack')}${btn('focus', 'focus')}${btn('roll', 'roll')}${btn('stun', 'stun')}${btn('nade', 'nade')}</div>`;
     document.getElementById('app').appendChild(el);
@@ -363,6 +363,7 @@ export function createFB(ctx) {
   /* ---------- 每帧 ---------- */
   /* 设计 79：每帧包 try/catch：出错不让副本卡死，错误记进性能小窗和 FB_ERR（同一个只记一次） */
   const errSeen = new Set(), DBG = /[?&]debug/.test(location.search);
+  if (DBG) window.__fbstg = () => stg;   // 测试用
   function frame(dt, clock) {
     try { frameIn(dt, clock) } catch (e) { const k = (e && e.message) || String(e); if (!errSeen.has(k)) { errSeen.add(k); fbErr(new Error(`每帧出错：${k}${e && e.stack ? ' @ ' + (e.stack.split('\n')[1] || '').trim() : ''}`)) } }
     if (DBG && active && fight) { let d = document.getElementById('fbDbg'); if (!d) { d = document.createElement('div'); d.id = 'fbDbg'; d.style.cssText = 'position:absolute;left:4px;bottom:4px;z-index:60;font:11px monospace;color:#fff;background:rgba(0,0,0,.55);padding:2px 5px;pointer-events:none'; document.getElementById('app').appendChild(d) }
@@ -391,8 +392,8 @@ export function createFB(ctx) {
       else if (e.e === 'drag') { const L = hyp(e.x1 - e.x0, e.z1 - e.z0); if (L > 1) { const s = Math.sin(e.yaw), c = Math.cos(e.yaw); for (const sd of [-0.55, 0.55]) mark(T.drag, (e.x0 + e.x1) / 2 + c * sd, (e.z0 + e.z1) / 2 - s * sd, L, 4, e.yaw, 0.7) } }
       else if (e.e === 'bump') { part(T.star, e.x, 1.6, e.z, { size: 2.2, grow: 1.5, life: 0.4, add: true }); dust(e.x, e.z, 8, 1.1, 3, 1.3); ctx.shake(0.5); ctx.UI.floatText(new THREE.Vector3(e.x, 3.4, e.z), '撞到掩体，晕了', 'good') }
       else if (e.e === 'knock' && e.star) { part(T.star, P.x, 1.4, P.z, { size: 1.6, grow: 1.6, life: 0.35, add: true }); ctx.shake(0.35) }
-      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 8 : 5.7, stg ? ARENA.z0 : B.z), '打断！', 'x10');
-      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 8 : 5.7, stg ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
+      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '打断！', 'x10');
+      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
       else if (e.e === 'stunShot') { shock(e.x, e.z, 7, 0x9fe8ff); part(T.star, e.x, 2.2, e.z, { size: 2, grow: 1.4, life: 0.4, add: true, color: 0x9fe8ff }) }
       else if (e.e === 'roll') { rollFx = 0.32; dust(P.x, P.z, 3, 0.9, 1) }
       else if (e.e === 'nadeThrow') { const m = new THREE.Mesh(nadeGeo, nadeMat); m.position.set(e.x0, 1.2, e.z0); scene.add(m); nades.push({ m, ...e, t: 0 }) }
@@ -403,10 +404,10 @@ export function createFB(ctx) {
       else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
       else if (e.e === 'rage') { rageT = 0.01; ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}狂暴了！伤害 ×2`, 'bad', 3000) }
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
-      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 9 : 6.4, stg ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
+      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 6.3 : 6.4, stg ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
-    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (stg ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 3, 6.5, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
+    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (stg ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
     /* 预警 */
     const live = new Set(fight.warns.map(w => w.id));
     for (const [id, o] of warnObjs) if (!live.has(id)) { scene.remove(o); disposeTree(o); warnObjs.delete(id) }
@@ -462,22 +463,9 @@ export function createFB(ctx) {
     if (camFix) { ctx.camera.position.copy(camFix.pos); ctx.camera.lookAt(camFix.at) }   // 截图、录屏用
     else { camTarget(); const want = camTgt.clone().add(camOff); ctx.camera.position.lerp(want, Math.min(1, dt * 5)); ctx.cameraShake(dt); ctx.camera.lookAt(ctx.camera.position.x, 0, ctx.camera.position.z - camOff.z) }
     cliffCam.value = ctx.camera.position.z;   // 56b：靠镜头的山崖压低
-    bossArrow();
     if (flashT > 0) flashT -= dt;
   }
-  /* 设计 61：BOSS 出了画面，屏幕边上画一个红色箭头指着他 */
-  const arV = new THREE.Vector3();
-  function bossArrow() {
-    const el = $h('.fbarrow'), B = fight.boss; if (!el) return;
-    if (B.dead || fight.over) { el.classList.add('hidden'); return }
-    let inView, behind;
-    if (stg && stg.face) { const F = stg.face(); arV.set(F.x, (F.top + F.chin) / 2, F.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && arV.y < hudY + 0.04 && arV.y > -1 }   /* 设计 94：毒囊的脸在画面里（BOSS 框下面看得到）就不画红箭头 */
-    else { arV.set(B.x, 1.8, B.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && Math.abs(arV.y) < 0.9 }
-    if (inView) { el.classList.add('hidden'); return }
-    let x = behind ? -arV.x : arV.x, y = behind ? -arV.y : arV.y; const m = Math.max(Math.abs(x) / 0.9, y > 0 ? y / 0.5 : -y / 0.8, 1e-6);   // 上面留出 BOSS 血条
-    x /= m; y /= m; const W = innerWidth, H = innerHeight, px = (x + 1) / 2 * W, py = (1 - y) / 2 * H, ang = Math.atan2(-y, x);
-    el.style.transform = `translate(${px.toFixed(0)}px,${py.toFixed(0)}px) rotate(${ang.toFixed(3)}rad)`; el.classList.remove('hidden');
-  }
+  /* 设计 95：BOSS 出了画面的红箭头（设计 61）取消了，所有关卡都不画 */
   const _cm = new THREE.Matrix4(), _cf = new THREE.Frustum(), _cs = new THREE.Sphere(new THREE.Vector3(), 3.5);
   function chestFrame(dt, clock) {
     const c = chest; c.t += dt;
