@@ -86,8 +86,8 @@ export function createFB(ctx) {
   /* ---------- 场地（照场景样式图）：南边铁门 → 中间水泥空地和掩体 → 北边平台和屠宰棚，两边山崖 ---------- */
   /* 设计 74：场地建到一半出错：scene / boss 都丢掉，下次进副本从头再建（以前 scene 已经有值，下次不重建，boss 是空的） */
   /* 设计 81：每关一个场景，建好了留着（第 1 关屠夫照旧 buildAll，第 2 关毒囊在 fbtox.js） */
-  const SCN = {}; let stg = null;
-  function build(g) { try { if (n === 2) buildTox2(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; delete SCN[n]; throw e } }
+  const SCN = {}; let stg = null, occl = [];   // occl：设计 97，挡住主角时会变半透明的东西（屠夫关南边矮墙、铁门、崖脚石头）
+  function build(g) { try { if (n === 2) buildTox2(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg, occl } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; occl = []; delete SCN[n]; throw e } }
   function buildTox2(g) {
     scene = new THREE.Scene(); T = { dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), star: tex('img/fb/fx_star.png'), crack: tex('img/fb/mark_crack.png'), hole: tex('img/fb/mark_hole.png'), drag: tex('img/fb/mark_drag.png') };
     stg = buildTox({ scene, g, T, tex, place, part, mark, dust, rocks, shock, glowTex, glowMat, glowSprite, flatGeo, ADD, ctx, ARENA, COVERS });
@@ -102,7 +102,7 @@ export function createFB(ctx) {
     return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: round ? 0x6a5a48 : 0x8a6a42 }));
   }
   function buildAll(g) {
-    stg = null; scene = new THREE.Scene(); scene.background = new THREE.Color(0x4a3b33); scene.fog = new THREE.Fog(0x4a3b33, 34, 70);
+    stg = null; occl = []; scene = new THREE.Scene(); scene.background = new THREE.Color(0x4a3b33); scene.fog = new THREE.Fog(0x4a3b33, 34, 70);
     T = { concrete: tex('img/fb/tex_concrete.jpg', [3.5, 8]), wood: tex('img/fb/tex_wood.jpg', [3, 2]), cliff: tex('img/fb/tex_cliff.jpg', [6, 1.6]), drain: tex('img/fb/tex_drain.jpg', [1, 8]),
       dirt: tex('img/ground/dirt.jpg', [3, 2]), dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), slash: tex('img/fb/fx_slash.png'), star: tex('img/fb/fx_star.png'),
       crack: tex('img/fb/mark_crack.png'), drag: tex('img/fb/mark_drag.png'), hole: tex('img/fb/mark_hole.png'), decals: ['blood', 'oil', 'crack', 'gravel'].map(k => tex(`img/fb/decal_${k}.png`)) };
@@ -132,7 +132,7 @@ export function createFB(ctx) {
         const c = new THREE.Mesh(geo, cliffMat); c.rotation.y = sd > 0 ? -Math.PI / 2 : Math.PI / 2; c.position.set(sd * (ARENA.x1 + 0.9), 0, 3); c.receiveShadow = true; c.castShadow = true; scene.add(c);
       }
       /* 山崖石块：放在地上的崖脚，底部埋进地里一点（56b：以前像挂在半空） */
-      for (let i = 0; i < 4; i++) { const k = 'rock_' + (1 + (i + (sd > 0 ? 1 : 0)) % 3), sc = 3.6 + Math.random() * 2.2; place(g, k, sc, sd * (ARENA.x1 + 0.55 + Math.random() * 0.3), -0.25, -9 + i * 8 + Math.random() * 2.5, Math.random() * 6) }   // 一边 4 块（每块 4000 面，发烫）
+      for (let i = 0; i < 4; i++) { const k = 'rock_' + (1 + (i + (sd > 0 ? 1 : 0)) % 3), sc = 3.6 + Math.random() * 2.2; occl.push(place(g, k, sc, sd * (ARENA.x1 + 0.55 + Math.random() * 0.3), -0.25, -9 + i * 8 + Math.random() * 2.5, Math.random() * 6)) }   // 一边 4 块（每块 4000 面，发烫）
     }
     { const bt = T.cliff.clone(); bt.repeat.set(10, 4); const back = new THREE.Mesh(new THREE.PlaneGeometry(40, 16, 20, 6), new THREE.MeshLambertMaterial({ map: bt })); back.position.set(0, 6, -26.5); scene.add(back) }
     /* 北边平台：高一截（矮墙 + 中间台阶），上面铺旧木地板，屠宰棚，大剁刀插在平台上 */
@@ -146,9 +146,9 @@ export function createFB(ctx) {
     place(g, 'cleaver', 3.1, 4.6, ph, -15.2, -0.5);
     /* 南边：破铁门（左扇半开） */
     const gz = ARENA.z1 + 0.4, gs = 4.6;
-    place(g, 'gate_1', gs, -2.25, 0, gz); place(g, 'gate_4', gs, 2.25, 0, gz);
-    { const l = place(g, 'gate_2', gs, -1.4, 0, gz + 0.5, -1.05); l.position.x = -1.8; place(g, 'gate_3', gs, 1.05, 0, gz) }
-    for (const x of [-4.6, 4.6]) { const w = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.6, 0.4), wm); w.position.set(x, 0.8, gz); w.castShadow = true; scene.add(w) }
+    occl.push(place(g, 'gate_1', gs, -2.25, 0, gz), place(g, 'gate_4', gs, 2.25, 0, gz));
+    { const l = place(g, 'gate_2', gs, -1.4, 0, gz + 0.5, -1.05); l.position.x = -1.8; occl.push(l, place(g, 'gate_3', gs, 1.05, 0, gz)) }
+    for (const x of [-4.6, 4.6]) { const w = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.6, 0.4), wm.clone()); w.position.set(x, 0.8, gz); w.castShadow = true; scene.add(w); occl.push(w) }
     /* 掩体 */
     for (const c of COVERS) {
       if (c.k === 'block') place(g, 'block', 2.2, c.x, 0, c.z, 0.15);
@@ -267,7 +267,7 @@ export function createFB(ctx) {
   /* ---------- 进副本 ---------- */
   async function enter(lv, hero, look) {
     n = lv; const g = await load(n); setStage(n);
-    if (SCN[n]) ({ scene, boss, mixer, acts, T, stg } = SCN[n]); else build(g);
+    if (SCN[n]) ({ scene, boss, mixer, acts, T, stg, occl } = SCN[n]); else build(g);
     mkHud(); hud.classList.remove('hidden'); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
     $h('.fbb .bnm b').textContent = BOSSES[n].name; $h('.fbb .bnm small').textContent = `第 ${n} 关`; $h('.fbb .bav img').src = A('img/fb' + (n === 1 ? '' : n) + '/boss_' + n + '.png');
     $h('.fname').textContent = (look && look.name) || '我'; ctx.drawAvatar($h('.fav'));
@@ -382,7 +382,18 @@ export function createFB(ctx) {
   /* ---------- 每帧 ---------- */
   /* 设计 79：每帧包 try/catch：出错不让副本卡死，错误记进性能小窗和 FB_ERR（同一个只记一次） */
   const errSeen = new Set(), DBG = /[?&]debug/.test(location.search);
-  if (DBG) window.__fbstg = () => stg;   // 测试用
+  if (DBG) { window.__fbstg = () => stg; window.__fbocc = () => occl }   // 测试用
+  /* 设计 97：主角站在屠夫关最南边时，南边矮墙、铁门、崖脚石头在主角和镜头之间，会把人挡住。
+     从镜头往主角脚、腰、头连三条线，碰到谁的包围盒，谁就在 0.2 秒里变成半透明（0.3），离开了再变回来 */
+  const _ray = new THREE.Ray(), _bx = new THREE.Box3(), _pt = new THREE.Vector3(), _hit = new THREE.Vector3();
+  function seeThrough(dt) {
+    if (!occl.length || !fight) return; const P = fight.player, cam = ctx.camera.position;
+    for (const o of occl) {
+      const u = o.userData; if (!u.box) { o.updateMatrixWorld(true); u.box = new THREE.Box3().setFromObject(o); u.mats = []; o.traverse(c => { if (c.isMesh) for (const m of [].concat(c.material)) u.mats.push(m) }); u.a = 1 }
+      let hit = false; for (const y of [0.25, 1.0, 1.8]) { _pt.set(P.x, y, P.z); const d = cam.distanceTo(_pt); _ray.origin.copy(cam); _ray.direction.copy(_pt).sub(cam).normalize(); if (_ray.intersectBox(u.box, _hit) && cam.distanceTo(_hit) < d - 0.3) { hit = true; break } }
+      const want = hit ? 0.3 : 1; if (u.a === want) continue; u.a = want > u.a ? Math.min(want, u.a + dt / 0.2) : Math.max(want, u.a - dt / 0.2);
+      for (const m of u.mats) { m.opacity = u.a; const tr = u.a < 0.99; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true } m.depthWrite = !tr } }   // 不透明的材质着色器里会把透明度写死成 1，切换时要重新编译
+  }
   function frame(dt, clock) {
     try { frameIn(dt, clock) } catch (e) { const k = (e && e.message) || String(e); if (!errSeen.has(k)) { errSeen.add(k); fbErr(new Error(`每帧出错：${k}${e && e.stack ? ' @ ' + (e.stack.split('\n')[1] || '').trim() : ''}`)) } }
     if (DBG && active && fight) { let d = document.getElementById('fbDbg'); if (!d) { d = document.createElement('div'); d.id = 'fbDbg'; d.style.cssText = 'position:absolute;left:4px;bottom:4px;z-index:60;font:11px monospace;color:#fff;background:rgba(0,0,0,.55);padding:2px 5px;pointer-events:none'; document.getElementById('app').appendChild(d) }
@@ -481,7 +492,7 @@ export function createFB(ctx) {
     /* 镜头 */
     if (camFix) { ctx.camera.position.copy(camFix.pos); ctx.camera.lookAt(camFix.at) }   // 截图、录屏用
     else { camTarget(); const want = camTgt.clone().add(camOff); ctx.camera.position.lerp(want, Math.min(1, dt * 5)); ctx.cameraShake(dt); ctx.camera.lookAt(ctx.camera.position.x, 0, ctx.camera.position.z - camOff.z) }
-    cliffCam.value = ctx.camera.position.z;   // 56b：靠镜头的山崖压低
+    cliffCam.value = ctx.camera.position.z; seeThrough(dt);   // 56b：靠镜头的山崖压低
     if (flashT > 0) flashT -= dt;
   }
   /* 设计 95：BOSS 出了画面的红箭头（设计 61）取消了，所有关卡都不画 */
