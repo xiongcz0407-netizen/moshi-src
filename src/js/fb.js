@@ -294,6 +294,23 @@ export function createFB(ctx) {
     const k = CN - (CN - 1.6) * Math.min(1, far / 8);
     camTgt.set(P.x * 0.35, 0, Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 4.6, P.z - k)));
     camOff.copy(camOff0);   /* 设计 89：每关都用这一套（偏移、往北多看、南北边界），新关卡默认也是 */
+    if (stg && stg.face && !B.dead) toxLook(P);
+  }
+  /* 设计 94：毒囊不会走过来，镜头高度、角度、视角跟第 1 关一样，只加大「往北多看」：
+     让毒囊的脸（头顶）露在顶上 BOSS 框下面；但主角的脚离画面底边至少 1/8 画面高，两个冲突时先保主角。 */
+  const _pc = new THREE.PerspectiveCamera(), _pv = new THREE.Vector3(); let hudY = 0.62, hudAt = 0;
+  function ndc(tz, x, y, z) { _pc.position.set(camTgt.x, 0, tz).add(camOff0); _pc.lookAt(camTgt.x, 0, tz); _pc.updateMatrixWorld(); return _pv.set(x, y, z).project(_pc) }
+  function toxLook(P) {
+    const cam = ctx.camera; _pc.fov = cam.fov; _pc.aspect = cam.aspect; _pc.near = cam.near; _pc.far = cam.far; _pc.updateProjectionMatrix();
+    if (--hudAt <= 0) { hudAt = 30; const b = hud && hud.querySelector('.fbb'); if (b && innerHeight > 0) { const r = b.getBoundingClientRect(); if (r.height > 0) hudY = 1 - 2 * (r.bottom + 6) / innerHeight } }   // BOSS 框下沿（再空 6px），换成 -1～1
+    const F = stg.face(), FEET = -0.75;   // 脚：离底边 1/8 画面高
+    const bin = (lo, hi, ok) => { for (let i = 0; i < 18; i++) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m } return hi };   // lo 端不成立、hi 端成立，找分界
+    const faceOk = tz => ndc(tz, F.x, F.top, F.z).y <= hudY;                        // 头顶在 BOSS 框下面（镜头越往北，脸越往下）
+    const feetOk = tz => P.z < tz + camOff0.z - 2 && ndc(tz, P.x, 0, P.z).y >= FEET;   // 先要在镜头前面（在镜头后面时投影出来的数不能用）   // 主角的脚在下 1/8 以上（镜头越往北，脚越往下）
+    let tz = camTgt.z;
+    if (!faceOk(tz)) tz = -bin(-tz, -(tz - 40), nz => faceOk(-nz));                   // 往北挪到头顶刚好露在 BOSS 框下面
+    if (!feetOk(tz)) tz = bin(Math.max(tz, P.z - 16), P.z, feetOk);                  // 主角会出画面：往回挪，先保主角
+    camTgt.z = tz;
   }
   let fov0 = null;
   function exit() { if (fov0 != null) { ctx.camera.fov = fov0; ctx.camera.updateProjectionMatrix() } active = false; phase = ''; releaseKeys(); if (hud) hud.classList.add('hidden'); const d = document.getElementById('fbDbg'); if (d) d.remove(); try { ctx.holdGun(false) } catch (e) { fbErr(e) } ctx.onExit(res) }   /* 设计 79：不依赖每帧的代码，任何时候都能回超市 */
@@ -453,8 +470,9 @@ export function createFB(ctx) {
   function bossArrow() {
     const el = $h('.fbarrow'), B = fight.boss; if (!el) return;
     if (B.dead || fight.over) { el.classList.add('hidden'); return }
-    arV.set(B.x, stg ? 5 : 1.8, stg ? ARENA.z0 - 1 : B.z).project(ctx.camera);
-    const behind = arV.z > 1, inView = !behind && Math.abs(arV.x) < 0.94 && Math.abs(arV.y) < 0.9;
+    let inView, behind;
+    if (stg && stg.face) { const F = stg.face(); arV.set(F.x, (F.top + F.chin) / 2, F.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && arV.y < hudY + 0.04 && arV.y > -1 }   /* 设计 94：毒囊的脸在画面里（BOSS 框下面看得到）就不画红箭头 */
+    else { arV.set(B.x, 1.8, B.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && Math.abs(arV.y) < 0.9 }
     if (inView) { el.classList.add('hidden'); return }
     let x = behind ? -arV.x : arV.x, y = behind ? -arV.y : arV.y; const m = Math.max(Math.abs(x) / 0.9, y > 0 ? y / 0.5 : -y / 0.8, 1e-6);   // 上面留出 BOSS 血条
     x /= m; y /= m; const W = innerWidth, H = innerHeight, px = (x + 1) / 2 * W, py = (1 - y) / 2 * H, ang = Math.atan2(-y, x);
