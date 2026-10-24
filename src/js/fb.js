@@ -217,7 +217,7 @@ export function createFB(ctx) {
     const btn = (k, img) => `<button class="fbk ${k}" data-fbk="${k}"><i style="background-image:url(${A('img/fb/btn_' + img + '.png')})"></i><em class="cdv"></em><b class="cdn"></b>${k === 'roll' ? '<s class="chg"></s>' : ''}</button>`;
     el.innerHTML = `<div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
       <div class="fbb"><div class="bav"><img src="${A('img/fb/boss_' + 1 + '.png')}" alt=""></div><div class="bnm"><b></b><small></small></div><div class="bbar"><i class="lag"></i><i class="cur"></i><s style="left:75%"></s><s style="left:50%"></s><s style="left:25%"></s><span class="bpct"></span></div><div class="bcast hidden"><i></i><span></span></div></div>
-      <div class="fbarrow hidden"><i></i></div><div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
+      <div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
       <div class="fbend hidden"></div>
       <div class="fbkeys">${btn('attack', 'attack')}${btn('focus', 'focus')}${btn('roll', 'roll')}${btn('stun', 'stun')}${btn('nade', 'nade')}</div>`;
     document.getElementById('app').appendChild(el);
@@ -363,6 +363,7 @@ export function createFB(ctx) {
   /* ---------- 每帧 ---------- */
   /* 设计 79：每帧包 try/catch：出错不让副本卡死，错误记进性能小窗和 FB_ERR（同一个只记一次） */
   const errSeen = new Set(), DBG = /[?&]debug/.test(location.search);
+  if (DBG) window.__fbstg = () => stg;   // 测试用
   function frame(dt, clock) {
     try { frameIn(dt, clock) } catch (e) { const k = (e && e.message) || String(e); if (!errSeen.has(k)) { errSeen.add(k); fbErr(new Error(`每帧出错：${k}${e && e.stack ? ' @ ' + (e.stack.split('\n')[1] || '').trim() : ''}`)) } }
     if (DBG && active && fight) { let d = document.getElementById('fbDbg'); if (!d) { d = document.createElement('div'); d.id = 'fbDbg'; d.style.cssText = 'position:absolute;left:4px;bottom:4px;z-index:60;font:11px monospace;color:#fff;background:rgba(0,0,0,.55);padding:2px 5px;pointer-events:none'; document.getElementById('app').appendChild(d) }
@@ -462,22 +463,9 @@ export function createFB(ctx) {
     if (camFix) { ctx.camera.position.copy(camFix.pos); ctx.camera.lookAt(camFix.at) }   // 截图、录屏用
     else { camTarget(); const want = camTgt.clone().add(camOff); ctx.camera.position.lerp(want, Math.min(1, dt * 5)); ctx.cameraShake(dt); ctx.camera.lookAt(ctx.camera.position.x, 0, ctx.camera.position.z - camOff.z) }
     cliffCam.value = ctx.camera.position.z;   // 56b：靠镜头的山崖压低
-    bossArrow();
     if (flashT > 0) flashT -= dt;
   }
-  /* 设计 61：BOSS 出了画面，屏幕边上画一个红色箭头指着他 */
-  const arV = new THREE.Vector3();
-  function bossArrow() {
-    const el = $h('.fbarrow'), B = fight.boss; if (!el) return;
-    if (B.dead || fight.over) { el.classList.add('hidden'); return }
-    let inView, behind;
-    if (stg && stg.face) { const F = stg.face(); arV.set(F.x, (F.top + F.chin) / 2, F.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && arV.y < hudY + 0.04 && arV.y > -1 }   /* 设计 94：毒囊的脸在画面里（BOSS 框下面看得到）就不画红箭头 */
-    else { arV.set(B.x, 1.8, B.z).project(ctx.camera); behind = arV.z > 1; inView = !behind && Math.abs(arV.x) < 0.94 && Math.abs(arV.y) < 0.9 }
-    if (inView) { el.classList.add('hidden'); return }
-    let x = behind ? -arV.x : arV.x, y = behind ? -arV.y : arV.y; const m = Math.max(Math.abs(x) / 0.9, y > 0 ? y / 0.5 : -y / 0.8, 1e-6);   // 上面留出 BOSS 血条
-    x /= m; y /= m; const W = innerWidth, H = innerHeight, px = (x + 1) / 2 * W, py = (1 - y) / 2 * H, ang = Math.atan2(-y, x);
-    el.style.transform = `translate(${px.toFixed(0)}px,${py.toFixed(0)}px) rotate(${ang.toFixed(3)}rad)`; el.classList.remove('hidden');
-  }
+  /* 设计 95：BOSS 出了画面的红箭头（设计 61）取消了，所有关卡都不画 */
   const _cm = new THREE.Matrix4(), _cf = new THREE.Frustum(), _cs = new THREE.Sphere(new THREE.Vector3(), 3.5);
   function chestFrame(dt, clock) {
     const c = chest; c.t += dt;

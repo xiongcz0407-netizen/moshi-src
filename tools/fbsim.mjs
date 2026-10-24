@@ -17,7 +17,7 @@ let SL = null; const DBG = []; const res = [], SRC = {}, FT = { n: 0, boss: 0, m
 for (let r = 0; r < N; r++) {
   const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false;
   let fireOn = true, fireT = 0, stunWait = -1, dt = 1 / 30;
-  while (!st.over && st.t < 400) {
+  while (!st.over && st.t < 400 && (st.clk ?? st.t) < 460) {
     fireT -= dt; if (fireT <= 0) { fireOn = rng() < 0.8; fireT = 0.4 + rng() * 0.8 }
     /* 想站的位置：BOSS 南边 6.5 米 */
     let mx = 0, mz = 0;
@@ -27,6 +27,7 @@ for (let r = 0; r < N; r++) {
       for (let a = -0.42; a <= 0.42; a += 0.06) { const q = { x: B.x + Math.sin(a) * want, z: B.z + Math.cos(a) * want }; if (q.x < ARENA.x0 + 0.8 || q.x > ARENA.x1 - 0.8) continue; push(q, 0.42);
         const sc = Math.hypot(q.x - P.x, q.z - P.z) + (HZ.some(w => inWarn(w, q.x, q.z, 0.9)) ? 100 : 0); if (!best || sc < best.sc) best = { ...q, sc } }
       if (best) { const gx = best.x - P.x, gz = best.z - P.z, gl = Math.hypot(gx, gz); if (gl > 0.4) { mx = gx / gl; mz = gz / gl } }
+      if (!st.locked) { mx = -P.x * 0.1; mz = -1 }   /* 设计 95：先往北走进战斗区（走过封线才开打） */
     } else { if (Math.abs(d - want) > 0.8) { const k = d > want ? -1 : 1; mx = dx / d * k; mz = dz / d * k } mx += (0 - P.x) * 0.05; if (P.z < -9) mz += 0.4; if (P.z > 16) mz -= 0.4 }
     if (segHit(P.x, P.z, B.x, B.z) !== null) { const g = detour(P, B, 0.42); const l = Math.hypot(g.x - P.x, g.z - P.z) || 1; mx = (g.x - P.x) / l; mz = (g.z - P.z) / l }
     { let near = null, nd = 3.2; for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const q = Math.hypot(m.x - P.x, m.z - P.z); if (q < nd) { nd = q; near = m } }

@@ -157,6 +157,7 @@ export function buildTox(api) {
     m.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), d.normalize()); m.rotateX(Math.PI / 2); m.renderOrder = 6; scene.add(m); flyers.push({ kind: 'fade', m, t: 0, life });
   }
   function onEvent(e) {
+    if (e.e === 'lock') { lockW.on(e.z); return true }
     if (e.e === 'release') {
       const w = e.w;
       if (e.k === 'spit') { const m = wpos(mouth), end = new THREE.Vector3(w.x + Math.sin(w.yaw) * w.r * 0.85, 0.2, w.z + Math.cos(w.yaw) * w.r * 0.85);
@@ -224,7 +225,23 @@ export function buildTox(api) {
     /* 腰上那圈毒雾慢慢转 */
     for (const s of waist) { const u = s.userData; u.a += dt * 0.08; s.position.set(Math.cos(u.a) * u.r, boss.position.y + 0.36 + u.y + 0.2 * Math.sin(clock + u.ph), BZ - 0.7 + Math.sin(u.a) * u.r * 0.55); s.scale.setScalar(u.sz); s.material.opacity = 0.45 + 0.1 * Math.sin(clock * 0.7 + u.ph) }
   }
+  /* 设计 95：走进战斗区后，身后升起一道毒雾墙（封住南边）：跟场地两边一样的一团团软雾，慢慢翻滚、一胀一缩，没有硬边。
+     自己的一组雾团（不占战斗粒子的名额），要淡、要矮，别挡住站在墙边的主角 */
+  const lockW = (() => {
+    const g = new THREE.Group(); g.visible = false; scene.add(g); const n = 16, puffs = [];
+    for (let i = 0; i < n; i++) { const wisp = i % 4 === 3, s = new THREE.Sprite(new THREE.SpriteMaterial({ map: wisp ? T.fx.wisp : T.fx.cloud, color: wisp ? 0xc8ff8a : 0xd2f0a0, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+      s.renderOrder = 6; s.userData = { x: X0 - 0.2 + (X1 - X0 + 0.4) * (i + Math.random() * 0.8) / n, dz: (Math.random() - 0.5) * 0.5, y: wisp ? 1.0 : 0.45 + Math.random() * 0.35, sz: wisp ? 1.3 : 1.6 + Math.random() * 0.8, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.35, rot: (Math.random() - 0.5) * 0.5, wisp };
+      s.material.rotation = Math.random() * 6.28; g.add(s); puffs.push(s) }
+    let t0 = -1;
+    return { on(z) { g.position.z = z; g.visible = true; t0 = 0 }, off() { g.visible = false; t0 = -1 },
+      frame(dt) { if (t0 < 0) return; t0 += dt; const k = Math.min(1, t0 / 0.7), up = 1 - (1 - k) * (1 - k);
+        for (const s of puffs) { const u = s.userData, w = t0 * u.sp + u.ph;
+          s.position.set(u.x + Math.sin(w * 0.7) * 0.35, (u.y + Math.sin(w) * 0.12) * up + (u.wisp ? (t0 * 0.3 + u.ph) % 1 * 0.6 : 0), u.dz + Math.cos(w * 0.8) * 0.15);
+          s.material.rotation += u.rot * dt; s.scale.setScalar(u.sz * (0.92 + 0.1 * Math.sin(w * 1.3)) * (0.4 + 0.6 * up));
+          s.material.opacity = up * (u.wisp ? 0.35 * Math.sin(((t0 * 0.3 + u.ph) % 1) * Math.PI) : 0.42 + 0.1 * Math.sin(w * 1.7)) } } };
+  })();
   function frame(dt, clock, fight) {
+    lockW.frame(dt);
     /* 毒雾海两层反向流 */
     T.mist.offset.x = (T.mist.offset.x + dt * 0.012) % 1; T.mist.offset.y = (T.mist.offset.y + dt * 0.006) % 1;
     T.mist2.offset.x = (T.mist2.offset.x - dt * 0.02) % 1; T.mist2.offset.y = (T.mist2.offset.y + dt * 0.011) % 1;
@@ -281,7 +298,7 @@ export function buildTox(api) {
   const chestSpot = () => ({ x: 0, z: Z0 + 4.6 });
   function reset() {
     mixer.stopAllAction(); curAct = null; play('idle'); sinkT = -1; dimT = 0; rageT = 0; look.yaw = look.pitch = look.vy = look.vp = 0; look.w = 0; U.rage.value = 0;
-    boss.position.set(ARENA.boss.x, -0.36, BZ); boss.visible = true; redOn = false; fog.reset();
+    boss.position.set(ARENA.boss.x, -0.36, BZ); boss.visible = true; redOn = false; fog.reset(); lockW.off();
     for (const f of flyers) { scene.remove(f.s || f.m) } flyers.length = 0;
     for (const [, v] of poolVis) scene.remove(v.m); poolVis.clear();
     for (const [, v] of pusVis) { scene.remove(v.o); scene.remove(v.glow); scene.remove(v.bar) } pusVis.clear();
