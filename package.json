@@ -1,0 +1,17 @@
+{
+  "name": "moshi-supermarket",
+  "version": "1.0.0",
+  "description": "末世超市（微信小游戏原型，先做网页版）",
+  "scripts": {
+    "build": "node build.mjs 上传到GitHub @INJECT",
+    "sim": "node docs/sim.mjs 20 150",
+    "dev": "node build.mjs /tmp/moshi_out"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "esbuild": "^0.24.0",
+    "three": "^0.169.0"
+  }
+}

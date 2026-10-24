@@ -1,0 +1,107 @@
+/* ================= 设计 56：副本（打 BOSS 掉装备）的数值。设计36 + 设计53 + 设计55 ================= */
+export const FB = {
+  store: 5,                                   // 超市 5 级才能进（传送门一直显示）
+  scrolls: n => 1 + n,                        // 第 n 关要 1 + n 张尸潮卷（设计55）
+  coins: n => 1500 + 500 * (n - 1),
+  crystals: n => n <= 3 ? 2 : n <= 6 ? 4 : 6,
+  time: 180,                                  // 3 分钟，到时间 BOSS 狂暴
+  warn: n => n <= 5 ? 1.5 : 1.0,              // 技能预警秒数
+  rage: { dmg: 2, warn: 0.7 },
+  bag: 30,
+  baseHp: 580,                                // 设计 59：副本里主角基础生命 580、减伤 0（生命、减伤只从装备来）
+};
+/* 10 个 BOSS（设计36 第六、七节）；第 1、2 关做好了（设计 81），其他上锁 */
+export const BOSSES = [
+  null,
+  { name: '屠夫', hp: 55000, dmg: 175, ult: 290, rec: '没装备也能打（主角 25 级）', open: true,
+    skills: [['冲锋', '地上出长条，直线冲过来；撞到掩体会停下'], ['砸地', '大招：自己周围大圆圈，躲远一点'], ['叫小丧尸', '4 个小圈里钻出小丧尸，先打掉']] },
+  { name: '毒囊', hp: 84000, dmg: 205, ult: 340, rec: '2 件史诗 3 星', open: true,   /* 设计 81：毒雾断崖，毒囊在北边崖下不走动 */
+    skills: [['酸液喷吐', '离得近时朝你喷一小片扇形，躲开就行'], ['毒弹', '脚下连着落 3 个圈，落地变毒池（站在里面掉血、变慢）'], ['毒囊爆裂', '4～5 个脓包落在地上，圈满了就炸；先打掉就不炸'],
+      ['拍地', '一只手拍台地北边一长条，被拍到会被打退'], ['毒雾上涌', '大招：左边或右边半个场地被毒雾盖住 4 秒，快跑到另一边'], ['半血以后', '毒弹变 5 个、毒池留更久，两边毒雾慢慢往里收']] }, { name: '落石巨人', rec: '4 件史诗 4 星' }, { name: '尖啸者', rec: '全身史诗 5～6 星' },
+  { name: '装甲暴君', rec: '史诗 6 星 + 2 件拾荒者' }, { name: '焚尸者', rec: '4 件拾荒者 + 传说' }, { name: '影刃', rec: '拾荒者 9 星' },
+  { name: '冰霜巨像', rec: '2 件猎杀者' }, { name: '尸王', rec: '4 件猎杀者 9 星' }, { name: '屠城者', rec: '猎杀者 12 星 + 传说' },
+];
+export const FB_MAX = 10;
+
+/* 品质（设计36 第八节）：k 是固定属性的倍数（设计55 新定） */
+export const QUAL = {
+  n: { name: '普通', color: '#b9b9b9', tx: '#6e6e6e', stars: 6, k: 1, crys: 1 },
+  e: { name: '史诗', color: '#b46cff', tx: '#8a3fe0', stars: 9, k: 1, crys: 3 },
+  s: { name: '套装', color: '#ff4040', tx: '#d42020', stars: 12, k: 1.1, crys: 6 },
+  l: { name: '传说', color: '#ff9b2f', tx: '#d0660a', stars: 12, k: 1.25, crys: 6 },
+};
+export const SLOTS = ['w', 'h', 'a', 'g', 'b', 'm'];   // 设计 59：第 6 格护符（不属于套装）
+export const SLOT_NAME = { w: '武器', h: '头盔', a: '护甲', g: '手套', b: '鞋子', m: '护符' };
+/* 属性：名字、单位（% 或点）、上限 */
+export const STAT = {
+  dmg: { name: '伤害', pct: 1 }, rate: { name: '射速', pct: 1 }, crit: { name: '暴击率', pct: 1, cap: 60 }, cdmg: { name: '暴击伤害', pct: 1 },
+  hp: { name: '生命' }, dr: { name: '减伤', pct: 1, cap: 60 }, spd: { name: '移速', pct: 1, cap: 50 }, leech: { name: '吸血', pct: 1 },
+  slow: { name: '减速', pct: 1 }, pierce: { name: '穿透' }, ndmg: { name: '手雷伤害', pct: 1 }, ncd: { name: '手雷冷却', pct: 1 },
+  boss: { name: '对 BOSS 伤害', pct: 1 }, cdr: { name: '技能冷却', pct: 1, cap: 40 }, hpPct: { name: '生命', pct: 1 }, all: { name: '全部伤害', pct: 1 },
+};
+/* 固定属性基础值（1 关、0 星、×1.0） */
+export const AFF = { dmg: 6, rate: 4, crit: 3, cdmg: 15, hp: 50, dr: 3, spd: 3, leech: 1.5, slow: 8, pierce: 1, ndmg: 15, ncd: 8, boss: 6, cdr: 6 };
+/* 主属性基础值 */
+export const MAIN = {
+  w: { n: { dmg: 8, rate: 4 }, e: { dmg: 10, rate: 5 }, s: { dmg: 11, rate: 5 }, l: { dmg: 12, rate: 6 } },
+  h: { n: { hp: 60 }, e: { hp: 80 }, s: { hp: 90 }, l: { hp: 100 } },
+  a: { n: { hp: 50, dr: 3 }, e: { hp: 70, dr: 4 }, s: { hp: 80, dr: 4.5 }, l: { hp: 90, dr: 5 } },
+  g: { n: { crit: 4 }, e: { crit: 5 }, s: { crit: 5.5 }, l: { crit: 6 } },
+  b: { n: { spd: 4 }, e: { spd: 5 }, s: { spd: 5.5 }, l: { spd: 6 } },
+  m: { n: { hp: 50, dr: 2 }, e: { hp: 70, dr: 3 }, l: { hp: 90, dr: 5 } },   // 设计 59 护符
+};
+/* 35 件装备（设计54 名字和图标格子、设计55 固定属性）。lv：套装、传说固定的掉落关 */
+const I = (name, slot, q, aff = [], ex = {}) => ({ name, slot, q, aff, ...ex });
+export const ITEMS = {
+  n_w: I('旧步枪', 'w', 'n'), n_h: I('安全帽', 'h', 'n'), n_a: I('布马甲', 'a', 'n'), n_g: I('棉线手套', 'g', 'n'), n_b: I('旧球鞋', 'b', 'n'),
+  e_w1: I('铁吼', 'w', 'e', ['cdmg', 'boss']), e_w2: I('碎骨', 'w', 'e', ['dmg', 'slow']),
+  e_h1: I('防暴头盔', 'h', 'e', ['dr', 'hp']), e_h2: I('夜视头盔', 'h', 'e', ['crit', 'cdr']),
+  e_a1: I('防弹背心', 'a', 'e', ['hp', 'spd']), e_a2: I('钢板护甲', 'a', 'e', ['dr', 'ncd']),
+  e_g1: I('战术手套', 'g', 'e', ['rate', 'cdmg']), e_g2: I('钢指手套', 'g', 'e', ['dmg', 'leech']),
+  e_b1: I('战术靴', 'b', 'e', ['spd', 'cdr']), e_b2: I('钢头靴', 'b', 'e', ['hp', 'dr']),
+  s1_h: I('拾荒者·头盔', 'h', 's', ['hp', 'dr'], { set: 's1', lv: 1 }), s1_a: I('拾荒者·护甲', 'a', 's', ['dr', 'spd'], { set: 's1', lv: 2 }),
+  s1_g: I('拾荒者·手套', 'g', 's', ['crit', 'leech'], { set: 's1', lv: 3 }), s1_b: I('拾荒者·鞋子', 'b', 's', ['spd', 'hp'], { set: 's1', lv: 4 }),
+  s1_w: I('拾荒者·武器', 'w', 's', ['dmg', 'hp'], { set: 's1', lv: 5 }),
+  s2_w: I('猎杀者·武器', 'w', 's', ['cdmg', 'boss'], { set: 's2', lv: 6 }), s2_h: I('猎杀者·头盔', 'h', 's', ['crit', 'boss'], { set: 's2', lv: 7 }),
+  s2_a: I('猎杀者·护甲', 'a', 's', ['hp', 'cdmg'], { set: 's2', lv: 8 }), s2_g: I('猎杀者·手套', 'g', 's', ['rate', 'cdr'], { set: 's2', lv: 9 }),
+  s2_b: I('猎杀者·鞋子', 'b', 's', ['spd', 'crit'], { set: 's2', lv: 10 }),
+  l1: I('獠牙', 'w', 'l', ['dmg', 'cdmg', 'leech'], { lv: 1, fx: '吸血 5%，打中流血 3 秒' }),
+  l2: I('爆裂手套', 'g', 'l', ['ndmg', 'ncd', 'crit'], { lv: 2, fx: '手雷落地后分裂成 3 个小手雷' }),
+  l3: I('不灭之铠', 'a', 'l', ['hp', 'dr', 'leech'], { lv: 3, fx: '受到致命伤害时剩 1 血，无敌 2 秒（一场一次）' }),
+  l4: I('鹰眼头盔', 'h', 'l', ['crit', 'cdmg', 'boss'], { lv: 4, fx: '射程 +2 米；打 BOSS 暴击率 +10%' }),
+  l5: I('雷鸣 M16', 'w', 'l', ['dmg', 'rate', 'pierce'], { lv: 5, fx: '每 5 发子弹放一道闪电，连锁打 3 个敌人' }),
+  l6: I('荆棘战甲', 'a', 'l', ['hp', 'dr', 'boss'], { lv: 6, fx: '被 BOSS 打中时，反弹 30% 伤害给 BOSS' }),
+  l7: I('疾风之靴', 'b', 'l', ['spd', 'rate', 'cdr'], { lv: 7, fx: '翻滚后 3 秒内射速 +40%；翻滚多存 1 次' }),
+  l8: I('冰霜之冠', 'h', 'l', ['hp', 'cdr', 'slow'], { lv: 8, fx: '震荡弹命中后，BOSS 再冻住 1 秒' }),
+  l9: I('快手', 'g', 'l', ['rate', 'crit', 'cdr'], { lv: 9, fx: '普攻每打 20 发，所有技能冷却 −1 秒' }),
+  l10: I('幻影步', 'b', 'l', ['spd', 'dr', 'cdr'], { lv: 10, fx: '翻滚后原地留一个残影 2 秒' }),
+  /* 设计 59：护符（图标 图标_护符4件_2x2） */
+  n_m: I('平安符', 'm', 'n', [], { ic: 'amu_n' }),
+  e_m1: I('铁片护符', 'm', 'e', ['hp', 'leech'], { ic: 'amu_e1' }), e_m2: I('兽骨护符', 'm', 'e', ['dr', 'spd'], { ic: 'amu_e2' }),
+  l_m: I('不眠之心', 'm', 'l', ['hp', 'dr', 'leech'], { lv: 10, ic: 'amu_l', fx: '生命低于 30% 时，5 秒内减伤 +30%（一场一次）' }),
+};
+export const SETS = {
+  s1: { name: '拾荒者', two: '生命 +15%', four4: 10, five5: 65 },   // 设计 62：5 件 +30% → +65%（12 星时要 ≥ 63 才过 1.05；用户 10-22 定加高）  设计 59：5 件最强；four4 / five5：4 件、5 件的「全部伤害」（tools/fbset.mjs 验收）
+  s2: { name: '猎杀者', two: '对 BOSS 伤害 +15%', four4: 10, five5: 30 },   // 59 验收：原来 4 件 +20%、5 件 +10% 时 5 件套只有 4 件 + 鹰眼头盔的 0.94 倍；改成 4 件 +10%、5 件 +30%，0～12 星都过
+};
+SETS.s1.four = `移速 +15%；挨打后 3 秒内回 10% 生命；全部伤害 +${SETS.s1.four4}%、减伤 +10%`; SETS.s1.five = `全部伤害 +${SETS.s1.five5}%`;
+SETS.s2.four = `暴击伤害 +50%；集火冷却 −30%；全部伤害 +${SETS.s2.four4}%`; SETS.s2.five = `全部伤害 +${SETS.s2.five5}%`;
+
+/* 第 n 关的套装件、传说 */
+export const setOf = n => n <= 5 ? 's1_' + ['h', 'a', 'g', 'b', 'w'][n - 1] : 's2_' + ['w', 'h', 'a', 'g', 'b'][n - 6];
+export const legOf = (n, r = Math.random()) => n === 10 && r < 0.5 ? 'l_m' : 'l' + n;   // 设计 59：第 10 关的传说，幻影步、不眠之心各一半
+/* 掉率 [普通, 史诗, 套装, 传说]（设计36 第九节） */
+export const DROP = n => n <= 3 ? [0.60, 0.25, 0.05, 0.10] : n <= 6 ? [0.35, 0.35, 0.10, 0.20] : [0.15, 0.40, 0.15, 0.30];   /* 设计 91：套装、传说对调并调高（传说是套装的 2 倍；多的从普通扣，史诗不变）。原 [.68,.25,.05,.02] / [.45,.35,.14,.06] / [.25,.40,.23,.12] */
+/* 炼宝（设计36 第十节）：升到 n 星要 n 颗晶石；保底只在 4～8 星，每失败一次 +5% */
+export const REFINE = { rate: [0, 1, 1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.15], pity: 0.05, pityFrom: 4, pityTo: 8 };
+/* 晶石：院子商人补给页（设计56 第 5 节）；星星兑换 1 星 = 15 晶石 */
+export const CRYSTAL = { packs: [[1, 200], [10, 1900], [50, 9000]], perStar: 15 };
+/* 技能（设计36 第二节），1～10 级；升到 n 级要 1000 ×（n − 1） */
+export const SKILLS = {
+  focus: { name: '集火', key: '技能 1', d: lv => `朝 BOSS 连打 8 发，每发 ${150 + 15 * (lv - 1)}% 伤害`, cd: lv => +(12 - (3 / 9) * (lv - 1)).toFixed(1), mult: lv => 1.5 + 0.15 * (lv - 1), shots: 8 },
+  roll: { name: '翻滚', key: '技能 2', d: lv => `朝摇杆方向滚 4 米，0.4 秒无敌${lv >= 5 ? '；能存 2 次' : '（5 级起能存 2 次）'}`, cd: lv => +(6 - (2.5 / 9) * (lv - 1)).toFixed(1), dist: 4, inv: 0.4, charges: lv => lv >= 5 ? 2 : 1 },
+  stun: { name: '震荡弹', key: '技能 3', d: lv => `打断正在预警的普通技能，晕 ${+(1 + (lv - 1) / 9).toFixed(1)} 秒；附近小怪晕 3 秒；大招只让 BOSS 慢 50%、2 秒`, cd: lv => +(20 - (6 / 9) * (lv - 1)).toFixed(1), stun: lv => 1 + (lv - 1) / 9 },
+};
+export const SKILL_IDS = ['focus', 'roll', 'stun'];
+export const SKILL_MAX = 10;
+export const skillCost = n => 1000 * (n - 1);

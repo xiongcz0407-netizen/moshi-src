@@ -1,0 +1,37 @@
+{
+ "body": "/tmp/c4/in/基础身体2.glb",
+ "head": "/tmp/c4/in/标准头.glb",
+ "hairheads": [
+  {
+   "id": "m1",
+   "name": "男发型 1",
+   "glb": "/tmp/c4/in/男发型1.glb",
+   "sex": "m"
+  },
+  {
+   "id": "f1",
+   "name": "女发型 1（双马尾）",
+   "glb": "/tmp/c4/in/女发型1.glb",
+   "sex": "f",
+   "tip_fix": true
+  }
+ ],
+ "outfits": [
+  {
+   "id": "xy_blue",
+   "name": "学院风 蓝",
+   "glb": "/tmp/c4/in/套装_学院风_蓝.glb",
+   "skin_legs": true,
+   "sex": "m"
+  },
+  {
+   "id": "xy_pink",
+   "name": "学院风 粉",
+   "glb": "/tmp/c4/in/套装_学院风_粉.glb",
+   "skin_legs": true,
+   "sex": "f",
+   "red_fix": true
+  }
+ ],
+ "out": "/tmp/c4/out"
+}

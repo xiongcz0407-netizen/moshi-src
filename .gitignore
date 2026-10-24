@@ -1,0 +1,15 @@
+# 设计 93：代码仓库只放代码、工具、设计文档；下面这些不进 git
+# 美术原图和模型（4 GB）。游戏真正用的图和模型已经在 src/img、src/models 里
+美术/
+# 开发传输用的整包、临时文件
+Claude outputs/
+.sync/
+# 打包产物（发布用的在另一个仓库 morichaoshi）
+上传到GitHub/
+node_modules/
+src/**/*.tar
+*.tgz
+.DS_Store
+
+# GM 网页是打包出来的，里面带存档令牌（tools/gm/build.mjs 打包时从本机读），不进仓库
+GM/gm.html

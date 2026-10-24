@@ -1,0 +1,14 @@
+{
+ "body": "/tmp/c3/in/body.glb",
+ "head": "/tmp/c3/in/head.glb",
+ "hairhead": "/tmp/c3/in/hairhead.glb",
+ "cloth": "/tmp/c3/in/cloth.glb",
+ "out": "/tmp/c3/out",
+ "outfits": [
+  {
+   "id": "tee_test",
+   "name": "T 恤长裤（测试）",
+   "glb": "/tmp/c3/in/cloth.glb"
+  }
+ ]
+}

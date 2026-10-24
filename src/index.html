@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="末世超市">
+<meta name="theme-color" content="#2b2620">
+<title>末世超市</title>
+<link rel="apple-touch-icon" href="img/icon.png?v=__V__">
+<link rel="icon" type="image/png" sizes="512x512" href="img/icon512.png?v=__V__">
+<link rel="stylesheet" href="style.css?v=__V__">
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="labels"></div>
+  <div id="joyzone"></div>
+  <div id="hud" class="hidden">
+    <div class="hl">
+      <span class="avw"><canvas id="hAvatar" class="avatar" width="72" height="72" data-open="hero"></canvas><em class="dot avdot" data-dot="gear"></em></span>
+      <div class="chip coin"><i class="ico-coin"></i><b id="hCoins">0</b></div>
+      <div class="chip star" data-act="openStars"><img class="staric" src="img/ui/icons/star_gold.png" alt=""><b id="hStars">0</b></div>
+      <div class="chip"><span class="k">口碑</span><b id="hRep">0</b><span class="bar"><i id="hRepBar"></i></span></div>
+      <div class="chip bagchip" data-open="bag"><span class="k">背包</span><b id="hBag">0/8</b><span class="bar"><i id="hBagBar"></i></span></div>
+      <div id="hGoal" class="goal" data-open="tasks"></div>
+    </div>
+    <div class="hc">
+      <div id="hShort" class="short"></div>
+    </div>
+    <div class="hr">
+      <button id="hFriend" class="hb menu" aria-label="好友"><i class="hi" style="--ic:url(img/ui/icons/singleplayer.png)"></i><em id="frN" class="cnt"></em></button>
+      <button id="hMsg" class="hb menu" aria-label="消息"><i class="hi" style="--ic:url(img/ui/icons/information.png)"></i><em id="msgN" class="cnt"></em></button>
+      <button id="hMore" class="hb menu" aria-label="菜单"><i class="hi" style="--ic:url(img/ui/icons/menuList.png)"></i><em class="dot"></em></button>
+      <div id="msgDrop" class="hidden"><div class="mhead"><b>消息</b><span class="mbtns"><button class="btn sm ghost" data-mall>全部已读</button><button class="btn sm ghost" data-mdel>删除已读</button></span></div><div class="mbody"></div></div>
+      <div id="hDrop" class="hidden">
+        <button class="dt" data-open="stock"><i class="hi" style="--ic:url(img/ui/icons/shoppingBasket.png)"></i>仓库<em class="dot" data-dot="stock"></em></button>
+        <button class="dt" data-open="build"><i class="hi" style="--ic:url(img/ui/icons/wrench.png)"></i>建造<em class="dot" data-dot="build"></em></button>
+        <button class="dt" data-open="shelf"><i class="hi" style="--ic:url(img/ui/icons/menuGrid.png)"></i>货架<em class="dot" data-dot="shelf"></em></button>
+        <button class="dt" data-open="staff"><i class="hi" style="--ic:url(img/ui/icons/singleplayer.png)"></i>员工<em class="dot" data-dot="staff"></em></button>
+        <button class="dt ws hidden" data-open="ws"><i class="hi" style="--ic:url(img/ui/icons/factory.png)"></i>工坊</button>
+        <button class="dt td" data-open="td"><i class="hi" style="--ic:url(img/ui/icons/warning.png)"></i>尸潮<em class="dot" data-dot="td"></em></button>
+        <button class="dt fbgear hidden" data-act="openGear"><i class="hi" style="--ic:url(img/ui/icons/shield.png)"></i>装备</button>
+        <button class="dt" data-open="menu"><i class="hi" style="--ic:url(img/ui/icons/gear.png)"></i>设置<em class="dot" data-dot="menu"></em></button>
+      </div>
+    </div>
+  </div>
+  <button id="farmBtn" class="fab hidden">种菜</button>
+  <button id="layBtn" class="fab lay hidden">布置</button>
+  <button id="upBtn" class="fab upfab hidden">⬆ 升级</button>
+  <button id="viewBtn" class="fab viewfab hidden">查看</button>
+  <div id="upWin" class="hidden"><div class="ubox pbox"></div></div>
+  <button id="scavBtn" class="fab scavfab hidden">去拾荒区</button>
+  <button id="boatBtn" class="fab boatfab hidden">坐船去钓鱼</button>
+  <button id="fishBtn" class="fab fishfab hidden">钓鱼</button>
+  <button id="merchBtn" class="fab merchfab hidden">进商店</button>
+  <button id="fbBtn" class="fab fbfab hidden">进入副本</button>
+  <button id="pondBtn" class="fab merchfab hidden">看池塘</button>
+  <button id="mysBtn" class="fab merchfab hidden">神秘商人</button>
+  <button id="nadeBtn" class="fab nadefab hidden"><i></i><span>手雷</span></button>
+  <div id="fishUI" class="hidden"></div>
+  <div id="tdHud" class="hidden"></div>
+  <div id="layUI" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="big"></div>
+  <div id="flash"></div>
+  <div id="panel" class="hidden"><div class="pbox" role="dialog"><header><h3 id="ptitle"></h3><div id="pres" class="pres"></div><button class="px ph hidden" id="phelp" data-phelp>?</button><button class="px" data-close><i class="hi" style="--ic:url(img/ui/icons/cross.png)"></i>关闭</button></header><div class="pbody" id="pbody"></div><div id="phelpBox" class="phelpbox hidden"></div></div></div>
+  <div id="title"></div>
+  <div id="creator" class="hidden"></div>
+  <div id="loading"><div class="lw"><h1>末世超市</h1><div class="lbar"><i id="lbarI"></i></div><p id="ltxt">正在加载…</p><div id="lbtns" class="hidden"><button id="lRetry" class="btn">重试</button><button id="lSkip" class="btn ghost">先进游戏</button></div></div></div>
+  <div id="scavLoad" class="hidden"><div class="sw"><h2 id="scavTxt">正在开往拾荒区…</h2><div class="sbar"><i id="scavBarI"></i></div><p id="scavTip"></p></div></div>
+  <div id="rotate"><div><b>请把手机横过来</b><small>末世超市是横屏游戏</small></div></div>
+</div>
+<script src="game.js?v=__V__"></script>
+</body>
+</html>
