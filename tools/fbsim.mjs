@@ -14,10 +14,10 @@ if (process.env.GEARSET === 'e3x2') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 1, st:
 /* 设计 102：GEARSET=e4x4 → 4 件史诗 4 星（武器、头盔、护甲、手套；第 3 关的过关装备线） */
 if (process.env.GEARSET === 'e4x4') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a1', lv: 2, st: 4 }; S.fb.eq.g = { id: 4, k: 'e_g1', lv: 2, st: 4 } }
 const hero = { ...fbHero(S, hs), speed: 5 };
-const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
+const GAP3 = {}, GAP3m = {}; const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
 let SL = null; const DBG = []; const FACE = { n: 0, near: 0 }; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
 for (let r = 0; r < N; r++) {
-  const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false;
+  const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false; GAP.tot = 0; GAP.cs = {}; GAP.lastK = null;
   let fireOn = true, fireT = 0, stunWait = -1, dt = 1 / 30;
   while (!st.over && st.t < 400 && (st.clk ?? st.t) < 460) {
     fireT -= dt; if (fireT <= 0) { fireOn = rng() < 0.8; fireT = 0.4 + rng() * 0.8 }
@@ -58,6 +58,13 @@ for (let r = 0; r < N; r++) {
     if (STG === 2 && st.locked && Math.round(st.t * 30) % 15 === 0) { let tot = 0, pool = 0, any = 0; for (let x = ARENA.x0 + 0.25; x < ARENA.x1; x += 0.5) for (let z = ARENA.z0 + 0.25; z < ARENA.z1; z += 0.5) { tot++; const p = st.pools.some(w => inWarn(w, x, z, 0)), h = (st.hazards || []).some(w => inWarn(w, x, z, 0)); if (p) pool++; if (p || h) any++ }
       POOLF.push(pool / tot); ANYF.push(any / tot); POOLN.push(st.pools.length) }
     /* 设计 92：两个技能之间的空档（上一个硬直结束 → 下一个开始读条）、喷吐预警时长 */
+    /* 设计 103：第 3 关两招之间的空档（上一招硬直结束 → 下一招开始）；地裂后的连招、石柱阵后的投石连招单独算 */
+    if (STG === 3) { const busy = B.act === 'recover' || B.act === 'stun' || B.act === 'cast' || B.act === 'crackAnim', tot = Object.values(st.stats.casts).reduce((x, y) => x + y, 0);
+      if (GAP.wasBusy && !busy && !B.dead) GAP.end = st.t - dt;
+      if (tot > (GAP.tot || 0)) { const k = Object.keys(st.stats.casts).find(q => st.stats.casts[q] > ((GAP.cs || {})[q] || 0)), big = q => q && q !== 'throw' && q !== 'sweep', g = GAP.end != null ? st.t - dt - GAP.end : 0, pk = GAP.lastK;
+        const cls = B.combo ? 'combo' : big(k) && big(pk) ? 'bb' : big(k) ? 'xb' : 'basic'; (GAP3[cls] = GAP3[cls] || []).push(g); if (!GAP3m[cls] || g < GAP3m[cls].g) GAP3m[cls] = { g, k: `${pk || '开场'}→${k}` };
+        GAP.lastK = k; GAP.end = null }
+      GAP.tot = tot; GAP.cs = { ...st.stats.casts }; GAP.wasBusy = busy }
     if (STG === 2) { const busy = B.act === 'recover' || B.act === 'stun' || B.act === 'cast';
       if (GAP.wasBusy && !busy && !B.dead) GAP.end = st.t - dt;
       for (const e of st.ev) if (e.e === 'cast') { if (GAP.end != null) { const g = st.t - dt - GAP.end, key = st.rage ? 'rage' : 'norm'; GAP[key].push(g); if (g < GAP.min[key].g) GAP.min[key] = { g, k: e.k } } GAP.end = null; if (e.k === 'spit') GAP.spit.add((st.rage ? '狂暴 ' : '') + e.dur.toFixed(2)) }
@@ -75,6 +82,8 @@ console.log(`${BOSSES[STG].name} 血 ${BOSSES[STG].hp}，角色页 ${LV} 级：�
 console.log(`${N} 局：赢 ${wins.length}（${(wins.length / N * 100).toFixed(0)}%）  用时 平均 ${avg(ts).toFixed(1)} 秒，中位 ${ts[Math.floor(ts.length / 2)]?.toFixed(1)}，10%～90% ${ts[Math.floor(ts.length * 0.1)]?.toFixed(1)}～${ts[Math.floor(ts.length * 0.9)]?.toFixed(1)}`);
 console.log(`剩血 平均 ${(avg(wins.map(r => r.hp)) * 100).toFixed(0)}%，挨打 ${avg(res.map(r => r.taken)).toFixed(0)}，打小丧尸 ${avg(res.map(r => r.mobs)).toFixed(1)}，打断 ${avg(res.map(r => r.intr)).toFixed(1)}`);
 if (POOLF.length) { const q = (a, f) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(b.length * f))] }; console.log(`设计 95：毒池占场地 中位 ${(q(POOLF, 0.5) * 100).toFixed(0)}%，95% 的时候 ≤ ${(q(POOLF, 0.95) * 100).toFixed(0)}%，最多 ${(q(POOLF, 1) * 100).toFixed(0)}%（同时最多 ${q(POOLN, 1)} 个）；连上涌、收边一起最多 ${(q(ANYF, 1) * 100).toFixed(0)}%`) }
+if (STG === 3) { const q = a => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)], nm = { bb: '大技能→大技能', xb: '普攻→大技能', basic: '→普攻', combo: '连招' }; console.log('设计 103：两招之间的空档 ' + Object.keys(nm).filter(k => GAP3[k]).map(k => `${nm[k]} 最短 ${GAP3m[k].g.toFixed(2)} 秒（${GAP3m[k].k}）中位 ${q(GAP3[k]).toFixed(2)}`).join('；'));
+  const big = res.map(r => Object.entries(r.casts).filter(([k]) => k !== 'throw' && k !== 'sweep').reduce((x, [, v]) => x + v, 0)); console.log(`设计 103：每局大技能 平均 ${avg(big).toFixed(1)} 次（最少 ${Math.min(...big)}，最多 ${Math.max(...big)}）；剩血 最低 ${(Math.min(...wins.map(r => r.hp)) * 100).toFixed(0)}%`) }
 if (FACE.n) console.log(`设计 102：离巨人 6 米以内（看得到整张脸）的时间 ${(FACE.near / FACE.n * 100).toFixed(0)}%`);
 console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
 console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));
