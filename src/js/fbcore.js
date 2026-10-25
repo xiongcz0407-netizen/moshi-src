@@ -65,8 +65,10 @@ export const ROCK_CFG = {
   walk: 1.4, walkHalf: 1.82, near: 2.8,
   sweepR: 4, sweepA: Math.PI, sweepWarn: 0.8, sweepK: 0.7, throwR: 1.2, throwWarn: 0.8, throwK: 0.5, throwFly: 0.6, basicCd: 2.5, basicCalm: 1, basicGuard: 2.5,
   grabT: 1.0, grabReach: 1.4, seekMax: 4, tossR: 2.5, tossK: 1.4, tossFly: 0.7,
-  lanes: [-3, 3], laneW: 2.5, rollK: 1.3, rollSpd: 13, ballR: 1.1,
-  cell: 3, pillarRows: 5, pillarK: 1.0, pillarStay: 1.0, wave2: 0.8,
+  lanes: [-3, 3], laneW: 2.5, rollK: 1.3, rollSpd: 18, ballR: 1.1, ballGap: 2.2,
+  cell: 3, pillarRows: 5, pillarK: 1.0, pillarStay: 2.0, wave2: 0.8, pillarWaves: 3, pillarWavesHalf: 4,   /* 设计 110：石柱阵前半血 3 波、半血后 4 波，石柱留 2 秒 */
+  stunT: 1, stunImm: 1.5, rootT: 1, rollWarn: 1.6, shadowL: 3, minCovers: 2, jumpT: 0.35, comboDelay: 0.1, comboWarn: 0.45, comboK: 1,   /* 设计 110：眩晕 1 秒（之后 1.5 秒不再眩晕）、全场滚石读条 1.6 秒（掩体南边 3 米是安全区）、禁锢 1 秒、禁锢后 0.1 秒跳 0.35 秒 + 横扫蓄力 0.45 秒 */
+ 
   riftW: 1.2, riftLife: 6, riftDps: 0.3, riftFork: 3.5, riftA: 0.55,
   avaCast: 2.0, wallW: 2.2, rainT: 6, rainWaves: 7, rainN: 3, quake: 70, rubbleDps: 10,   /* 设计 106：落石雨每波 3 个圈；地动、碎石雨（必吃伤害，fbsim 定） */
   rainR: 1.4, rainWarn: 0.62, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
@@ -78,7 +80,7 @@ export const ROCK_CFG = {
 export const ROCK_ANIM = { idle: { T: 3.2, loop: 1 }, walk: { T: 1.5, loop: 1, speed: 0.177 }, walk_fast: { T: 1.12, loop: 1, speed: 0.298 },
   sweep: { T: 1.7, hit: 0.8 }, throw: { T: 1.6, hit: 0.8 }, grab: { T: 1.0 }, toss: { T: 2.4, hit: 1.5 }, pound: { T: 2.7, hit: 1.5 }, stomp: { T: 2.5, hit: 1.5 },
   roar: { T: 3.1, hit: 2.0 }, hit: { T: 0.5 }, stagger: { T: 1.3 }, crack: { T: 2.1, hit: 0.7 }, die: { T: 2.7, hit: 1.95 } };
-export const ROCK_NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '铁轨滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（全场）' };
+export const ROCK_NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '全场滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（全场）' };
 /* 毒囊动作的时间（毒囊.glb，脚本 fb2/rig/anim.py 导出；hit = 喷出 / 拍到 / 炸开那一刻） */
 export const TOX_ANIM = { idle: { T: 3.0, loop: 1 }, spit: { T: 1.5, hit: 0.8 }, bolt_wind: { T: 0.6 }, bolt_spit: { T: 0.45, hit: 0.12 }, burst: { T: 2.1, hit: 1.15 },
   slam_l: { T: 2.6, hit: 1.5 }, slam_r: { T: 2.6, hit: 1.5 }, surge: { T: 2.8, hit: 2.0 }, hit: { T: 0.4 }, enrage: { T: 2.0 }, die: { T: 3.0, hit: 2.2 } };
@@ -129,6 +131,7 @@ export function inWarn(w, x, z, r = 0.35) {
   if (w.type === 'cells') return w.cells.some(c => Math.abs(x - c.x) < w.s / 2 + r * 0.5 && Math.abs(z - c.z) < w.s / 2 + r * 0.5);   // 设计 102：石柱阵棋盘格
   if (w.type === 'segs') return w.segs.some(g => segDist(x, z, g) < w.w / 2 + r);   // 设计 102：地裂（Y 字）
   if (w.type === 'lanes') return w.xs.some(lx => Math.abs(x - lx) < w.w / 2 + r);   // 设计 102：滚石铁轨（整条）
+  if (w.type === 'field') return x > w.x0 - r && x < w.x1 + r && z > w.z0 - r && z < w.z1 + r && !w.sh.some(q => x > q.x0 + 0.25 && x < q.x1 - 0.25 && z > q.z0 + 0.1 && z < q.z1 - 0.25);   // 设计 110：全场滚石——整片危险，掩体南边的影子安全
   return false;
 }
 
@@ -431,6 +434,7 @@ export function createFight(n, hero, opt = {}) {
   /* ---------- 设计 102：落石巨人（第 3 关）。会走、追人；技能之间至少安静 2.5 秒（设计 92）；大技能 7 秒一招，只在闲着（含安静）时倒数 ---------- */
   const RK = ROCK_CFG;
   const realCovers = () => COVERS.filter(c => !c.temp);
+  const shadowOf = c => ({ x0: c.x - c.hx - 0.15, x1: c.x + c.hx + 0.15, z0: c.z - c.hz, z1: c.z + c.hz + RK.shadowL });   /* 设计 110：掩体南边的影子（滚石从北边来） */
   function coverAdd(c) {   /* 新掩体（山崩落石、半血掉的那一大块、石柱阵临时石柱）。场上真掩体最多 6 个，多了最早的先碎 */
     c.id = c.id || 'n' + st.nid++; c.born = st.t; COVERS.push(c); st.coverVer++;
     if (!c.temp) { const real = realCovers(); while (real.length > RK.maxCovers) { const o = real.shift(); coverGone(o, 'crumble') } }
@@ -443,19 +447,23 @@ export function createFight(n, hero, opt = {}) {
     const r0 = clamp(Math.round((cz - ARENA.z0) / RK.cell - RK.pillarRows / 2), 0, Math.floor((ARENA.z1 - ARENA.z0) / RK.cell) - RK.pillarRows);
     for (let j = r0; j < r0 + RK.pillarRows; j++) for (let i = 0; i < cols; i++) if ((i + j) % 2 === parity) out.push({ x: ARENA.x0 + cw * (i + 0.5), z: ARENA.z0 + RK.cell * (j + 0.5) });
     return { cells: out, s: Math.min(cw, RK.cell) } };
-  function rockCast(k) {
+  function rockCast(k, fast = false) {
     const b = Bo, c = { k, t: 0, ws: [], w: { ult: k === 'ava' } }, dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
     st.stats.casts[k] = (st.stats.casts[k] || 0) + 1; b.yaw = Math.atan2(dx, dz); b.look = 'p';
     c.cancel = () => { for (const w of c.ws) dropWarn(w); if (c.held) { c.held = null } };
-    if (k === 'sweep') { c.dur = wdur(RK.sweepWarn); c.ws.push(rwarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: RK.sweepR, r0: 0.6, a: RK.sweepA }, 'sweep', c.dur)); setAnim('sweep', ROCK_ANIM.sweep.hit / c.dur) }
+    if (k === 'sweep') { c.dur = fast ? RK.comboWarn : wdur(RK.sweepWarn); if (fast) c.nm = '石拳横扫（快！）'; c.ws.push(rwarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: RK.sweepR, r0: 0.6, a: RK.sweepA, fast }, 'sweep', c.dur)); setAnim('sweep', ROCK_ANIM.sweep.hit / c.dur) }
     else if (k === 'throw') { c.dur = wdur(RK.throwWarn); const w = rwarn({ type: 'circle', x: clamp(P.x, ARENA.x0 + 0.6, ARENA.x1 - 0.6), z: clamp(P.z, ARENA.z0 + 0.6, ARENA.z1 - 0.6), r: RK.throwR }, 'throw', c.dur); c.ws.push(w);
       setAnim('throw', ROCK_ANIM.throw.hit / Math.max(0.3, c.dur - RK.throwFly)) }   // 手松开 = 预警填满前 0.6 秒（石头飞过去，落地那一刻 = 填满）
     else if (k === 'grab') {   /* 先走到最近的掩体（最多 4 秒），抓起来 1 秒（能打断），再扔 */
       const cs = realCovers(); c.cv = cs.length ? cs.reduce((p, q) => hyp(q.x - b.x, q.z - b.z) < hyp(p.x - b.x, p.z - b.z) ? q : p) : null; c.phase = c.cv ? 'seek' : 'toss'; c.dur = 99; c.seekT = 0; c.hideBar = !!c.cv;
       if (!c.cv) startToss(c) }
-    else if (k === 'roll') { c.dur = wdur(warnT); const xs = [...RK.lanes]; if (st.half) { let x3 = clamp(P.x, ARENA.x0 + RK.laneW / 2, ARENA.x1 - RK.laneW / 2); if (xs.some(x => Math.abs(x - x3) < RK.laneW)) x3 = Math.abs(P.x) < 1.6 ? 0 : x3; if (!xs.some(x => Math.abs(x - x3) < RK.laneW * 0.9)) xs.push(x3) }
-      c.ws.push(rwarn({ type: 'lanes', xs, w: RK.laneW, x: 0, z: ARENA.z0, z0: ARENA.z0 - 0.5, z1: ARENA.z1 + 0.5, ult: false }, 'roll', c.dur)); setAnim('pound', ROCK_ANIM.pound.hit / c.dur) }
-    else if (k === 'pillars') { c.dur = wdur(warnT); c.waves = st.half ? 3 : 2; c.wave = 0; c.cz = P.z; const g = cellsAround(c.cz, 0); c.ws.push(rwarn({ type: 'cells', ...g, x: P.x, z: P.z }, 'pillars', c.dur));
+    else if (k === 'roll') {   /* 设计 110：全场滚石——整片场地从北往南滚过一排大石头，只有掩体南边的影子里安全；放之前场上掩体不够 2 个就先从天上掉石头补 */
+      let cs = realCovers();
+      if (cs.length < RK.minCovers) { const cand = []; for (const x of [-4.5, -1.5, 1.5, 4.5]) for (let dz = -7; dz <= 1; dz += 2) { const z = clamp(P.z + dz, ARENA.z0 + 3, ARENA.z1 - 4); cand.push({ x, z, s: Math.abs(hyp(x - P.x, z - P.z) - 4.5) + rnd() * 1.5 }) }   // 离主角 4～5 米最好（跑得到）
+        cand.sort((p, q) => p.s - q.s);
+        for (const q of cand) { if (cs.length >= RK.minCovers) break; if (inCover(q.x, q.z, 1.8) || hyp(q.x - P.x, q.z - P.z) < 2 || hyp(q.x - b.x, q.z - b.z) < 3) continue; coverAdd({ k: 'fallen', x: q.x, z: q.z, hx: 0.8, hz: 0.8, drop: true }); E('coverDrop', { x: q.x, z: q.z }); cs = realCovers() } }
+      c.dur = RK.rollWarn; c.nm = '全场滚石——躲到岩石后面！'; c.ws.push(rwarn({ type: 'field', x0: ARENA.x0, x1: ARENA.x1, z0: ARENA.z0, z1: ARENA.z1, sh: cs.map(shadowOf), x: 0, z: 0, ult: false }, 'roll', c.dur)); setAnim('pound', ROCK_ANIM.pound.hit / c.dur) }
+    else if (k === 'pillars') { c.dur = wdur(warnT); c.waves = st.half ? RK.pillarWavesHalf : RK.pillarWaves; c.wave = 0; c.cz = P.z; const g = cellsAround(c.cz, 0); c.ws.push(rwarn({ type: 'cells', ...g, x: P.x, z: P.z }, 'pillars', c.dur));
       setAnim('stomp', ROCK_ANIM.stomp.hit / c.dur) }
     else if (k === 'rift') { c.dur = wdur(warnT); const yaw = Math.atan2(dx, dz), L = Math.max(3, d + 1.2), ex = clamp(b.x + Math.sin(yaw) * L, ARENA.x0 + 0.3, ARENA.x1 - 0.3), ez = clamp(b.z + Math.cos(yaw) * L, ARENA.z0 + 0.3, ARENA.z1 - 0.3);
       const segs = [{ x0: b.x + Math.sin(yaw) * 1.6, z0: b.z + Math.cos(yaw) * 1.6, x1: ex, z1: ez }];
@@ -465,7 +473,7 @@ export function createFight(n, hero, opt = {}) {
       for (const x of [ARENA.x0 + RK.wallW / 2, ARENA.x1 - RK.wallW / 2]) c.ws.push(rwarn({ type: 'line', x, z: ARENA.z0 - 0.5, yaw: 0, len: L, w: RK.wallW, ult: true }, 'wall', c.dur));
       setAnim('roar', ROCK_ANIM.roar.hit / c.dur) }
     b.cast = c; b.act = 'cast'; b.interruptible = k === 'pillars' || k === 'rift';
-    if (k !== 'grab' || c.phase === 'toss') E('cast', { k, dur: c.dur, ult: k === 'ava', name: ROCK_NAME[k] });
+    if (k !== 'grab' || c.phase === 'toss') E('cast', { k, dur: c.dur, ult: k === 'ava', name: c.nm || ROCK_NAME[k] });
   }
   /* 设计 106c：画面上被按钮 / 头像挡住的地方（画面那边给 st.blocked；fbsim 用近似镜头算；没给就当都看得到） */
   const scrBlocked = (x, z, r) => !!(st.blocked && st.blocked(x, z, r));
@@ -479,11 +487,12 @@ export function createFight(n, hero, opt = {}) {
     /* 预警到点：按种类结算 */
     for (let i = st.warns.length - 1; i >= 0; i--) { const w = st.warns[i]; if (!w.k || w.t < w.dur) continue; st.warns.splice(i, 1);
       const inW = inWarn(w, P.x, P.z);
-      if (w.k === 'sweep') { E('rockHit', { k: 'sweep', w }); if (inW) { hurtPlayer(bossDmg(false) * RK.sweepK, 'sweep'); E('knock', { x: Math.sin(Math.atan2(P.x - w.x, P.z - w.z)) * 5, z: Math.cos(Math.atan2(P.x - w.x, P.z - w.z)) * 5 }) } }
+      if (w.k === 'sweep') { E('rockHit', { k: 'sweep', w }); if (inW) { hurtPlayer(bossDmg(false) * RK.sweepK * (w.fast ? RK.comboK : 1), w.fast ? 'combo' : 'sweep'); E('knock', { x: Math.sin(Math.atan2(P.x - w.x, P.z - w.z)) * 5, z: Math.cos(Math.atan2(P.x - w.x, P.z - w.z)) * 5 }) } }
       else if (w.k === 'throw') { E('rockHit', { k: 'throw', w }); if (inW) hurtPlayer(bossDmg(false) * RK.throwK, 'throw') }
       else if (w.k === 'toss') { E('rockHit', { k: 'toss', w, cv: w.cv }); if (inW) hurtPlayer(bossDmg(false) * RK.tossK, 'toss') }
-      else if (w.k === 'roll') { for (const x of w.xs) { const ball = { id: st.nid++, x, z: ARENA.z0 - 1, hit: false }; st.balls.push(ball); E('ballGo', { b: ball }) } }
-      else if (w.k === 'pillars') { E('pillars', { cells: w.cells, s: w.s, stay: RK.pillarStay }); if (inW) hurtPlayer(bossDmg(false) * RK.pillarK, 'pillar');
+      else if (w.k === 'roll') { for (let x = ARENA.x0 + RK.ballGap / 2; x < ARENA.x1; x += RK.ballGap) { const ball = { id: st.nid++, x, z: ARENA.z0 - 1 }; st.balls.push(ball); E('ballGo', { b: ball }) }
+        st.front = { z: ARENA.z0 - 1, sh: realCovers().map(shadowOf), done: false } }
+      else if (w.k === 'pillars') { E('pillars', { cells: w.cells, s: w.s, stay: RK.pillarStay }); if (inW && hurtPlayer(bossDmg(false) * RK.pillarK, 'pillar') > 0 && !(P.stunImm > 0) && !P.dead) { P.stunT = RK.stunT; P.stunImm = RK.stunT + RK.stunImm; st.stats.stun = (st.stats.stun || 0) + 1; E('pstun', { t: RK.stunT }) }   /* 设计 110：被石柱打中眩晕 1 秒，之后 1.5 秒内不再眩晕 */
         for (const c of w.cells) coverAdd({ k: 'spike', x: c.x, z: c.z, hx: 0.5, hz: 0.5, temp: true, ttl: RK.pillarStay });
         const cc = w.cast; if (cc && cc.wave + 1 < cc.waves) { cc.wave++; const g = cellsAround(cc.cz, cc.wave % 2); st.warns.push(Object.assign({ type: 'cells', ...g, x: P.x, z: P.z }, { id: st.nid++, k: 'pillars', t: 0, dur: wdur(RK.wave2), cast: cc })); E('pillarWave', { n: cc.wave + 1 }) } }
       else if (w.k === 'rift') { const r = { id: st.nid++, segs: w.segs, w: w.w, t: 0, life: RK.riftLife, acc: 0.25 }; st.rifts.push(r); E('rift', { r }); if (inW && !P.roll) hurtPlayer(bossDmg(false) * RK.riftDps * 0.5, 'rift') }
@@ -491,11 +500,14 @@ export function createFight(n, hero, opt = {}) {
       else if (w.k === 'rain') { E('rockHit', { k: 'rain', w }); if (inW) hurtPlayer(bossDmg(false) * RK.rainK, 'rain');
         if (w.keep) coverAdd({ k: 'fallen', x: w.x, z: w.z, hx: 0.8, hz: 0.8, ttl: RK.rockLife, rain: true }) }
     }
-    /* 滚石：沿铁轨往南滚，撞到掩体连掩体一起碎；碰到主角扣血、往旁边打退 */
+    /* 设计 110：全场滚石——一排大石头往南滚，碰到掩体就碎在掩体前面（掩体不坏）；滚过主角那一行时，不在掩体影子里（也不在翻滚无敌里）就扣血 + 禁锢 1 秒，BOSS 马上跳过来横扫 */
     for (let i = st.balls.length - 1; i >= 0; i--) { const bl = st.balls[i]; bl.z += RK.rollSpd * dt;
-      for (const c of [...COVERS]) if (!c.temp && Math.abs(c.x - bl.x) < c.hx + RK.ballR * 0.8 && Math.abs(c.z - bl.z) < c.hz + RK.ballR) coverGone(c, 'smash');
-      if (!bl.hit && Math.abs(P.x - bl.x) < RK.laneW / 2 + 0.35 && Math.abs(P.z - bl.z) < RK.ballR + 0.35) { bl.hit = true; if (hurtPlayer(bossDmg(false) * RK.rollK, 'roll')) E('knock', { x: (P.x >= bl.x ? 1 : -1) * 7, z: 3 }) }
-      if (bl.z > ARENA.z1 + 3) { st.balls.splice(i, 1); E('ballGone', { b: bl }) } }
+      const cv = COVERS.find(c => !c.temp && Math.abs(c.x - bl.x) < c.hx + RK.ballR * 0.8 && Math.abs(c.z - bl.z) < c.hz + RK.ballR);
+      if (cv || bl.z > ARENA.z1 + 3) { st.balls.splice(i, 1); E(cv ? 'ballBreak' : 'ballGone', { b: bl }) } }
+    const F = st.front; if (F) { F.z += RK.rollSpd * dt;
+      if (!F.done && F.z >= P.z - 0.35) { F.done = true; const safe = F.sh.some(q => P.x > q.x0 && P.x < q.x1 && P.z > q.z0 && P.z < q.z1);
+        if (!safe && hurtPlayer(bossDmg(false) * RK.rollK, 'roll') > 0 && !P.dead) { P.rootT = RK.rootT; st.stats.root = (st.stats.root || 0) + 1; E('proot', { t: RK.rootT }); st.combo = { t: RK.comboDelay } } }
+      if (F.z > ARENA.z1 + 3) st.front = null }
     /* 地裂：站在裂缝上每 0.5 秒扣一次（每秒 0.3 倍）；翻滚的时候不算 */
     let onRift = false;
     for (let i = st.rifts.length - 1; i >= 0; i--) { const r = st.rifts[i]; r.t += dt; if (r.t >= r.life) { st.rifts.splice(i, 1); E('riftGone', { id: r.id }); continue } if (r.segs.some(g => segDist(P.x, P.z, g) < r.w / 2 + 0.2)) onRift = true }
@@ -512,7 +524,7 @@ export function createFight(n, hero, opt = {}) {
       R.acc = (R.acc || 0) + dt; while (R.acc >= 0.5 && R.t <= RK.rainT) { R.acc -= 0.5; hurtPlayer(RK.rubbleDps * 0.5, 'rubble', true) }
       if (R.t >= RK.rainT) { st.rain = null; Bo.armorT = 0; E('rainEnd') } }
     if (Bo.armorT > 0) Bo.armorT -= dt;
-    st.hazards = [...st.rifts.map(r => ({ type: 'segs', segs: r.segs, w: r.w, x: 0, z: 0 })), ...st.balls.map(bl => ({ type: 'line', x: bl.x, z: bl.z - 1, yaw: 0, len: 12, w: RK.laneW }))];
+    st.hazards = [...st.rifts.map(r => ({ type: 'segs', segs: r.segs, w: r.w, x: 0, z: 0 })), ...(st.front && !st.front.done ? [{ type: 'field', x0: ARENA.x0, x1: ARENA.x1, z0: st.front.z - 1, z1: ARENA.z1, sh: st.front.sh, x: 0, z: 0 }] : [])];   /* 设计 110：滚石还没滚过主角那一行：整片还是危险（机器人别提前走出掩体） */
   }
   function rockStep(dt) {
     const b = Bo; rockHazards(dt); if (b.dead) return;
@@ -520,6 +532,13 @@ export function createFight(n, hero, opt = {}) {
     if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
     if (b.slowHit > 0) b.slowHit -= dt;
     const dts = dt * tf; b.basicCd -= dts;
+    /* 设计 110：主角被滚石禁锢 → 0.1 秒后 BOSS 跳到主角身边（0.35 秒）→ 快速横扫（蓄力 0.45 秒）。不翻滚就一定被扫到 */
+    if (st.combo) { st.combo.t -= dt; if (st.combo.t <= 0) { st.combo = null;
+      if (P.rootT > 0 && !P.dead && b.act !== 'crackAnim') { if (b.cast && b.cast.cancel) b.cast.cancel(); b.cast = null;
+        const ex = b.x - P.x, ez = b.z - P.z, el = hyp(ex, ez) || 1, q = { x: P.x + ex / el * 2.2, z: P.z + ez / el * 2.2 }; push(q, CFG.coverR); q.x = clamp(q.x, ARENA.x0 + 1, ARENA.x1 - 1); q.z = clamp(q.z, ARENA.z0 + 1, ARENA.z1 - 1);
+        b.act = 'jump'; b.jump = { t: 0, x0: b.x, z0: b.z, x1: q.x, z1: q.z }; b.yaw = Math.atan2(P.x - q.x, P.z - q.z); b.look = 'p'; setAnim('idle'); E('bossJump', { x0: b.x, z0: b.z, x1: q.x, z1: q.z, dur: RK.jumpT }) } } }
+    if (b.act === 'jump') { const J = b.jump; J.t += dt; const u = Math.min(1, J.t / RK.jumpT); b.x = J.x0 + (J.x1 - J.x0) * u; b.z = J.z0 + (J.z1 - J.z0) * u; b.jumpY = Math.sin(Math.PI * u) * 2.2;
+      if (u >= 1) { b.jumpY = 0; b.act = 'chase'; b.calm = 0; E('bossLand', { x: b.x, z: b.z }); st.stats.combo = (st.stats.combo || 0) + 1; rockCast('sweep', true) } return }
     /* 半血：石化那一侧掉下一大块（落地当掩体），走路快 30%；技能变强 */
     if (!st.half && b.hp < b.max * 0.5 && !b.cast) { st.half = true; E('half'); b.act = 'crackAnim'; b.at = ROCK_ANIM.crack.T; setAnim('crack'); b.chunkT = ROCK_ANIM.crack.hit }
     if (b.chunkT > 0) { b.chunkT -= dts; if (b.chunkT <= 0) { const s = Math.sin(b.yaw), c = Math.cos(b.yaw), x = clamp(b.x - c * 2.6 + s * 0.6, ARENA.x0 + 1, ARENA.x1 - 1), z = clamp(b.z + s * 2.6 + c * 0.6, ARENA.z0 + 1, ARENA.z1 - 1); coverAdd({ k: 'chunk', x, z, hx: 0.85, hz: 0.85 }) } }
@@ -602,6 +621,10 @@ export function createFight(n, hero, opt = {}) {
     for (const k of ['focus', 'roll', 'stun', 'nade']) if (P.cd[k] > 0) P.cd[k] -= dt; if (P.heartT > 0) P.heartT -= dt;
     if (P.cd.roll <= 0 && P.charges < SKILLS.roll.charges(sk('roll'))) { P.charges++; if (P.charges < SKILLS.roll.charges(sk('roll'))) P.cd.roll = cdOf('roll') }
     P.inv -= dt; P.hurtT += dt;
+    /* 设计 110：眩晕——不能走、开枪、放技能（包括翻滚）；禁锢——不能走，能开枪、放技能，翻滚能解除 */
+    if (P.stunImm > 0) P.stunImm -= dt;
+    if (P.stunT > 0) { P.stunT -= dt; inp = {} }
+    if (P.rootT > 0) { P.rootT -= dt; if (inp.skill !== 'roll' || !(P.charges > 0) || P.roll) inp = { ...inp, mx: 0, mz: 0 } }
     /* 技能 */
     const s = inp.skill;
     if (s === 'roll' && P.charges > 0 && !P.roll) {
@@ -609,7 +632,7 @@ export function createFight(n, hero, opt = {}) {
       let ax = inp.mx || 0, az = inp.mz || 0, src = 'joy';
       if (hyp(ax, az) < 0.2) { if (st.lastMv && st.clk - st.lastMv.t <= 0.3 + 1e-6) { ax = st.lastMv.x; az = st.lastMv.z; src = 'recent' } else { ax = -Math.sin(P.yaw); az = -Math.cos(P.yaw); src = 'back' } }
       const l = hyp(ax, az); ax /= l; az /= l; st.lastRoll = { ax, az, src, t: st.t, age: st.lastMv ? +(st.clk - st.lastMv.t).toFixed(2) : null };
-      P.roll = { ax, az, t: 0 }; P.inv = SKILLS.roll.inv; P.charges--; if (P.cd.roll <= 0) P.cd.roll = cdOf('roll'); P.yaw = Math.atan2(ax, az); E('roll', { ax, az });
+      P.rootT = 0; P.roll = { ax, az, t: 0 }; P.inv = SKILLS.roll.inv; P.charges--; if (P.cd.roll <= 0) P.cd.roll = cdOf('roll'); P.yaw = Math.atan2(ax, az); E('roll', { ax, az });
     }
     if (s === 'focus' && !pre && P.cd.focus <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
     if (s === 'stun' && !pre && P.cd.stun <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) {
@@ -680,6 +703,7 @@ export function createFight(n, hero, opt = {}) {
     return st;
   }
   st.step = step; st.cdOf = cdOf; st.forceCast = k => { Bo.act = TOX ? 'idle' : 'chase'; Bo.cast = null; if (!TOX) st.warns.length = 0; const keep = st.ev; st.ev = []; if (TOX) toxCast(k); else if (ROCK) { Bo.calm = 0; rockCast(k) } else startCast(k); st.pend = st.ev; st.ev = keep };   // 截图、测试用
+  st.clearCovers = () => { if (!ROCK) return; const keep = st.ev; st.ev = st.pend || []; for (const c of realCovers()) coverGone(c, 'crumble'); st.pend = st.ev; st.ev = keep }; st.coverN = () => realCovers().length;   /* 设计 110：测试用（掩体扔光） */
   st.killPlayer = () => { if (st.over) return; const keep = st.ev; st.ev = []; P.hp = 0; P.dead = true; end(false); st.pend = st.ev; st.ev = keep };   /* 设计 109：测试用（打输） */
   st.killBoss = () => { if (st.over) return; const keep = st.ev; st.ev = []; Bo.hp = 0; bossDie(); st.pend = st.ev; st.ev = keep };   /* 设计 74：测试用（打赢） */
   return st;

@@ -51,14 +51,19 @@ for (let r = 0; r < N; r++) {
     for (const w of st.warns) if (!seenAt.has(w)) { seenAt.set(w, st.t); if (STG === 3 && (w.k === 'rain' || w.k === 'toss') && w.type === 'circle') { BLK.n++; if (simBlocked(st, w.x, w.z, w.r)) BLK.b++ } }
     const VIS = [...st.warns.filter(w => !AVG || st.t - seenAt.get(w) >= REACT - 1e-6), ...(st.hazards || [])];   /* 设计 106：走位一般只看得到出现 0.35 秒以上的预警 */
     for (const w of VIS) if (inWarn(w, P.x, P.z, 0.7)) { danger = w; break }
+    if (process.env.DBGR && r === 0) { const fw = st.warns.find(w => w.type === 'field'); if (fw && Math.round(st.t * 30) % 6 === 0) console.log('ROLL', st.t.toFixed(2), 'P', P.x.toFixed(1), P.z.toFixed(1), 'danger', !!danger, 'sh', JSON.stringify(fw.sh.map(q => [q.x0, q.x1, q.z0, q.z1].map(v => +v.toFixed(1))))); for (const e of st.ev) { if (e.e === 'proot') console.log('ROOT', st.t.toFixed(2), P.x.toFixed(1), P.z.toFixed(1), 'charges', P.charges); if (e.e === 'roll') console.log('ROLL!', st.t.toFixed(2)); if (e.e === 'bossLand') console.log('LAND', st.t.toFixed(2), B.x.toFixed(1), B.z.toFixed(1), 'P', P.x.toFixed(1), P.z.toFixed(1)); if (e.e === 'pdmg' && e.src === 'combo') console.log('COMBO HIT', st.t.toFixed(2)) } }
     if (danger) { const w = danger; let best = null;
       for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, ex = Math.sin(a), ez = Math.cos(a), q = { x: P.x, z: P.z }; let tt = 0;
         for (; tt < 3; tt += 0.05) { q.x += ex * 0.25; q.z += ez * 0.25; push(q, 0.42); if (!VIS.some(v => inWarn(v, q.x, q.z, 0.6))) break }
         const sc = tt + (STG === 2 ? (Math.hypot(q.x - B.x, q.z - B.z) > st.hero.range + st.bossR - 0.4 ? 0.6 : 0) : 0.02 * Math.hypot(q.x, q.z - 3) / 5); if (!best || sc < best.sc) best = { sc, ex, ez, tt } }
       if (STG === 2 && P.esc && st.t - P.esc.t < 0.5) best = { ...best, ex: P.esc.x, ez: P.esc.z }; else P.esc = { x: best.ex, z: best.ez, t: st.t };   /* 毒池挨着时别来回抖：方向保持 0.5 秒 */
       mx = best.ex; mz = best.ez;
-      if (w.dur != null && w.dur - w.t < best.tt + 0.12 && P.charges > 0) skill = 'roll';
+      if (w.dur != null && w.type !== 'field' && w.dur - w.t < best.tt + 0.12 && P.charges > 0) skill = 'roll';   /* 设计 110：全场滚石不提前翻（要等石头滚到才有用） */
+      if (w.type === 'field' && w.dur == null && st.front && !st.front.done && st.front.z > P.z - 1.2 && P.charges > 0) skill = 'roll';   /* 石头马上滚到、还没躲进掩体：翻滚无敌躲这一下 */
     }
+    /* 设计 110：被禁锢——走位好 0.1 秒、走位一般 0.35 秒后往远离 BOSS 的方向翻滚（解除禁锢 + 无敌，躲接下来的横扫） */
+    for (const e of st.ev) if (e.e === 'proot') P.rootAt = st.t;
+    if (P.rootT > 0 && P.charges > 0 && st.t - (P.rootAt || -9) >= (AVG ? 0.35 : 0.1) - 1e-6) { skill = 'roll'; const ex = P.x - B.x, ez = P.z - B.z, el = Math.hypot(ex, ez) || 1; mx = ex / el; mz = ez / el }
     if (!skill && P.cd.focus <= 0 && fireOn) skill = 'focus';
     if (!skill && P.cd.nade <= 0 && (st.mobs.some(m => !m.dead && m.rise <= 0) || Math.hypot(P.x - B.x, P.z - B.z) < hs.range)) skill = 'nade';
     if (!skill && B.cast && B.interruptible && B.cast.k !== 'swing' && B.cast.k !== 'spit') { if (stunWait < 0) stunWait = rng() < 0.7 ? 0.3 : 99; stunWait -= dt; if (stunWait <= 0 && P.cd.stun <= 0) { skill = 'stun'; stunWait = -1 } } else if (!B.cast) stunWait = -1;
@@ -88,7 +93,7 @@ for (let r = 0; r < N; r++) {
       if (want > 0.5 && !intoWall && !rollB && !P.roll && !P.kb && !P.dead && got < want * st.hero.speed * st.hero.spd * 0.15) { FT.stuck++; if (process.env.STK) { const why = Math.hypot(P.x - B.x, P.z - B.z) < 1.8 ? 'boss' : Math.abs(P.x) > 6.0 || P.z < ARENA.z0 + 0.6 || P.z > ARENA.z1 - 0.6 ? 'edge' : 'cover/other'; FT.why = FT.why || {}; FT.why[why] = (FT.why[why] || 0) + 1; if (FT.why[why] < 4) console.log('stuck', why, P.x.toFixed(2), P.z.toFixed(2), 'in', mx.toFixed(2), mz.toFixed(2), 'B', B.x.toFixed(1), B.z.toFixed(1)) } } let dy = P.yaw - yaw0; dy = Math.abs(Math.atan2(Math.sin(dy), Math.cos(dy))); if (dy > 70 * Math.PI / 180 && !P.roll) FT.flip++ }
     FT.n++; if (P.target === B) FT.boss++; else if (P.target) FT.mob++; else if (fireOn) FT.none++; for (const e of st.ev) { if (e.e === 'shot' && e.blocked) FT.blk++; if (e.e === 'shot') FT.sh++ } for (const e of st.ev) { if (e.e === 'cast' && e.k === 'slam') SL = { d0: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x: P.x.toFixed(1), z: P.z.toFixed(1), ch: P.charges }; if (e.e === 'pdmg' && e.src === 'slam' && DBG.length < 8) DBG.push({ ...SL, d1: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x1: P.x.toFixed(1), z1: P.z.toFixed(1), ch1: P.charges, inv: P.inv.toFixed(2) }) } for (const e of st.ev) if (e.e === 'pdmg') { SRC[e.src] = (SRC[e.src] || 0) + e.a / N; HIT[e.src] = (HIT[e.src] || 0) + 1 / N; if (e.src === 'quake' || e.src === 'rubble') sure += e.a }
   }
-  res.push({ bhp: B.hp / B.max * 100, win: st.win, t: st.over || st.t, hp: P.hp / P.max, taken: st.stats.taken, casts: st.stats.casts, mobs: st.stats.mobsKilled, intr: st.stats.interrupts, sure: sure / P.max, doom: st.doom ? st.doom.n : 0 });
+  res.push({ bhp: B.hp / B.max * 100, win: st.win, t: st.over || st.t, hp: P.hp / P.max, taken: st.stats.taken, casts: st.stats.casts, mobs: st.stats.mobsKilled, intr: st.stats.interrupts, sure: sure / P.max, doom: st.doom ? st.doom.n : 0, stun: st.stats.stun || 0, root: st.stats.root || 0, jump: st.stats.combo || 0 });
 }
 if (STG === 2) { const q = a => a.sort((x, y) => x - y)[Math.floor(a.length / 2)]; console.log(`设计 92：技能之间最短空档 普通 ${GAP.min.norm.g.toFixed(2)} 秒（下一个是 ${GAP.min.norm.k}），狂暴 ${GAP.min.rage.g === 1e9 ? '-' : GAP.min.rage.g.toFixed(2) + ' 秒（' + GAP.min.rage.k + '）'}；空档中位 ${q(GAP.norm)?.toFixed(2)} / 狂暴 ${GAP.rage.length ? q(GAP.rage).toFixed(2) : '-'}；喷吐预警 ${[...GAP.spit].join('、')} 秒`) }
 const wins = res.filter(r => r.win), ts = wins.map(r => r.t).sort((a, b) => a - b), avg = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
@@ -102,6 +107,7 @@ if (STG === 3) { const q = a => [...a].sort((x, y) => x - y)[Math.floor(a.length
 { const w180 = res.filter(r => r.win && r.t <= 180).length, dd = res.filter(r => !r.win && r.doom > 0), sr = res.map(r => r.sure).sort((x, y) => x - y);
   console.log(`设计 106（${AVG ? '走位一般' : '走位好'}，${process.env.GEARSET || '没装备'}）：3 分钟内打完 ${w180}/${N}；被灭杀 ${dd.length} 局（最晚倒下在第 ${dd.length ? Math.max(...dd.map(r => r.t)).toFixed(1) : '-'} 秒）；必吃伤害（地动 + 碎石雨）占最大生命 平均 ${(avg(sr) * 100).toFixed(0)}%、最多 ${((sr[sr.length - 1] || 0) * 100).toFixed(0)}%；剩血中位 ${(([...wins.map(r => r.hp)].sort((x, y) => x - y)[Math.floor(wins.length / 2)] || 0) * 100).toFixed(0)}%`) }
 if (BLK.n) console.log(`设计 106c：落石 / 扔石头的圈 ${BLK.n} 个，出现时被按钮、头像挡住的 ${(BLK.b / BLK.n * 100).toFixed(1)}%（瞄脚下的那个照落，算在里面）`);
+if (STG === 3) console.log(`设计 110：每局 被眩晕 ${avg(res.map(r => r.stun)).toFixed(2)} 次，被禁锢 ${avg(res.map(r => r.root)).toFixed(2)} 次，BOSS 跳过来横扫 ${avg(res.map(r => r.jump)).toFixed(2)} 次，被连招扫中 ${(HIT.combo || 0).toFixed(2)} 次`);
 if (FACE.n) console.log(`设计 102：离巨人 6 米以内（看得到整张脸）的时间 ${(FACE.near / FACE.n * 100).toFixed(0)}%`);
 console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
 console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));

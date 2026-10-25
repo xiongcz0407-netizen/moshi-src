@@ -153,7 +153,7 @@ export function buildRock(api) {
 
   function onEvent(e) {
     if (e.e === 'coverNew') { const c = e.c, m = coverMesh(c); coverVis.set(c.id, m);
-      if (c.k === 'chunk') { const h = handPos(); m.userData.drop = { from: h, t: 0 } } else if (c.k === 'fallen' && c.rain) { /* 落石雨留下的：落地那一下已经有特效 */ }
+      if (c.k === 'chunk') { const h = handPos(); m.userData.drop = { from: h, t: 0 } } else if (c.drop) { m.userData.drop = { from: new THREE.Vector3(c.x, 14, c.z), t: 0 } }   /* 设计 110：掩体不够 2 个，从天上掉一块补上 */ else if (c.k === 'fallen' && c.rain) { /* 落石雨留下的：落地那一下已经有特效 */ }
       return true }
     if (e.e === 'coverGone') { const m = coverVis.get(e.c.id); if (!m) return true; coverVis.delete(e.c.id); unOccl(m); m.traverse(o => { if (o.material) { o.material.opacity = 1; o.material.transparent = false; o.material.depthWrite = true; o.material.needsUpdate = true } });
       if (e.how === 'grab') { held = m; m.userData.held = true; return true }
@@ -171,6 +171,9 @@ export function buildRock(api) {
       if (e.k === 'rain') { boom(w.x, w.z, 1.4, 1); ctx.shake(0.25); return true }
       return true }
     if (e.e === 'ballGo') { const o = piece('stone', 'boulder', 6.6, e.b.x, 0, e.b.z, 0); balls.set(e.b.id, { o, last: e.b.z, tr: 0 }); ctx.shake(0.3); return true }
+    if (e.e === 'ballBreak') { const v = balls.get(e.b.id); if (v) { scene.remove(v.o); balls.delete(e.b.id) } boom(e.b.x, e.b.z, 1.2, 0.7); return true }   /* 设计 110：滚石撞到掩体碎在前面（掩体不坏） */
+    if (e.e === 'bossJump') { dust(e.x0, e.z0, 8, 1.4, 3, 1.2); return true }
+    if (e.e === 'bossLand') { boom(e.x, e.z, 2.2, 1); ctx.shake(0.6); return true }
     if (e.e === 'ballGone') { const v = balls.get(e.b.id); if (v) { scene.remove(v.o); balls.delete(e.b.id) } return true }
     if (e.e === 'pillars') { for (const c of e.cells) { part(T.fx.spikecrack, c.x, 0.05, c.z, { size: e.s * 1.4, life: 0.6, op: 0.9 }); dust(c.x, c.z, 3, 0.9, 2, 0.4) } ctx.shake(0.45); return true }
     if (e.e === 'pillarWave') return true;
@@ -209,7 +212,7 @@ export function buildRock(api) {
   /* ---------- 每帧：巨人 ---------- */
   function bossFrame(dt, clock, fight, phase, endT) {
     const B = fight.boss, P = fight.player;
-    boss.position.set(B.x, 0, B.z); let dy = B.yaw - boss.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); boss.rotation.y += dy * Math.min(1, dt * 8);
+    boss.position.set(B.x, B.jumpY || 0, B.z); let dy = B.yaw - boss.rotation.y;   /* 设计 110：跳过来时离地 */ dy = Math.atan2(Math.sin(dy), Math.cos(dy)); boss.rotation.y += dy * Math.min(1, dt * 8);
     if (curAct && (B.anim === 'walk' || B.anim === 'walk_fast')) curAct.timeScale = B.ts;
     mixer.update(dt * (B.slow > 0 ? 0.5 : 1));
     if (!B.dead) lookFrame(dt, B, P); else look.w = 0;
@@ -259,6 +262,6 @@ export function buildRock(api) {
   }
   /* 镜头用的巨人的脸：头顶、下巴（世界坐标） */
   const face = () => { const h = bone.Head.getWorldPosition(new THREE.Vector3()); return { x: h.x, z: h.z, top: h.y + 0.11 * ROCK_K, chin: h.y - 0.05 * ROCK_K } };
-  const NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '铁轨滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（大招）' };
+  const NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '全场滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（大招）' };
   return { tox: false, face, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus: () => {}, pusFrame: () => {}, reset, bone, look, occl, coverVis, castName: k => NAME[k] || k };
 }
