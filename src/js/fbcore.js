@@ -63,13 +63,15 @@ export const TOX_CFG = {
 export const ROCK_K = 5.1;   // 模型 1.05 → 约 5.4 米（主角 3 倍）
 export const ROCK_CFG = {
   walk: 1.4, walkHalf: 1.82, near: 2.8,
-  sweepR: 4, sweepA: Math.PI, sweepWarn: 0.8, sweepK: 0.7, throwR: 1.2, throwWarn: 0.8, throwK: 0.5, throwFly: 0.6, basicCd: 0.8,
+  sweepR: 4, sweepA: Math.PI, sweepWarn: 0.8, sweepK: 0.7, throwR: 1.2, throwWarn: 0.8, throwK: 0.5, throwFly: 0.6, basicCd: 2.5, basicCalm: 1, basicGuard: 2.5,
   grabT: 1.0, grabReach: 1.4, seekMax: 4, tossR: 2.5, tossK: 1.4, tossFly: 0.7,
   lanes: [-3, 3], laneW: 2.5, rollK: 1.3, rollSpd: 13, ballR: 1.1,
   cell: 3, pillarRows: 5, pillarK: 1.0, pillarStay: 1.0, wave2: 0.8,
   riftW: 1.2, riftLife: 6, riftDps: 0.3, riftFork: 3.5, riftA: 0.55,
   avaCast: 2.0, wallW: 2.2, rainT: 6, rainWaves: 7, rainR: 1.4, rainWarn: 0.6, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
-  maxCovers: 6, calm: 2.5, calmRage: 2, first: 4, gap: 7, order: ['grab', 'roll', 'rift', 'pillars', 'grab', 'ava'],
+  maxCovers: 6, calm: 1.8, calmRage: 1.4, first: 3, gap: 4.2, gapRage: 3.5,
+  /* 设计 103：出招更密、大招更多。10 招一轮，山崩每 5 招一次；半血以后 8 招一轮，山崩每 4 招一次 */
+  order: ['grab', 'rift', 'roll', 'ava', 'pillars', 'grab', 'roll', 'rift', 'ava', 'pillars'], orderHalf: ['grab', 'rift', 'roll', 'ava', 'pillars', 'roll', 'rift', 'ava'],
 };
 /* 落石巨人动作的时间（落石巨人.glb，脚本 tools/golem_rig/anim.py 导出；hit = 拳头砸到 / 东西出手那一刻） */
 export const ROCK_ANIM = { idle: { T: 3.2, loop: 1 }, walk: { T: 1.5, loop: 1, speed: 0.177 }, walk_fast: { T: 1.12, loop: 1, speed: 0.298 },
@@ -505,7 +507,12 @@ export function createFight(n, hero, opt = {}) {
     if (b.chunkT > 0) { b.chunkT -= dts; if (b.chunkT <= 0) { const s = Math.sin(b.yaw), c = Math.cos(b.yaw), x = clamp(b.x - c * 2.6 + s * 0.6, ARENA.x0 + 1, ARENA.x1 - 1), z = clamp(b.z + s * 2.6 + c * 0.6, ARENA.z0 + 1, ARENA.z1 - 1); coverAdd({ k: 'chunk', x, z, hx: 0.85, hz: 0.85 }) } }
     const dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
     if (b.act === 'wait') { b.look = 'p'; if (st.t > 0.6) { b.act = 'chase'; setAnim('idle') } return }
-    if (b.act === 'stun' || b.act === 'recover' || b.act === 'crackAnim') { b.at -= dts; if (b.at <= 0) { if (b.act !== 'crackAnim') b.calm = st.rage ? RK.calmRage : RK.calm; b.act = 'chase'; b.basicCd = Math.max(b.basicCd, RK.basicCd); setAnim('idle') } return }
+    if (b.act === 'stun' || b.act === 'recover' || b.act === 'crackAnim') { b.at -= dts; if (b.at <= 0) { const lk = b.lastK; b.lastK = null;
+      /* 设计 103：普攻后只安静 1 秒；地裂放完直接接滚石或石柱阵（连招，不安静）；半血以后石柱阵后面接投石 */
+      if (b.act === 'recover' && (lk === 'sweep' || lk === 'throw')) b.calm = RK.basicCalm; else b.calm = st.rage ? RK.calmRage : RK.calm;
+      const combo = b.act === 'recover' && !st.rain && (lk === 'rift' ? (() => { const o = st.half ? RK.orderHalf : RK.order, nx = o[b.oi % o.length]; if (nx === 'roll' || nx === 'pillars') { b.oi++; return nx } return b.comboAlt = !b.comboAlt, b.comboAlt ? 'roll' : 'pillars' })() : lk === 'pillars' && st.half && hyp(P.x - b.x, P.z - b.z) < 16 ? 'throw' : null);
+      b.act = 'chase'; setAnim('idle');
+      if (combo) { b.calm = 0; b.combo = true; if (combo !== 'throw') b.skillT = st.rage ? RK.gapRage : RK.gap; else b.basicCd = RK.basicCd; rockCast(combo); return } b.combo = false } return }
     if (b.act === 'cast') { const c = b.cast; c.t += dts;
       if (c.k === 'grab' && c.phase === 'seek') {   /* 走到掩体旁边 */
         if (!COVERS.includes(c.cv)) { startToss(c); return }
@@ -526,7 +533,7 @@ export function createFight(n, hero, opt = {}) {
       if (c.t >= c.dur) { b.cast = null;
         const rec = { sweep: 0.9, throw: 0.8, grab: 0.9, roll: 1.2, pillars: 1.0, rift: 1.2, ava: 1.0 }[c.k];
         if (c.k === 'ava') { st.rain = { t: 0, wave: 0, kept: 0 }; b.armorT = RK.rainT; E('rainStart', { t: RK.rainT }) }
-        b.act = 'recover'; b.at = rec }
+        b.act = 'recover'; b.at = rec; b.lastK = c.k }
       return }
     /* 追人（设计 83 的格子找路，掩体变了就重建） */
     b.look = 'p';
@@ -541,8 +548,9 @@ export function createFight(n, hero, opt = {}) {
       else if (b.anim !== 'idle') setAnim('idle') }
     else { b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -2.5 * dts, 2.5 * dts); if (b.anim !== 'idle') setAnim('idle') }
     if (b.calm > 0) { b.calm -= dts; return }   /* 安静时间：照样走、头看着主角，不出招 */
-    if (b.skillT <= 0 && !st.rain) { const k = RK.order[b.oi % RK.order.length]; b.oi++; b.skillT = RK.gap; rockCast(k); return }
-    if (b.basicCd <= 0) { if (d < RK.sweepR - 0.3) rockCast('sweep'); else if (d < 16) rockCast('throw') }
+    if (b.skillT <= 0 && !st.rain) { const o = st.half ? RK.orderHalf : RK.order; if (st.half && !b.halfO) { b.halfO = true; b.oi = 1 }   /* 半血换成 8 招一轮，从地裂开始（不会连着两次抓掩体） */ const k = o[b.oi % o.length]; b.oi++; b.skillT = st.rage ? RK.gapRage : RK.gap; rockCast(k); return }
+    /* 设计 103：普攻冷却 2.5 秒；离下一个大技能不到 2.5 秒不放（落石雨期间不算大技能） */
+    if (b.basicCd <= 0 && (st.rain || b.skillT > RK.basicGuard)) { if (d < RK.sweepR - 0.3) { b.basicCd = RK.basicCd; rockCast('sweep') } else if (d < 16) { b.basicCd = RK.basicCd; rockCast('throw') } }
   }
   /* ---------- 小丧尸 ---------- */
   function mobStep(dt) {
