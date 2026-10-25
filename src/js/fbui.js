@@ -145,11 +145,11 @@ export const FB_PANELS = {
     /* 装备页：只放身上 5 个格子 + 主角 + 总属性 + 套装进度；点格子右边看详情 */
     const slot = s => { const it = S.fb.eq[s]; return `<div class="eqslot ${it ? 'has' : ''}${g.sel === 'eq:' + s ? ' sel' : ''}" data-gsel="eq:${s}">${it ? eqIcon(it) : '<span class="eqic none"></span>'}<small>${SLOT_NAME[s]}</small></div>` };
     const tot = Object.entries(gs).filter(([k, v]) => STAT[k] && v > 0).map(([k, v]) => `<div class="drow"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + (+v.toFixed(1)) + '%' : '+' + Math.round(v)}</b></div>`).join('') || '<p class="note">还没穿装备，去副本打 BOSS 掉。</p>';
-    const sets = Object.keys(SETS).map(k => { const n = gs.sets[k] || 0; return `<div class="setprog"><div class="setnm">${setHead(k, n)}</div>${setRows(k, n)}</div>` }).join('');   /* 设计 105：跟详情同一个 setRows */
+    const sets = Object.keys(SETS).filter(k => (gs.sets[k] || 0) > 0).map(k => { const n = gs.sets[k] || 0; return `<div class="setprog"><div class="setnm">${setHead(k, n)}</div>${setRows(k, n)}</div>` }).join('');   /* 设计 105：跟详情同一个 setRows；设计 111：只列身上至少穿 1 件的那套 */
     const legs = SLOTS.map(s => S.fb.eq[s]).filter(it => it && ITEMS[it.k].q === 'l').map(it => `<div class="drow"><span>${iname(it)}</span><b class="nw" style="color:${QUAL.l.tx}">${ITEMS[it.k].fx}</b></div>`).join('');
     const left = `<div class="eqfig"><div class="eqcol">${['w', 'h', 'a'].map(slot).join('')}</div><div class="eqhero" data-heromount></div><div class="eqcol">${['g', 'b', 'm'].map(slot).join('')}</div></div>`;
     const detail = id => { const sl = id.slice(3), it = S.fb.eq[sl]; return it ? itemDetail(it, true) : `<h5>${SLOT_NAME[sl]}</h5><p class="note">还空着。</p><div class="btns"><button class="btn" data-act="fbSwap" data-arg="${sl}">换一件</button></div>` };
-    const summary = `<h5>总属性</h5>${tot}<div class="dsub">套装</div>${sets}${legs ? `<div class="dsub">传说特效</div>${legs}` : ''}`;
+    const summary = `<h5>总属性</h5>${tot}${sets ? `<div class="dsub">套装</div>${sets}` : ''}${legs ? `<div class="dsub">传说特效</div>${legs}` : ''}`;
     if (g.sel != null && !String(g.sel).startsWith('eq:')) g.sel = null;
     return frame('gear', { tabs, noGrid: true, left, detail, dw: 300, res, help, empty: summary });
   },
