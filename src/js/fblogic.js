@@ -134,9 +134,10 @@ export function dismantle(S, id) {
   else { const i = S.fb.bag.findIndex(x => x.id === id); if (i < 0) return 0; it = S.fb.bag.splice(i, 1)[0] }
   const n = dismantleGain(it); S.fb.crys += n; fbLog(S, { a: 'dis', k: it.k, lv: it.lv, id: it.id, st: it.st || 0 }); return n;
 }
-/* ---------- 设计 105b：传说转换（铁匠）：背包里的传说花 2000 末日币，随机换成同一关的另外 5 种之一（各 1/5，不会换回自己），Lv、星、id 不变 ---------- */
+/* ---------- 设计 105b：传说转换（铁匠）：背包里没升过星（0★）的传说花 2000 末日币，随机换成同一关的另外 5 种之一（各 1/5，不会换回自己），Lv、id 不变 ---------- */
+export const swapOk = it => !!it && ITEMS[it.k] && ITEMS[it.k].q === 'l' && !((it.st || 0) > 0);
 export const swapTargets = it => LEG_KEYS.filter(k => k !== it.k);
-export function legSwapWhy(S, it) { if (!it || !S.fb.bag.includes(it)) return '只能转换背包里的传说'; if (!ITEMS[it.k] || ITEMS[it.k].q !== 'l') return '只有传说能转换'; if (S.coins < LEG_SWAP) return '末日币不够'; return null }
+export function legSwapWhy(S, it) { if (!it || !S.fb.bag.includes(it)) return '只能转换背包里的传说'; if (!ITEMS[it.k] || ITEMS[it.k].q !== 'l') return '只有传说能转换'; if ((it.st || 0) > 0) return '升过星的不能转换'; if (S.coins < LEG_SWAP) return '末日币不够'; return null }   // 设计 105b：只有 0★ 能转
 export function legSwap(S, id, rng = Math.random) {
   const it = S.fb.bag.find(x => x.id === id), why = legSwapWhy(S, it); if (why) return { ok: false, why };
   const from = it.k, to = pick(swapTargets(it), rng());

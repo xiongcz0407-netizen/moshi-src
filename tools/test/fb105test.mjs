@@ -47,14 +47,14 @@ ok(ITEMS.s2_b.lv === 10 && ITEMS.s2_w.at === 6 && ITEMS.s1_h.at === 1, '套装�
   S.fb.eq.w.st = 12; ok(FL.capSt(c, 12) === 9, '身上 12★，史诗最高 9★：按 9★ 比'); }
 /* 传说转换 legSwap */
 { const N = 10000, c = {}; let back = 0, keep = 1, cost = 1;
-  for (let i = 0; i < N; i++) { const S = mk(); S.coins = 5000; const lv = i % 2 ? 1 : 10; S.fb.bag = [{ id: 77, k: 'l_g', lv, st: 4, crys: 9 }];
+  for (let i = 0; i < N; i++) { const S = mk(); S.coins = 5000; const lv = i % 2 ? 1 : 10; S.fb.bag = [{ id: 77, k: 'l_g', lv, st: 0, crys: 0 }];
     const r = FL.legSwap(S, 77); const it = S.fb.bag[0]; if (!r.ok) { keep = 0; continue } if (it.k === 'l_g') back++; c[it.k] = (c[it.k] || 0) + 1;
-    if (it.lv !== lv || it.st !== 4 || it.id !== 77 || it.crys !== 9) keep = 0; if (S.coins !== 5000 - LEG_SWAP) cost = 0 }
+    if (it.lv !== lv || it.st !== 0 || it.id !== 77) keep = 0; if (S.coins !== 5000 - LEG_SWAP) cost = 0 }
   const v = Object.values(c), mn = Math.min(...v) / N, mx = Math.max(...v) / N;
   ok(back === 0, `legSwap ${N} 次：从不换回自己`); ok(Object.keys(c).length === 5 && mn > 0.2 - 0.015 && mx < 0.2 + 0.015, `另外 5 种都出现，每种 ${(mn * 100).toFixed(1)}%～${(mx * 100).toFixed(1)}%（1/5 = 20%）`);
-  ok(keep, 'Lv、星、id、炼进去的晶石都不变'); ok(cost && LEG_SWAP === 2000, '每次扣 2000（Lv1、Lv10 一样）'); }
-{ const S = mk(); S.coins = 1999; S.fb.bag = [{ id: 1, k: 'l_w', lv: 3, st: 0 }, { id: 2, k: 'e_w1', lv: 3, st: 0 }]; S.fb.eq.h = { id: 3, k: 'l_h', lv: 3, st: 0 }; const before = JSON.stringify(S);
-  const a = FL.legSwap(S, 1); S.coins = 9999; const b = FL.legSwap(S, 2), c2 = FL.legSwap(S, 3); S.coins = 1999;
-  ok(!a.ok && a.why === '末日币不够' && !b.ok && b.why === '只有传说能转换' && !c2.ok && c2.why === '只能转换背包里的传说' && JSON.stringify(S) === before, `钱不够、不是传说、穿在身上：都失败、存档不变（${a.why} / ${b.why} / ${c2.why}）`) }
-{ const S = mk(); S.coins = 2000; S.fb.bag = [{ id: 5, k: 'l_m', lv: 3, st: 4 }]; const r = FL.legSwap(S, 5, () => 0); const e = S.fb.log[S.fb.log.length - 1];
+  ok(keep, 'Lv、id 不变，星还是 0'); ok(cost && LEG_SWAP === 2000, '每次扣 2000（Lv1、Lv10 一样）'); }
+{ const S = mk(); S.coins = 1999; S.fb.bag = [{ id: 1, k: 'l_w', lv: 3, st: 0 }, { id: 2, k: 'e_w1', lv: 3, st: 0 }, { id: 4, k: 'l_b', lv: 3, st: 1 }]; S.fb.eq.h = { id: 3, k: 'l_h', lv: 3, st: 0 }; const before = JSON.stringify(S);
+  const a = FL.legSwap(S, 1); S.coins = 9999; const b = FL.legSwap(S, 2), c2 = FL.legSwap(S, 3), d2 = FL.legSwap(S, 4); S.coins = 1999;
+  ok(!a.ok && a.why === '末日币不够' && !b.ok && b.why === '只有传说能转换' && !c2.ok && c2.why === '只能转换背包里的传说' && !d2.ok && d2.why === '升过星的不能转换' && JSON.stringify(S) === before, `钱不够、不是传说、穿在身上、升过星（1★）：都失败、存档不变（${a.why} / ${b.why} / ${c2.why} / ${d2.why}）`) }
+{ const S = mk(); S.coins = 2000; S.fb.bag = [{ id: 5, k: 'l_m', lv: 3, st: 0 }]; const r = FL.legSwap(S, 5, () => 0); const e = S.fb.log[S.fb.log.length - 1];
   ok(r.ok && r.from === 'l_m' && e.a === 'swap' && e.from === 'l_m' && e.to === r.to && e.lv === 3 && S.coins === 0, `掉落记录 {a:'swap', from, to, lv}：岩心 → ${FL.nameAt(r.to, 3)}（Lv3）`) }

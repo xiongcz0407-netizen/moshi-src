@@ -47,12 +47,13 @@ function refView(S, k, { tabs, res, help }) {
       const list = [...Object.keys(a.main).map(k => [k, a.main[k], b && b.main[k]]), ...a.aff.map(([k, v], i) => [k, v, b && b.aff[i][1]])];
       const attrs = list.map(([k, x, y]) => `<div class="drow"><span>${STAT[k].name}</span><b>${x}${pc(k)}${b && y !== x ? ` → <span class="good">${y}${pc(k)}</span>` : ''}</b></div>`).join('');
       const ok = !inf.max && S.fb.crys >= inf.cost && !refBusy();
+      const legWarn = D.q === 'l' && !(it.st > 0) ? '<p class="rfwarn">升星后就不能转换了</p>' : '';   /* 设计 105b：0★ 传说炼宝前提醒 */
       const foot = inf.max ? `<div class="fbfoot rffoot"><span class="fbfl lk">已满星</span><button class="btn" disabled>炼宝</button></div>`
         : `<div class="fbfoot rffoot"><span class="fbfl"><b>升到 ${inf.to} 星　${inf.luck ? '<span class="warn">看运气</span> ' : ''}成功率 ${Math.round(inf.rate * 100)}%${inf.pity ? `（保底 +${Math.round(inf.pity * 100)}%）` : ''}</b><span class="${S.fb.crys >= inf.cost ? '' : 'lack'}">${crysIc}${inf.cost}（有 ${S.fb.crys}）</span></span>
           <button class="btn" data-act="fbRefine" data-arg="${it.id}" ${ok ? '' : 'disabled'}>炼宝</button></div>`;
       return `<div class="fbdw rfw"><div class="rftop"><div class="rfhd">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${iname(it)}</b><small>${QUAL[D.q].name} · Lv${lvOf(it)} · 最高 ${max} 星</small></div></div><div class="refstars">${stars}</div></div>
         <div class="fbds">${attrs}${inf.max ? `<p class="note">最高 ${max} 星，满了。</p>` : ''}
-        ${refFx && refFx.id === it.id && performance.now() - refFx.at < 2500 ? `<p class="note ${refFx.ok ? 'good' : 'warn'}">${refFx.ok ? `成功！升到 ${it.st} 星` : '失败了，星星没掉'}</p>` : ''}</div>${foot}</div>` };
+        ${refFx && refFx.id === it.id && performance.now() - refFx.at < 2500 ? `<p class="note ${refFx.ok ? 'good' : 'warn'}">${refFx.ok ? `成功！升到 ${it.st} 星` : '失败了，星星没掉'}</p>` : ''}</div>${legWarn}${foot}</div>` };
     return frame(k, { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
 }
 export const FB_PANELS = {
@@ -157,24 +158,25 @@ export const FB_PANELS = {
     FL.fbFix(S);
     const tabs = [{ id: 'ref', name: '炼宝' }, { id: 'swap', name: '传说转换' }], g = gst('smith'); if (!tabs.find(t => t.id === g.tab)) g.tab = 'ref';
     const res = resChip(crysIc, S.fb.crys) + resChip('<i class="ico-coin"></i>', Math.floor(S.coins));
-    const help = `<b>铁匠</b><p>炼宝给装备升星；传说转换把背包里的传说花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说，星级保留。</p><p>炼宝：用晶石升星，每星所有数值 +10%。普通最高 6 星、史诗 9 星、套装和传说 12 星。失败不掉星；4～8 星每失败一次下次 +5%（保底），9 星以上看运气。</p><p>传说转换：结果随机（另外 5 种机会一样，不会换回自己），不能选；Lv、星级、炼进去的晶石都保留。身上穿着的传说要先卸下。</p>`;
+    const help = `<b>铁匠</b><p>炼宝给装备升星；传说转换把背包里没升过星的传说花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说。升星以后就不能转换了。</p><p>炼宝：用晶石升星，每星所有数值 +10%。普通最高 6 星、史诗 9 星、套装和传说 12 星。失败不掉星；4～8 星每失败一次下次 +5%（保底），9 星以上看运气。</p><p>传说转换：只有 0★（没升过星）的传说能转；结果随机（另外 5 种机会一样，不会换回自己），不能选；Lv 不变。身上穿着的传说要先卸下。</p>`;
     if (g.tab === 'ref') return refView(S, 'smith', { tabs, res, help });
-    const legs = S.fb.bag.filter(it => ITEMS[it.k].q === 'l').sort((a, b) => gearKey(b) - gearKey(a));
-    const cells = legs.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>` }));
+    /* 0★ 的排前面；升过星的排后面、变灰，角上写「已升星」 */
+    const legs = S.fb.bag.filter(it => ITEMS[it.k].q === 'l').sort((a, b) => (FL.swapOk(b) - FL.swapOk(a)) * 1e6 + gearKey(b) - gearKey(a));
+    const cells = legs.map(it => ({ id: String(it.id), cls: 'eqcell' + (FL.swapOk(it) ? '' : ' swno'), html: `${eqIcon(it)}<small>${iname(it)}</small>${FL.swapOk(it) ? '' : '<span class="itag swst">已升星</span>'}` }));
     const detail = id => {
       const it = S.fb.bag.find(x => x.id === +id); if (!it) return ''; const D = ITEMS[it.k], lv = lvOf(it), busy = swapBusy();
       const fx = swapFx && swapFx.id === it.id && performance.now() - swapFx.at < 60000 ? swapFx : null;
-      const res = fx ? `<div class="swapres${busy ? ' play' : ''}"><div class="swl">传说转换</div><div class="swt"><b class="old">${FL.nameAt(fx.from, fx.lv)}</b> Lv${fx.lv} ★${fx.st} <span>→</span> <b style="color:${QUAL.l.tx}">${FL.nameAt(fx.to, fx.lv)}</b> Lv${fx.lv} ★${fx.st}</div><div class="swfx">${ITEMS[fx.to].fx}</div></div>` : '';
+      const res = fx ? `<div class="swapres${busy ? ' play' : ''}"><div class="swl">传说转换</div><div class="swt"><b class="old">${FL.nameAt(fx.from, fx.lv)}</b> Lv${fx.lv} <span>→</span> <b style="color:${QUAL.l.tx}">${FL.nameAt(fx.to, fx.lv)}</b> Lv${fx.lv}</div><div class="swfx">${ITEMS[fx.to].fx}</div></div>` : '';
       const tg = FL.swapTargets(it).map(k => `<span class="swtg">${FL.nameAt(k, lv)}<small>${SLOT_NAME[ITEMS[k].slot]}</small></span>`).join('');
-      const can = S.coins >= LEG_SWAP && !busy;
+      const okSt = FL.swapOk(it), can = okSt && S.coins >= LEG_SWAP && !busy;
       return `<div class="fbdw"><div class="fbds">${res}
         <h5>${eqIcon(it)} ${iname(it)}<small>${qName(D.q)} · ${SLOT_NAME[D.slot]} · Lv${lv} · ${it.st || 0}★</small></h5>
         <div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div>
-        <p class="note">随机换成同一关（Lv${lv}）的另外 5 种传说之一（机会一样），<b>星级、Lv 保留</b>：</p>
-        <div class="swtgs">${tg}</div></div>
-        <div class="fbfoot"><span class="fbfl need${S.coins >= LEG_SWAP ? '' : ' lack'}"><i class="ico-coin"></i>${LEG_SWAP}</span><button class="btn" data-act="fbLegSwap" data-arg="${it.id}" ${can ? '' : 'disabled'}>转换</button></div></div>` };
+        ${okSt ? `<p class="note">随机换成同一关（Lv${lv}）的另外 5 种传说之一（机会一样），<b>Lv 不变</b>：</p>
+        <div class="swtgs">${tg}</div>` : '<p class="note warn swnote">升过星的传说不能转换（只有 0★ 的能转）。</p>'}</div>
+        <div class="fbfoot"><span class="fbfl need${S.coins >= LEG_SWAP || !okSt ? '' : ' lack'}"><i class="ico-coin"></i>${LEG_SWAP}</span><button class="btn" data-act="fbLegSwap" data-arg="${it.id}" ${can ? '' : 'disabled'}>转换</button></div></div>` };
     return frame('smith', { tabs, cols: 5, rows: 3, cells, detail, dw: 260, res, help,
-      none: '背包里没有传说装备。副本里打到的传说可以在这里换成同一关的其他传说。', empty: `<p class="note">点一件背包里的传说：花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说。</p>` });
+      none: '背包里没有传说装备。副本里打到的传说，没升星前可以在这里换成同一关的其他传说。', empty: `<p class="note">点一件背包里没升过星的传说：花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说。</p>` });
   },
   /* 「获得」框（设计53 第三节） */
   fbGot(S) {
