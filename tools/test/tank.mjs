@@ -14,7 +14,7 @@ export const GEARS = {
   s1x4: { w: ['s1_w', 6], h: ['s1_h', 6], a: ['s1_a', 6], g: ['s1_g', 6], b: ['n_b', 0], m: ['e_m2', 6] },   /* 拾荒者 4 件以上：看「挨打后 3 秒回 10%」回了多少 */
 };
 let seed = 7; const rng = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-const pick = process.env.GEAR ? process.env.GEAR.split(',') : ['none', 'e3x2', 'xiong', 'xiongL'], stages = process.env.STAGE ? [+process.env.STAGE] : [1, 2];
+const pick = process.env.GEAR ? process.env.GEAR.split(',') : ['none', 'e3x2', 'xiong', 'xiongL'], stages = process.env.STAGE ? [+process.env.STAGE] : [1, 2, 3];   /* 设计 102：加第 3 关 */
 for (const gn of pick) for (const STG of stages) {
   const g = GEARS[gn], S = { fb: fbNew() }; let id = 1; for (const [s, [k, st]] of Object.entries(g)) S.fb.eq[s] = { id: id++, k, lv: 1, st };
   const hero = { ...fbHero(S, hs), speed: 5 };

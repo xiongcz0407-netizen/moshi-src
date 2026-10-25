@@ -7,7 +7,7 @@ let S = mk(); FL.fbFix(S);
 ok(!S.td.wins[103] && S.td.wins[3] === 1, '旧存档英雄关进度去掉，普通关留着');
 ok(FL.fbLockWhy({ ...S, lv: { store: 4 } }, 1) === '超市 5 级解锁', '超市 4 级：超市 5 级解锁');
 ok(FL.fbCanStart(S, 1) === null, '5 级、10 张卷：能打第 1 关');
-ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '还没开放', '第 3 关还没开放');
+ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '先打赢前一关' && FL.fbLockWhy(S, 4) === '还没开放', '设计 102：第 3 关开放了（要先打赢第 2 关），第 4 关还没开放');
 FL.fbStart(S, 1); ok(S.td.scrolls === 8 && S.fb.run === 1, '挑战第 1 关扣 2 张卷');
 FL.fbLose(S); ok(S.fb.run === 0 && !S.fb.pend && S.fb.crys === 0, '输了：没有掉落');
 FL.fbStart(S, 1); const c0 = S.coins; const r = FL.fbWin(S, 1, () => 0.3, 121);
