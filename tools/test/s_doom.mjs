@@ -3,7 +3,7 @@ export { pre } from './vtime.mjs';
 export default async (pg, shot) => {
   const W = ms => pg.waitForTimeout(ms), ev = (f, a) => pg.evaluate(f, a), T = process.env.TAGW || '844', n = +(process.env.STAGE || 3), NM = ['', '屠夫', '毒囊', '落石巨人'][n];
   pg.on('pageerror', e => console.log('PAGEERR', e.message));
-  await ev(n => { const S = __g.S; S.lv.store = Math.max(5, S.lv.store); S.td.scrolls = 99; S.fb.run = 0; S.fb.won = { 1: 1, 2: 1 }; S.fb.pend = null; __g.fbGo(n) }, n);
+  await ev(n => { const S = __g.S; S.lv.store = Math.max(5, S.lv.store); S.td.scrolls = 99; S.fb.tix = 99; S.fb.run = 0; S.fb.won = { 1: 1, 2: 1 }; S.fb.pend = null; __g.fbGo(n) }, n);
   for (let i = 0; i < 120 && !(await ev(() => __g.FBV.active() && __g.FBV.phase() === 'fight')); i++) await W(1000);
   await W(4000); await ev(() => { __vtStart() });
   /* god：截技能时不掉血；灭杀那段不能 god（god 不吃灭杀） */

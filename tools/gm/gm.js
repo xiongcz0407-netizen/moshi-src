@@ -89,6 +89,7 @@ function fields(S) {
   /* 设计 90：副本（存档里有 S.fb 才列） */
   if (S.fb) {
     add('副本', '晶石', ...p(() => S.fb, 'crys'));
+    add('副本', '召唤券', ...p(() => S.fb, 'tix'));   /* 设计 108 */
     for (const n of openLv()) add('副本', `打赢 ${BOSSES[n].name}（第 ${n} 关）`, ...p(() => (S.fb.won = S.fb.won || {}), n));
     for (const k of SKILL_IDS) add('副本', `技能 ${SKILLS[k].name}`, () => (S.fb.sk || {})[k] || 1, v => { (S.fb.sk = S.fb.sk || {})[k] = v }, 1, SKILL_MAX);
   }

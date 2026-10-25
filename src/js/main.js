@@ -395,6 +395,8 @@ const actions = {
   _buyScroll: n => { if (L.buyScroll(S, +n || 1)) { UI.toast(`买了 ${+n || 1} 张尸潮券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   tdGo: lv => tdBegin(+lv),
   needScroll: () => toMerch('scroll'),   // 设计 56：尸潮券不够 → 提示 + 商人头顶闪箭头
+  needTix: () => toMerch('tix'),   // 设计 108：召唤券不够
+  buyTix: n => { const k = +n || 1, c = FL.tixCost(k, UI.mallFar()); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${k} 张召唤券？`, () => { if (FL.buyTix(S, k, UI.mallFar())) { UI.toast(`买了 ${k} 张召唤券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') }) },
   buyLic: () => { if (L.buyLicense(S)) { UI.toast('买到垂钓证了！鱼竿也送你一根', 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   buyBait: a => { const [k, n] = a.split(':'), c = L.baitCost(k, +n, UI.mallFar()); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${n} 个${FISHING.bait[k].name}？`, () => actions._buyBait(a)) },
   _buyBait: a => { const [k, n] = a.split(':'); if (L.buyBait(S, k, +n, UI.mallFar())) { UI.toast(`买了 ${n} 个${FISHING.bait[k].name}`, 'good'); FG.refresh(); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
@@ -822,7 +824,7 @@ function fbLoad(txt, work, fail) {
 }
 function fbGo(n) {
   if (TDR.active()) { UI.toast('尸潮中，打完再来', 'bad'); return }
-  const w = FL.fbCanStart(S, n); if (w) { if (S.td.scrolls < FB.scrolls(n)) toMerch('scroll'); else UI.toast(w, 'bad'); return }
+  const w = FL.fbCanStart(S, n); if (w) { if ((S.fb.tix || 0) < FB.tix) toMerch('tix'); else UI.toast(w, 'bad'); return }
   UI.closePanel();
   /* 主角走进门（门光一亮）→ 读取界面 → 屠夫场地。设计 74：读好、进去了才扣尸潮券（以前先扣券再读，读失败券白扣、S.fb.run 停着）；读失败主角从门里走回门前 */
   fbWalk = { from: P.pos.clone(), to: PORTAL_POS.clone().setZ(PORTAL_POS.z + 0.2), t: 0, dur: 0.85, done: () => fbLoad('正在进入副本…', async () => {
@@ -1334,7 +1336,7 @@ function fishFrame(dt) {
 const whLostG = new Set();   // 设计 41：这 10 分钟里因为仓库满了丢掉的货
 /* 商人：院子里一个（大门北边）、钓鱼区一个（船旁边），点开就是原来的商城页面（钓鱼区的贵 20%）。设计 40：菜单里去掉了商城 */
 let merchFlash = 0;
-const MERCH_TIP = { scroll: '尸潮券不够，去院子商人那里买', crew: '施工队去院子商人那里雇（大门北边）', m16: 'M16 去院子商人那里买（大门北边）', star: '星星兑换在院子商人那里（大门北边）' };
+const MERCH_TIP = { scroll: '尸潮券不够，去院子商人那里买', tix: '召唤券不够，去院子商人那里买', crew: '施工队去院子商人那里雇（大门北边）', m16: 'M16 去院子商人那里买（大门北边）', star: '星星兑换在院子商人那里（大门北边）' };
 function toMerch(a) { UI.closePanel(); UI.toast(MERCH_TIP[a] || '去院子商人那里买（大门北边）', '', 3500); merchFlash = performance.now() + ((window.__g && window.__g.flashMs) || 3000) }   // flashMs：截图测试用（测试机一帧要一秒多）
 
 /* 商人模型（0.15 用户找的：Survivalist，去掉了战术背心那几件，带一段「说话」动作循环）；没读到就用顾客模型 */
@@ -1552,6 +1554,7 @@ function start(S0, isNew) {
   S.drops = [];                                  // 每次进游戏都在超市里；以前掉在废街上的东西不要了
   syncPickups(); custSync(); L.restock(S); SV.saveNow();
   W.setStoreName(S.storeName); L.tdDay(S, bjDay()); L.staffDay(S, bjDay()); 
+  if (S.tixGift) { const tx = `副本改用召唤券了：送你 ${S.tixGift} 张，以后在院子商人那里买（${FB.tixPrice} 末日币一张）。尸潮券还是打尸潮用。`; delete S.tixGift; SV.saveNow(); setTimeout(() => { UI.toast(tx, 'good', 7000); UI.msg(S, tx, 'good') }, 2600) }   // 设计 108
   if (S.hpRefund) { const r = S.hpRefund, tx = `主角血量不用升级了，已退回 末日币 ${r.coins}、工具箱 ${r.toolbox}`; delete S.hpRefund; SV.saveNow(); setTimeout(() => { UI.toast(tx, 'good', 6000); UI.msg(S, tx, 'good') }, 2000) }   // 设计 59
   if (S.fb.run) { const n = S.fb.run; FL.fbLose(S); SV.saveNow(); setTimeout(() => UI.toast(`上次副本第 ${n} 关没打完就离开了，按输算`, '', 5000), 1500) }   // 设计 56
   if (S.fb.pend) setTimeout(() => { if (!UI.panelOpen()) UI.openPanel('fbGot') }, 2500);   // 上次打赢的装备还没收下
