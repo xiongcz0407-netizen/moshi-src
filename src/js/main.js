@@ -9,7 +9,7 @@ import * as SV from './save.js';
 import * as UI from './ui.js';
 import * as CHAT from './chat.js';
 import { setGfxHigh } from './groundfx.js';
-import { createWorld, collide, inYard, STREET, PILE_POS, WS_AREA, REC_POS, START_POS, TRUCK_POS, SPAWN_POS, YARD, GATE, SIDE_GATE, REG_POS, GH_AREA, ORCH_AREA, PLOT_POS, TREE_POS, STORE, AISLE_Z, C_DOOR_OUT, C_DOOR_IN, lineSlot, REG_DIR, CAM_X, CAM_Z, PORTAL_POS, WH_POS, ALARM_POS, DOCK_POS, MERCH_POS, TOWER_SPOTS, DORM_AREA, FIRE_POS, POND_LOT, FISHPOND_SIZE, CAMP_C, GUARD_SPOTS } from './world.js';
+import { createWorld, collide, inYard, STREET, PILE_POS, WS_AREA, REC_POS, START_POS, TRUCK_POS, SPAWN_POS, YARD, GATE, SIDE_GATE, REG_POS, GH_AREA, ORCH_AREA, PLOT_POS, TREE_POS, STORE, AISLE_Z, C_DOOR_OUT, C_DOOR_IN, lineSlot, REG_DIR, CAM_X, CAM_Z, PORTAL_POS, WH_POS, ALARM_POS, DOCK_POS, MERCH_POS, TOWER_SPOTS, DORM_AREA, FIRE_POS, POND_LOT, FISHPOND_SIZE, CAMP_C, GUARD_SPOTS , SMITH_POS } from './world.js';
 import { createFarmView } from './farmview.js';
 import { initInput, moveDir } from './input.js';
 import { addFlat, setFlatZombie } from './flatshadow.js';
@@ -22,12 +22,12 @@ import { HELP } from './help.js';
 import * as LY from './layout.js';
 import { createTD } from './td.js';
 import { createFB, FB_ERR } from './fb.js';
-import { createPortal } from './portal.js';
+import { createPortal, glowTex, glowSprite } from './portal.js';
 import * as FL from './fblogic.js';
-import { FB_PANELS, FB_TITLES } from './fbui.js';
+import { FB_PANELS, FB_TITLES, setSwapFx } from './fbui.js';
 import * as RFX from './refinefx.js';
 import { makeAura, auraTier } from './heroaura.js';   /* 设计 85：角色页人物的套装光效 */   /* 设计 80：炼宝敲打特效 */
-import { FB, CRYSTAL, BOSSES, ITEMS, SKILLS } from './fbcfg.js';
+import { FB, CRYSTAL, BOSSES, ITEMS, SKILLS, LEG_SWAP } from './fbcfg.js';
 import { penFront, PASTURE, PENS } from './ranch.js';
 import { createNav } from './staffnav.js';
 import { createScav, SAFE_R } from './scav.js';
@@ -254,6 +254,7 @@ function handleEvents(ev) {
       if (e.k === 'tower') { const t = S.towers[e.i], nm = t ? TOWERS[t.k].name : ''; if (e.to === 1) { UI.big('塔建好了', nm, 'built'); UI.msg(S, `塔建好了：${nm}（${e.i + 1} 号塔位）`, 'good') } else { UI.big('塔升级完成', `${nm} ${e.to} 级`, 'built'); UI.msg(S, `塔升级完成：${nm} ${e.to} 级`, 'good') } }
       else if (e.k === 'tier') { const sh = S.shelves[e.i]; UI.big('货柜升档', `${FIXTURE[sh.type].tiers[e.to - 1]}（${TIER_NAME[e.to]}）`, 'built'); UI.msg(S, `货柜升档完成：${FIXTURE[sh.type].tiers[e.to - 1]}`, 'good') }
       else { const bt = e.k === 'store' ? '超市升级！' : '建造完成', bs = e.k === 'store' ? `${STORE_LV[e.to].name}（${e.to} 级）${e.to === 3 ? '　工坊开放了' : ''}` : `${b.name} ${e.k === 'bag' ? BAG_SIZES[e.to] : e.to} ${b.unit}`; UI.big(bt, bs, 'built'); UI.msg(S, `${bt}${bs}`, 'good') }
+      if (e.k === 'store' && e.to === FB.store) { const tx = '铁匠来了：炼宝、传说转换找他（传送门旁边）'; setTimeout(() => { UI.toast(tx, 'good', 5000); UI.msg(S, tx, 'good') }, 2200) }   /* 设计 107 */
       if (BUILD[e.k].ws && e.to === 1) { const tx = `${b.name}盖好了！${L.working(S, 'craft').length ? '工匠会来看着' : '在「员工」里给员工换成「工匠」，或者走进工坊自己做'}`; setTimeout(() => { UI.toast(tx, 'good', 4500); UI.msg(S, tx, 'good') }, 1600) }
       if (RANCH[e.k] && e.to === 1) { const tx = `${b.name}盖好了！去院子里的商人那里买${RANCH[e.k].name}${L.working(S, 'feed').length ? '' : '，再在「员工」里派一个人做「饲养」'}，才会产${GOODS[RANCH[e.k].good].name}`; UI.toast(tx, 'good', 6000); UI.msg(S, tx, 'good') }
       if (e.k === 'store') { const nu = GOOD_IDS.filter(g => (GOODS[g].unlock || 1) === e.to && !GOODS[g].ranch).map(g => GOODS[g].name).join('、'), nr = RANCH_IDS.filter(k => BUILD[k].levels[1].store === e.to).map(k => BUILD[k].name).join('、');
@@ -332,19 +333,27 @@ const actions = {
   /* 设计 56：副本、装备 */
   fbGo: n => fbGo(+n),
   fbSkill: k => { if (FL.skillUp(S, k)) { UI.toast(`${SKILLS[k].name}升到 ${S.fb.sk[k]} 级`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
-  fbRefine: id => {   /* 设计 80：结果点下去就算好，再放 2 秒敲打动画（动画放着时不能再炼） */
+  fbRefine: id => {   /* 设计 107：0★ 传说先确认（升星后就不能转换了） */
+    const it = FL.itemById(S, +id); if (it && ITEMS[it.k].q === 'l' && !(it.st > 0) && !RFX.busy()) { UI.ask(`<b>${FL.itemName(it)}</b> 升星后就不能做传说转换了。确定炼宝？`, () => actions._fbRefine(id), '炼宝'); return }
+    actions._fbRefine(id) },
+  _fbRefine: id => {   /* 设计 80：结果点下去就算好，再放 2 秒敲打动画（动画放着时不能再炼） */
     if (RFX.busy()) return; const it0 = FL.itemById(S, +id); if (!it0) return; const from = it0.st || 0, pity0 = it0.pity || 0;
     const r = FL.refine(S, +id); if (!r) return; if (r.why) { UI.toast(r.why, 'bad'); return } SV.saveNow();
-    const box = document.querySelector('#panel .pbox'); if (!box || UI.curPanel() !== 'gear') { UI.refreshPanel(true); return }
+    const RP = ['gear', 'smith'], box = document.querySelector('#panel .pbox'); if (!box || !RP.includes(UI.curPanel())) { UI.refreshPanel(true); return }   /* 设计 107：铁匠面板也放敲打动画 */
     document.querySelectorAll('[data-act="fbRefine"]').forEach(b => { b.disabled = true });
-    RFX.play({ it: it0, ok: r.ok, from, to: from + 1, next: r.ok ? null : FL.refineInfo(it0).rate, starSel: '#panel .refstars i', hold: { id: it0.id, st: from, pity: pity0 }, box, lit: () => { if (UI.curPanel() === 'gear') UI.refreshPanel(true) }, done: () => { if (UI.curPanel() === 'gear') UI.refreshPanel(true) } });
+    RFX.play({ it: it0, ok: r.ok, from, to: from + 1, next: r.ok ? null : FL.refineInfo(it0).rate, starSel: '#panel .refstars i', hold: { id: it0.id, st: from, pity: pity0 }, box, lit: () => { if (RP.includes(UI.curPanel())) UI.refreshPanel(true) }, done: () => { if (RP.includes(UI.curPanel())) UI.refreshPanel(true) } });
     UI.refreshPanel(true) },
   fbEquip: id => { const r = FL.equip(S, +id); if (r === true) { UI.toast('穿上了', 'good'); SV.saveNow(); gotDone() } else if (r) UI.toast(r, 'bad') },
   fbUnequip: sl => { if (FL.unequip(S, sl)) { SV.saveNow() } else UI.toast('背包满了', 'bad') },
   fbDis: id => { const it = FL.itemById(S, +id); if (!it) return; const D = ITEMS[it.k], go = () => { const n = FL.dismantle(S, +id); UI.toast(`分解了，得到 ${n} 颗晶石`, 'good'); UI.gst('gear').sel = null; SV.saveNow(); gotDone() };
     if (D.q === 'n') go(); else UI.ask(`分解<b>${D.name}</b>（${it.st || 0} 星）？得到 ${FL.dismantleGain(it)} 颗晶石，分解了就没了。`, go) },
   fbTake: () => { if (FL.pendTake(S)) { UI.toast('收下了，在「装备」里', 'good'); SV.saveNow(); gotDone() } else UI.toast('背包满了，穿上或者分解', 'bad') },
-  fbToRef: id => { UI.openAt('gear', 'ref', id) },
+  fbToRef: () => toSmith('ref'),   /* 设计 107：炼宝改到铁匠那里 */
+  toSmith: a => toSmith(a),
+  fbLegSwap: id => {   /* 设计 105b / 107：传说转换（确认 → 结果框 + 光效，光效放完前不能再点） */
+    const it = S.fb.bag.find(x => x.id === +id); if (!it) return; const why = FL.legSwapWhy(S, it); if (why) { UI.toast(why, 'bad'); return }
+    UI.ask(`花 <b>${LEG_SWAP}</b> 末日币，把 <b>${FL.itemName(it)}</b> 随机换成同一关的另一种传说？`, () => { const r = FL.legSwap(S, +id); if (!r.ok) { UI.toast(r.why, 'bad'); return }
+      setSwapFx({ id: it.id, from: r.from, to: r.to, lv: it.lv, st: it.st || 0 }); SV.saveNow(); UI.refreshPanel(true); setTimeout(() => { if (UI.curPanel() === 'smith') UI.refreshPanel(true) }, 1700) }, '转换') },
   fbSwap: sl => { const g = UI.gst('gear'); g.tab = 'bag'; g.f = sl; g.sel = null },   // 「换一件」：跳到背包页签，筛好这个部位
   fbFilter: f => { const g = UI.gst('gear'); g.f = f; g.sel = null },
   fbSort: k => { UI.gst('gear').sort = k },
@@ -1357,6 +1366,45 @@ function merchFrame(dt) {
   showBtn('#merchBtn', !!near && !TDR.active() && !(inFish && FG.fishing()), '进商店');   // 0.38：站在钓鱼区里不出「进商店」（跟抛竿按钮叠在一起），往岸上走一步就有
   showBtn('#pondBtn', !inFish && !away() && !near && !TDR.active() && nearPond(1.6), S.lv.pond ? '看池塘' : '看水桶');
 }
+/* ---------- 设计 107：铁匠（超市 5 级才出现，传送门旁边）：待机敲铁砧、偶尔擦汗、玩家走近挥一次手；走近出「找铁匠」→ 铁匠面板（炼宝 | 传说转换） ---------- */
+const SMITH = { scale: 1.83, stallScale: 2.6, stallOff: V(0.78, 0.62), fire: [0.06, 0.36, -0.12], r: 3.4 };   // 铁匠模型高 1.095 → 约 2 米；摊子按铁砧到腰放大
+let smithSrc = null, smithG = null, smithMix = null, smithActs = null, smithObs = null, smithFlash = 0, smithNear = false, smithNext = 12, smithFire = null;
+const smithTop = SMITH_POS.clone().setY(2.6), smithLab = UI.label(() => smithTop);
+const loadSmith = () => Promise.all([loadGLB('models/npc/smith.glb'), loadGLB('models/npc/smith_stall.glb')]).then(([a, b]) => { smithSrc = { a, b } }, e => console.warn('铁匠模型加载失败', e));
+const smithOn = () => !!S && S.lv.store >= FB.store;
+function placeSmith() {
+  const on = smithOn() && smithSrc;
+  if (on && !smithG) {
+    const g = new THREE.Group(); g.position.copy(SMITH_POS);
+    const st = smithSrc.b.scene; st.scale.setScalar(SMITH.stallScale); st.position.set(SMITH.stallOff.x, 0, SMITH.stallOff.z); st.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true } }); g.add(st);
+    const m = smithSrc.a.scene; m.scale.setScalar(SMITH.scale); m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false } }); g.add(m);
+    smithMix = new THREE.AnimationMixer(m); smithActs = {}; for (const c of smithSrc.a.animations) smithActs[c.name] = smithMix.clipAction(c);
+    for (const k of ['wipe', 'wave']) if (smithActs[k]) { smithActs[k].setLoop(THREE.LoopOnce); smithActs[k].clampWhenFinished = false }
+    if (smithActs.idle) smithActs.idle.play();
+    smithMix.addEventListener('finished', () => { if (smithActs.idle) { smithActs.idle.reset().fadeIn(0.25).play() } });
+    /* 炉子的火：两层叠加的光斑，轻轻跳（一张贴图、两个精灵，手机不发烫） */
+    const tx = glowTex().ball, f1 = glowSprite(tx, 0xff8a2a, 0.75), f2 = glowSprite(tx, 0xffd060, 0.6); smithFire = [f1, f2];
+    for (const f of smithFire) { f.position.set(SMITH.stallOff.x + SMITH.fire[0] * SMITH.stallScale, SMITH.fire[1] * SMITH.stallScale, SMITH.stallOff.z + SMITH.fire[2] * SMITH.stallScale); g.add(f) }
+    scene.add(g); addFlat(m); smithG = g;
+    /* 摊子、铁匠的碰撞（出现了才有） */
+    const o = SMITH.stallOff, k = SMITH.stallScale, X = SMITH_POS.x, Z = SMITH_POS.z;
+    smithObs = [{ x0: X + o.x - 0.43 * k, x1: X + o.x + 0.49 * k, z0: Z + o.z - 0.40 * k, z1: Z + o.z + 0.30 * k }, { x0: X - 0.4, x1: X + 0.4, z0: Z - 0.35, z1: Z + 0.35 }];
+    W.obstacles.push(...smithObs);
+  } else if (!on && smithG) { scene.remove(smithG); smithG = null; smithMix = null; for (const b of smithObs || []) { const i = W.obstacles.indexOf(b); if (i >= 0) W.obstacles.splice(i, 1) } smithObs = null }
+}
+function smithPlay(k) { const a = smithActs && smithActs[k]; if (!a || a.isRunning()) return; for (const [n, b] of Object.entries(smithActs)) if (n !== k && b.isRunning()) b.fadeOut(0.25); a.reset().fadeIn(0.25).play() }
+function smithFrame(dt) {
+  placeSmith(); if (!smithG) { showBtn('#smithBtn', false); smithLab.set(''); return }
+  if (!away()) { smithMix.update(dt); const t = clock.elapsedTime;
+    if (smithFire) { smithFire[0].scale.setScalar(0.9 + 0.12 * Math.sin(t * 9) + 0.06 * Math.sin(t * 23)); smithFire[1].scale.setScalar(0.5 + 0.08 * Math.sin(t * 13 + 1)); smithFire[0].material.opacity = 0.6 + 0.15 * Math.sin(t * 7) }
+    smithNext -= dt; if (smithNext <= 0) { smithNext = 15 + Math.random() * 10; if (!smithNear) smithPlay('wipe') } }
+  const d = Math.hypot(P.pos.x - SMITH_POS.x, P.pos.z - SMITH_POS.z), near = !away() && d < SMITH.r;
+  if (near && !smithNear) smithPlay('wave'); if (d > SMITH.r + 1.5) smithNear = false; else if (near) smithNear = true;
+  showBtn('#smithBtn', near && !TDR.active(), '找铁匠');
+  smithLab.set(!away() && performance.now() < smithFlash ? '<div class="marrow"><i></i></div>' : '');
+}
+const SMITH_TIP = { ref: '炼宝找铁匠（传送门旁边）', swap: '传说转换找铁匠（传送门旁边）' };
+function toSmith(a) { UI.closePanel(); UI.toast(SMITH_TIP[a] || SMITH_TIP.ref, '', 3500); smithFlash = performance.now() + ((window.__g && window.__g.flashMs) || 3000) }
 /* ---------- 0.31 神秘商人（设计/16）：有单子时在超市地图里沿固定路线来回走（不去拾荒区）；走近出「神秘商人」按钮；交完货从南边小门离开 ---------- */
 const MYS_ROUTE = [[-10.2, -11.2], [-5.4, -11.8], [-4.9, -16.4], [-7.8, -18.2], [-11.6, -17.6], [-12.8, -13.6]].map(([x, z]) => V(x, z));   // 设计 43：在东北角商人那块空地里绕一圈，走到头再往回走
 const MYS_IN = [[1.2, -1.6], [-3.2, -1.6], [-10.2, -1.6], [-10.2, -7]].map(([x, z]) => V(x, z));   // 设计 43：从大门进来，往西走到两座炮台中间，再往北到空地（从马路上来、回马路上去）
@@ -1480,6 +1528,7 @@ $('#upWin').addEventListener('click', e => { const b = e.target.closest('[data-u
 $('#boatBtn').onclick = () => boatGo();
 $('#fishBtn').onclick = () => {};
 $('#merchBtn').onclick = () => UI.openMall(inFish);
+{ const b = $('#merchBtn').cloneNode(); b.id = 'smithBtn'; b.textContent = '找铁匠'; $('#merchBtn').after(b); b.onclick = () => { const g = UI.gst('smith'); g.sel = null; UI.openPanel('smith') } }   /* 设计 107 */
 $('#pondBtn').onclick = () => UI.openPanel('pond');
 
 /* ---------- 开始游戏 ---------- */
@@ -1733,7 +1782,7 @@ function loop(now) {
   if (inScav) { SC.update(map, P.pos, dt); updSurvivor(dt) }
   if (inFish) fishFrame(dt);
   else { const nd = Math.hypot(P.pos.x - DOCK_POS.x, P.pos.z - DOCK_POS.z) < 2.2; showBtn('#boatBtn', home && nd && !tdOn, AD.packPct('fish') < 100 ? `资源下载中 ${AD.packPct('fish')}%` : '坐船去钓鱼'); showBtn('#fishBtn', false) }
-  merchFrame(dt); mysFrame(dt);
+  merchFrame(dt); smithFrame(dt); mysFrame(dt);
   /* 设计 56 传送门：画面外不转；门前 2 米出按钮（没到 5 级灰色写「超市 5 级解锁」，尸潮中写「尸潮中，打完再来」） */
   portal.update(dt, camera);
   { const nearP = home && !fbWalk && Math.hypot(P.pos.x - PORTAL_FRONT.x, P.pos.z - PORTAL_FRONT.z) < 2, lock = S.lv.store < FB.store, tdN = TDR.active();
@@ -1866,6 +1915,7 @@ if (/[?&]debug/.test(location.search)) window.__g = { RFX, topShot: (x0, x1, z0,
     const cv = document.createElement('canvas'); cv.width = cv.height = size; const g2 = cv.getContext('2d'), im = g2.createImageData(size, size); for (let r = 0; r < size; r++) im.data.set(px.subarray((size - 1 - r) * size * 4, (size - r) * size * 4), r * size * 4); g2.putImageData(im, 0, 0); return cv.toDataURL('image/png') },
   perf: () => perfStats(), shCache, fbShadow: () => { if (SSH) { if (shCache.frame(FBV.scene(), performance.now(), false)) PERF_X.shNow = 1 } else renderer.shadowMap.needsUpdate = true }, get cur() { return cur }, faceTo: (x, z) => { player.rotation.y = Math.atan2(x - P.pos.x, z - P.pos.z) }, popT: () => popTargets().map(t => [t.key, +rectDist(t.st, P.pos).toFixed(2), t.st]), popBlock, get loadStat() { return LOADSTAT }, syncBlobs, tdSim: (lv, n = 1000) => { const c = { p: 0, l: 0 }; for (let i = 0; i < n; i++) { const q = L.tdStaffRoll(lv, Math.random()); if (q) c[q]++ } return { lv, n, ...c, odds: L.tdStaffOdds(lv) } }, CHAT, mkHuman, animH, setLook, LOOK, get mysM() { return mysM }, COL: collide, muzzle: () => tdGun && (player.updateMatrixWorld(true), tdGun.localToWorld(M16_TIP.clone())), GUN_POSE, holdGun, heroView, aimArms, get tdGun() { return tdGun }, get S() { return S }, prop, PILE_POS, repile: () => { pileKey = '' }, portraits: () => portraits(renderer), PORTRAIT, get map() { return map }, get resc() { return resc }, staffVis, UI, get inScav() { return inScav }, get inFish() { return inFish }, msgPoll, get msgPolled() { return msgPolled }, get soldOut() { return [...soldOut] }, get clock() { return clock }, goFish, boatGo, FI, FG, goScav, SC, W, P, LY, TDR, tdBegin, camera, zs: zombies, camOff, ZP: ZOMBIE_POSE, get player() { return player }, THREE, L, FBV, FL, fbGo, fbLeave, portal, PORTAL_FRONT, get fbWalk() { return fbWalk }, tick: s => handleEvents(L.tick(S, s, true)), go: (x, z) => P.pos.set(x, 0, z), settle, speed: k => { dbgSpeed = k }, look: (x, z) => { camLock = x == null ? null : new THREE.Vector3(x, 0, z) },
   showBoxes: () => { const pts = []; const y = 0.3; for (const b of [...W.obstacles, ...shelfBoxes()]) { let c; if (b.hw !== undefined) { c = [[-b.hw, -b.hd], [b.hw, -b.hd], [b.hw, b.hd], [-b.hw, b.hd]].map(([lx, lz]) => [b.cx + lx * b.c + lz * b.s, b.cz - lx * b.s + lz * b.c]) } else c = [[b.x0, b.z0], [b.x1, b.z0], [b.x1, b.z1], [b.x0, b.z1]]; for (let i = 0; i < 4; i++) { const [a1, a2] = c[i], [b1, b2] = c[(i + 1) % 4]; pts.push(a1, y, a2, b1, y, b2) } } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xff0000, depthTest: false })); m.renderOrder = 99; scene.add(m); return W.obstacles.length },
+  get smithG() { return smithG }, get smithActs() { return smithActs }, SMITH_POS, toSmith,   /* 设计 107 测试用 */
   custDemo: () => { for (let i = 0; i < 8; i++) { const m = mkHuman('cust', i, {}); m.position.set(-9 + i * 1.3, 0, 1.5); scene.add(m) } return 8 } };
 
 /* ---------- 预热：游戏里才会出现的东西（拾荒区、员工、塔、帐篷、地上的物资）在加载页先画一遍，
@@ -1935,6 +1985,7 @@ function preloadImgs(list, onEach) { return Promise.all(list.map(src => new Prom
   AD.ensurePack('td').finally(startLazy);   // 设计 38：尸潮特效图（设计 75：先把尸潮包下进库里，再读）
   packsTick(); setInterval(packsTick, 60000);   /* 设计 75：其他包在后台下（下好了就不再下） */
   /* 设计 38：商人模型（0.5 MB）进游戏以后再读，读好了把先顶着的顾客模型换掉 */
+  loadSmith();   /* 设计 107：铁匠（0.5 MB）也是进游戏以后读，读好了超市 5 级才摆出来 */
   loadMerchant().then(() => { if (!merchSrc) return; if (yMerch) { scene.remove(yMerch); yMerch = null } if (fMerch) { FI.scene.remove(fMerch); fMerch = null } });
   loadLateProps(() => { W.refreshUser(); fixShown = '' }).then(() => preloadImgs(iconImgs, () => {})).then(() => { const n = netStat(); PERF_LOAD.txt += `<br>后台又下了 <b>${(n.mb - LOADSTAT.mb).toFixed(1)}</b> MB，全部读完 <b>${(performance.now() / 1000).toFixed(0)}</b> 秒`; LOADSTAT.all = performance.now() / 1000; LOADSTAT.allMb = n.mb });   // V1.01 工坊机器、塔、加工品在后台读；设计 38：然后读物品图标
 })();

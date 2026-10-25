@@ -92,7 +92,7 @@ export const FB_PANELS = {
     const full = FL.bagFull(S);
     const tabs = roleTabs(S, true), g = gst('gear'); if (!tabs.find(t => t.id === g.tab) || g.tab[0] === '@') g.tab = 'eq';   /* 设计 76：前面多一个「主角」页签（回角色面板） */
     const res = resChip(crysIc, S.fb.crys) + resChip('<i class="ico-coin"></i>', Math.floor(S.coins));
-    const help = `<b>装备</b><p>5 个部位：武器、头盔、护甲、手套、鞋子。品质：普通（灰）、史诗（紫）、套装（红）、传说（橙），属性固定。装备只在副本里有用。</p><p>背包最多 ${FB.bag} 件：比身上好的角上有绿色 ↑，新得到的有红点。不要的分解成晶石（普通 1 颗、史诗 3 颗、套装和传说 6 颗，再退一半炼进去的晶石）。</p><p>炼宝：用晶石升星，每星所有数值 +10%。普通最高 6 星、史诗 9 星、套装和传说 12 星。失败不掉星；4～8 星每失败一次下次 +5%（保底），9 星以上看运气。</p><p>晶石：副本打赢给，院子商人补给页买，或者星星兑换（1 星 = ${CRYSTAL.perStar} 颗）。</p><p>技能：花末日币升级，最高 ${SKILL_MAX} 级。</p>`;
+    const help = `<b>装备</b><p>5 个部位：武器、头盔、护甲、手套、鞋子。品质：普通（灰）、史诗（紫）、套装（红）、传说（橙），属性固定。装备只在副本里有用。</p><p>背包最多 ${FB.bag} 件：比身上好的角上有绿色 ↑，新得到的有红点。不要的分解成晶石（普通 1 颗、史诗 3 颗、套装和传说 6 颗，再退一半炼进去的晶石）。</p><p>炼宝：找铁匠（传送门旁边），用晶石升星，每星所有数值 +10%。普通最高 6 星、史诗 9 星、套装和传说 12 星。失败不掉星；4～8 星每失败一次下次 +5%（保底），9 星以上看运气。传说没升过星时，可以在铁匠那里转换成同一关的另一种传说。</p><p>晶石：副本打赢给，院子商人补给页买，或者星星兑换（1 星 = ${CRYSTAL.perStar} 颗）。</p><p>技能：花末日币升级，最高 ${SKILL_MAX} 级。</p>`;
     const gs = FL.gearStats(S);
     /* 一件装备的详情；cmp：跟身上那件逐条比（多的绿、少的红） */
     const itemDetail = (it, worn) => {
@@ -114,7 +114,7 @@ export const FB_PANELS = {
         <div class="drow"><span>物品等级</span><b>Lv${lvOf(it)}　${it.st || 0}★</b></div>${!worn ? '<div class="dsub">属性（右边小字：换上以后整身变化，含套装）</div>' : ''}${rows}${setChg}
         ${D.fx ? `<div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div>` : ''}${setP}
         ${!worn ? `<div class="dsub">${cur ? `身上：${iname(cur)} Lv${lvOf(cur)} ${cur.st || 0}★　<span class="${up ? 'good' : upAt ? 'gold' : 'warn'}">${up ? '↑ 这件更好' : upAt ? '⇡ 炼了更好' : '身上的更好'}</span>` : `身上${SLOT_NAME[D.slot]}还空着`}</div>${same}` : ''}
-        <div class="btns">${worn ? `<button class="btn" data-act="fbSwap" data-arg="${D.slot}">换一件</button>` : `<button class="btn" data-act="fbEquip" data-arg="${it.id}">穿上</button><button class="btn ghost" data-act="fbDis" data-arg="${it.id}">分解（${crysIc}${FL.dismantleGain(it)}）</button>`}<button class="btn ghost" data-act="fbToRef" data-arg="${it.id}">去炼宝</button></div>` };
+        <div class="btns">${worn ? `<button class="btn" data-act="fbSwap" data-arg="${D.slot}">换一件</button>` : `<button class="btn" data-act="fbEquip" data-arg="${it.id}">穿上</button><button class="btn ghost" data-act="fbDis" data-arg="${it.id}">分解（${crysIc}${FL.dismantleGain(it)}）</button>`}<button class="btn ghost" data-act="toSmith" data-arg="ref">去铁匠那里炼宝</button>${!worn && D.q === 'l' && S.fb.bag.includes(it) ? '<button class="btn ghost" data-act="toSmith" data-arg="swap">去铁匠那里转换</button>' : ''}</div>` };
     if (g.tab === 'sk') {
       const cells = SKILL_IDS.map(k => ({ id: k, cls: 'skcell', html: `<img class="skic" src="${A('img/fb/btn_' + k + '.png')}" alt=""><b>${SKILLS[k].name}</b><small>${S.fb.sk[k]} 级</small>` }));
       const detail = id => { const K = SKILLS[id], lv = S.fb.sk[id], nx = lv + 1, c = skillCost(nx);
@@ -124,7 +124,7 @@ export const FB_PANELS = {
       if (g.sel == null) g.sel = 'focus';
       return frame('gear', { tabs, cols: 3, rows: 1, cells, detail, dw: 280, res, help });
     }
-    if (g.tab === 'ref') return refView(S, 'gear', { tabs, res, help });   /* 设计 105b：跟铁匠面板共用 */
+    if (g.tab === 'ref') g.tab = 'eq';   /* 设计 107：角色页没有炼宝页签了（老的跳转到这里的，改看装备） */
     if (g.tab === 'bag') {
       const f = g.f || 'all', sort = g.sort || 'q';
       let list = S.fb.bag.filter(it => f === 'all' || ITEMS[it.k].slot === f);
