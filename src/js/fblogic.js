@@ -41,7 +41,7 @@ export function gearStats(S) {
   if (sets.s1 >= 2) t.hpPct += 15; if (sets.s2 >= 2) t.boss += 15;
   if (sets.s1 >= 4) { t.all += SETS.s1.four4; t.dr += 10 } if (sets.s2 >= 4) { t.cdmg += 50; t.all += SETS.s2.four4 }
   if (sets.s1 >= 5) t.all += SETS.s1.five5; if (sets.s2 >= 5) t.all += SETS.s2.five5;   // 设计 59：5 件套「全部伤害 +10%」
-  if (legs.includes('l1')) t.leech += 5;
+  if (legs.includes('l1')) t.leech += 2;   // 设计 101：獠牙自带吸血 5% → 2%
   for (const [k, d] of Object.entries(STAT)) if (d.cap) t[k] = Math.min(d.cap, t[k]);
   t.sets = sets; t.legs = legs; return t;
 }

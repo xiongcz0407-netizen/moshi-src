@@ -36,7 +36,9 @@ const CFG = {
   chargeLen: 15, chargeW: 2.6, chargeSpd: 11, slamR: 5.6, summonR: 1.4, burstK: 0.6,
   mobHp: 0.02, mobSpd: 2.3, mobHit: 0.04, mobR: 0.45,
   skillGap: 8.5, firstSkill: 5, summonCd: 30, order: ['charge', 'slam', 'summon', 'slam', 'charge', 'summon'],
-  regenDelay: 3, regen: 0.02, bulletSpd: 42, burst: 3, burstGap: 0.07,
+  regenDelay: 5, regen: 0.01,   /* 设计 101：5 秒没挨打才回血、每秒 1%（原来 3 秒、2%） */
+  s1cd: 15,                     /* 设计 101 补充：拾荒者 4 件「挨打后 3 秒回 10%」的冷却 */
+  bulletSpd: 42, burst: 3, burstGap: 0.07,
 };
 export { CFG as FB_CFG };
 /* 设计 81：毒囊的数（招式表见设计81 第 5 节）。普通技能 = BOSSES[2].dmg（205），大招 = ult（340） */
@@ -107,7 +109,7 @@ export function createFight(n, hero, opt = {}) {
   const st = {
     n, t: 0, clk: 0, locked: SG.lockZ == null, lockZ: SG.lockZ ?? null, over: 0, win: false, rage: false, ev: [], warns: [], mobs: [], shots: [], nades: [], nid: 1, pools: [], zones: [], hazards: [], moveK: 1, half: false, shrink: 0, bossR: BR, hitY: SG.hitY,
     boss: { x: ARENA.boss.x, z: ARENA.boss.z, yaw: 0, look: null, hp: B.hp, max: B.hp, act: 'wait', at: 0, anim: 'idle', ts: 1, animId: 0, cast: null, stun: 0, slow: 0, swingCd: 3, skillT: CFG.firstSkill, summonT: 0, oi: 0, bleed: 0, bleedDps: 0, dead: false, interruptible: false },
-    player: { x: ARENA.start.x, z: ARENA.start.z, yaw: Math.PI, hp: hero.hp, max: hero.hp, inv: 0, hurtT: 99, roll: null, cd: { focus: 0, roll: 0, stun: 0, nade: 0 }, charges: SKILLS.roll.charges(hero.sk.roll), focus: 0, focusT: 0, shotT: 0, aim: null, regen10: 0, firing: false, target: null, dead: false },
+    player: { x: ARENA.start.x, z: ARENA.start.z, yaw: Math.PI, hp: hero.hp, max: hero.hp, inv: 0, hurtT: 99, roll: null, cd: { focus: 0, roll: 0, stun: 0, nade: 0 }, charges: SKILLS.roll.charges(hero.sk.roll), focus: 0, focusT: 0, shotT: 0, aim: null, regen10: 0, s1cd: 0, firing: false, target: null, dead: false },
     stats: { shots: 0, dmg: 0, taken: 0, hits: 0, casts: {}, interrupts: 0, mobsKilled: 0 },
     hero,
   };
@@ -156,7 +158,7 @@ export function createFight(n, hero, opt = {}) {
   function hurtPlayer(d, src) {
     if (P.dead || P.inv > 0 || P.god || st.over) return 0;   // 设计 61：P.god 只给截图、测试用（不显示、正式版不会设）
     const a = Math.round(d * (1 - Math.min(0.9, hero.dr + (P.heartT > 0 ? 0.3 : 0)))); P.hp -= a; P.hurtT = 0; st.stats.taken += a; E('pdmg', { a, src });
-    if (hero.s1four) P.regen10 = 3;
+    if (hero.s1four && !(P.s1cd > 0)) { P.regen10 = 3; P.s1cd = CFG.s1cd }   // 设计 101：拾荒者 4 件每 15 秒最多触发一次（原来每挨一下都重新触发）
     if (hero.heart && !P.heartUsed && P.hp > 0 && P.hp < P.max * 0.3) { P.heartUsed = true; P.heartT = 5; E('heart') }   // 不眠之心
     if (P.hp <= 0) { P.hp = 0; P.dead = true; end(false) }
     return a;
@@ -480,7 +482,8 @@ export function createFight(n, hero, opt = {}) {
     if (P.burst) { P.burst.t -= dt; while (P.burst && P.burst.t <= 0) { const b = P.burst; if ((b.tg === Bo ? !Bo.dead : !b.tg.dead)) shoot(b.tg, 1, 'gun'); b.n--; b.t += CFG.burstGap; if (b.n <= 0) P.burst = null } }
     if (P.focus > 0) { P.focusT -= dt; while (P.focus > 0 && P.focusT <= 0) { if (!Bo.dead) shoot(Bo, SKILLS.focus.mult(sk('focus')), 'focus'); P.focus--; P.focusT += 0.08 } }
     for (const b of st.shots) { b.t -= dt; if (b.t <= 0) hitEnemy(b.tg, b.dmg, b.crit, b.kind) } st.shots = st.shots.filter(b => b.t > 0);
-    /* 回血：离开战斗 3 秒后慢慢回；拾荒者 4 件：挨打后 3 秒内回 10% */
+    /* 回血：5 秒没挨打后慢慢回（设计 101）；拾荒者 4 件：挨打后 3 秒内回 10%，每 15 秒一次 */
+    if (P.s1cd > 0) P.s1cd -= dt;
     if (P.hurtT > CFG.regenDelay) P.hp = Math.min(P.max, P.hp + P.max * CFG.regen * dt);
     if (P.regen10 > 0) { P.regen10 -= dt; P.hp = Math.min(P.max, P.hp + P.max * 0.1 / 3 * dt) }
     bossStep(dt); mobStep(dt);

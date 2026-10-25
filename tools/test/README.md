@@ -8,6 +8,7 @@
 | `fbtest.mjs` | 副本存档逻辑 42 项：解锁、扣卷、第一次保底、**掉率（设计 98：66 / 25 / 3 / 6）**、背包满、炼宝、技能、晶石…… | `node tools/test/fbtest.mjs` |
 | `fblogtest.mjs` | 掉落记录 8 项（设计 90 / 94） | `node tools/test/fblogtest.mjs` |
 | `spitdodge.mjs` | 毒囊酸液喷吐在锁定区域 40 个位置躲不躲得开（设计 95） | `node tools/test/spitdodge.mjs` |
+| `tank.mjs` | 设计 101：「站着不躲」机器人（走到 BOSS 前 6 米一直开枪，不躲不滚），5 套装备 × 两关，报输赢、最低血、吸血 / 自动回血 / 拾荒者 4 件各回多少 | `node tools/test/tank.mjs 30`（`GEAR=xiongL STAGE=2` 只跑一种） |
 | `../fbsim.mjs` | 副本整局模拟：通关时间、挨打次数和伤害、毒池占场地、技能间隔 | `STAGE=2 GEARSET=e3x2 node tools/fbsim.mjs 60` |
 | lint | 见 `tools/lint/README.txt` | |
 
@@ -29,6 +30,7 @@
 | `s_tox_spawn.mjs` | 设计 99：毒囊关从铁桥出生，走到封线，锁死（三张截图；镜头每帧挪多少；BOSS 有没有提前放技能） |
 | `s_tox_face.mjs` | 设计 95：锁定区域里毒囊的头顶、下巴、胸口在屏幕上的位置。`SCAN=1` 扫整个区域，`POOL=1` 截毒池最多时 |
 | `s_keys.mjs` | 设计 96：主角在角落时会不会被技能按钮盖住。`STG=1` 屠夫关，`STG=2` 毒囊关 |
+| `s_leech.mjs` | 设计 101：穿上獠牙、钢指手套，截装备详情里的吸血 | |
 | `s_fb_misc.mjs` | 设计 97：`FT=1` 查副本里超市飘字有没有拦住；不给 `FT` 就截屠夫关南墙变半透明 |
 
 - 截图放 `O` 指定的目录，交结果时放进 `美术/检查截图/<日期>_设计XX/`。
