@@ -28,6 +28,11 @@ export const STAGES = {
   3: { arena: { x0: -6.8, x1: 6.8, z0: -13, z1: 19, start: { x: 0, z: 17.2 }, boss: { x: 0, z: -9 } }, bossR: 1.9, hitY: 2.6,
     covers: [{ k: 'cart', x: -4.3, z: 3.2, hx: 1.2, hz: 0.9 }, { k: 'blocks', x: 3.9, z: -2.4, hx: 0.95, hz: 1.0 }, { k: 'frame', x: 4.2, z: 8.6, hx: 1.0, hz: 0.8 }, { k: 'fallen', x: -3.7, z: -5.6, hx: 0.75, hz: 0.85 }],
     walk: { stuck: 2, stuckGain: 1, replan: 0.3, replanMove: 1 } },
+  /* 设计 114：第 4 关尖啸者 · 废弃广播电台楼顶。宽 14、长 32；南边楼梯间小屋（门朝北，主角从门里出来），北边带信号塔的小屋。
+     BOSS 远程、到处闪现、不追人，不锁战斗区。4 个掩体（空调外机、弯管道、圆水箱、配电箱）分散在中段；4 根立杆喇叭在四角（不挡人、不挡子弹，能打坏） */
+  4: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 0.9, hitY: 2.2,
+    covers: [{ k: 'ac', x: -4.0, z: 5.0, hx: 0.86, hz: 0.44 }, { k: 'pipe', x: 3.7, z: -1.8, hx: 0.84, hz: 0.47 }, { k: 'tank', x: -3.6, z: -5.2, hx: 0.68, hz: 0.91 }, { k: 'box', x: 3.9, z: 8.2, hx: 0.64, hz: 0.53 }],   /* 114B 的模型按 4.8 倍缩（空调 1.3 米高、水箱 1.9 米高），挡的框跟模型一样大 */
+    speakers: [{ x: -6.3, z: -12.3 }, { x: 6.3, z: -12.3 }, { x: 6.3, z: 18.3 }, { x: -6.3, z: 18.3 }] },   /* 顺时针（从上往下看）：西北 → 东北 → 东南 → 西南 */
 };
 export let ARENA = null, COVERS = null;
 export function setStage(n) {
@@ -85,6 +90,27 @@ export const ROCK_NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩
 export const TOX_ANIM = { idle: { T: 3.0, loop: 1 }, spit: { T: 1.5, hit: 0.8 }, bolt_wind: { T: 0.6 }, bolt_spit: { T: 0.45, hit: 0.12 }, burst: { T: 2.1, hit: 1.15 },
   slam_l: { T: 2.6, hit: 1.5 }, slam_r: { T: 2.6, hit: 1.5 }, surge: { T: 2.8, hit: 2.0 }, hit: { T: 0.4 }, enrage: { T: 2.0 }, die: { T: 3.0, hit: 2.2 } };
 export const TOX_NAME = { spit: '酸液喷吐', bolt: '毒弹', burst: '毒囊爆裂', slam: '拍地', surge: '毒雾上涌' };
+/* 设计 114：尖啸者（第 4 关）的数。普通技能 = BOSSES[4].dmg（380），大招 = ult（640）。招式表见设计114 第 4 节。
+   不要动的手感数：错乱 2 秒（confT）、喷射预警 0.55 秒（pushWarn）、落点黑影 0.3 秒（shadowT） */
+export const SCREAM_K = 3.4;   // BOSS 高约 3.4 米（主角 1.8 倍）：模型按包围盒高度缩到这么高
+export const SCREAM_CFG = {
+  far: [7, 11], walk: 1.0, near: 4,
+  boltW: 1, boltWarn: 0.7, boltFly: 0.3, boltK: 0.5, bolt3K: 0.4, bolt3A: 20 * Math.PI / 180, boltGap: 1.6, boltGapRage: 1.12, boltGuard: 1.0,
+  blinkEvery: [4, 6], blinkEveryRage: [2.5, 3.5], blinkB: 0.4, blinkBRage: 0.5, vanishT: 0.25, shadowT: 0.3, appearT: 0.3, blinkA: [6, 10], blinkCd: 1.0,
+  pushR: 4, pushA: 70 * Math.PI / 180, pushWarn: 0.55, pushK: 1.1, pushGap: 2,
+  ringCast: 1.0, ringN: 3, ringGap: 0.6, ringSpd: 7, ringW: 0.9, ringHole: 50 * Math.PI / 180, ringHoleRage: 35 * Math.PI / 180, ringK: 1.1,
+  hornWarn: 1.4, hornR: 11, hornA: 60 * Math.PI / 180, hornK: 1.2, hornPush: 3, hornWallK: 0.3,
+  flockWarn: 1.3, flockW: 4, flockK: 1.0, crowN: 3, crowHp: 0.004, crowDps: 0.08, crowR: 1.0, crowSpd: 3.2,
+  shriekWarn: 1.5, shriek: 90, confT: 2, confImm: 2,   /* 必吃伤害（躲不掉），fbsim 定；错乱结束后 2 秒内不再错乱 */
+  bombCast: 2.0, bombGap: 0.8, bombWarn: 1.0, bombRingK: 0.6, towerY: 4, tower: { x: 0, z: -14.2 },
+  spkHp: 0.02, rageK: 1.25,
+  calm: 1.8, first: 3, gap: 6, gapRage: 5,
+  order: ['rings', 'flock', 'horn', 'shriek', 'rings', 'horn', 'bomb', 'flock'],
+};
+/* 尖啸者动作的时间（screamer.glb，114B 的 tools/scream_rig 导出；hit = 出手 / 推到最前 / 叫到最响那一刻）。名字照设计114 第 2 节 */
+export const SCREAM_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.2, loop: 1, speed: 0.119 }, throw: { T: 0.9, hit: 0.5 }, push: { T: 0.8, hit: 0.45 }, spread: { T: 1.4, hit: 1.0 },
+  scream: { T: 1.6, hit: 1.2 }, horn: { T: 1.4, hit: 1.2 }, vanish: { T: 0.25 }, appear: { T: 0.3 }, rage: { T: 1.8 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.0, hit: 1.55 } };   /* walk.speed：114B 给的 0.134 模型单位 / 秒 × 缩放（3.4 / 1.13）÷ SCREAM_K */
+export const SCREAM_NAME = { bolt: '鸦弹', push: '鸦群喷射', rings: '声波三环', horn: '喇叭音爆', flock: '乌鸦群', shriek: '刺耳尖叫（全场）', bomb: '广播轰炸（大招）' };
 const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angD = (a, b) => { let d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)) };
 /* 线段 p→q 有没有穿过掩体；返回第一个碰到的点的比例（0～1），没碰到返回 null */
@@ -131,12 +157,13 @@ export function inWarn(w, x, z, r = 0.35) {
   if (w.type === 'cells') return w.cells.some(c => Math.abs(x - c.x) < w.s / 2 + r * 0.5 && Math.abs(z - c.z) < w.s / 2 + r * 0.5);   // 设计 102：石柱阵棋盘格
   if (w.type === 'segs') return w.segs.some(g => segDist(x, z, g) < w.w / 2 + r);   // 设计 102：地裂（Y 字）
   if (w.type === 'lanes') return w.xs.some(lx => Math.abs(x - lx) < w.w / 2 + r);   // 设计 102：滚石铁轨（整条）
+  if (w.type === 'ring') { const d = hyp(dx, dz); if (Math.abs(d - w.r) > w.w / 2 + r) return false; return !(w.hole > 0 && Math.abs(angD(Math.atan2(dx, dz), w.ga)) < w.hole / 2 - Math.atan2(r, Math.max(d, 0.5))) }   // 设计 114：声波圆环（带缺口）
   if (w.type === 'field') return x > w.x0 - r && x < w.x1 + r && z > w.z0 - r && z < w.z1 + r && !w.sh.some(q => x > q.x0 + 0.25 && x < q.x1 - 0.25 && z > q.z0 + 0.1 && z < q.z1 - 0.25);   // 设计 110：全场滚石——整片危险，掩体南边的影子安全
   return false;
 }
 
 export function createFight(n, hero, opt = {}) {
-  const SG = setStage(n), BR = SG.bossR, TOX = n === 2, ROCK = n === 3;   /* 设计 81：第 2 关毒囊（不走动，在北边崖下） */
+  const SG = setStage(n), BR = SG.bossR, TOX = n === 2, ROCK = n === 3, SCR = n === 4;   /* 设计 114：第 4 关尖啸者 */   /* 设计 81：第 2 关毒囊（不走动，在北边崖下） */
   const B = BOSSES[n], rnd = opt.rng || Math.random, warnT = FB.warn(n);
   const st = {
     n, t: 0, clk: 0, locked: SG.lockZ == null, lockZ: SG.lockZ ?? null, over: 0, win: false, rage: false, ev: [], warns: [], mobs: [], shots: [], nades: [], nid: 1, pools: [], zones: [], hazards: [], moveK: 1, half: false, shrink: 0, bossR: BR, hitY: SG.hitY,
@@ -146,7 +173,7 @@ export function createFight(n, hero, opt = {}) {
     hero,
   };
   const E = (e, o = {}) => st.ev.push({ e, ...o });
-  const bossDmg = ult => ult ? B.ult : B.dmg;   /* 设计 106：狂暴不再加伤害（改成灭杀） */
+  const bossDmg = ult => (ult ? B.ult : B.dmg) * (SCR && st.half ? SCREAM_CFG.rageK : 1);   /* 设计 106：狂暴不再加伤害（改成灭杀）。设计 114：尖啸者半血嗜血 ×1.25 */
   const wdur = base => base;
   const setAnim = (a, ts = 1) => { const b = st.boss; b.anim = a; b.ts = ts; b.animId++; E('anim', { a, ts }) };
   const sk = k => hero.sk[k] || 1;
@@ -154,6 +181,9 @@ export function createFight(n, hero, opt = {}) {
   const P = st.player, Bo = st.boss;
   if (TOX) { Bo.act = 'idle'; Bo.skillT = TOX_CFG.first; Bo.look = 'p' }
   if (ROCK) { Bo.act = 'wait'; Bo.skillT = ROCK_CFG.first; Bo.look = 'p'; Bo.basicCd = 1.5; st.balls = []; st.rifts = []; st.rain = null; st.coverVer = 0 }
+  if (SCR) { const SC0 = SCREAM_CFG; Bo.act = 'wait'; Bo.skillT = SC0.first; Bo.look = 'p'; Bo.basicCd = 1.2; Bo.blinkT = SC0.blinkEvery[0]; Bo.blinkCd = 0; Bo.y = 0; Bo.hidden = false; st.rings = []; st.bombQ = [];
+    st.speakers = SG.speakers.map((q, i) => ({ id: 'spk' + i, i, spk: true, x: q.x, z: q.z, yaw: Math.atan2(-q.x, (ARENA.z0 + ARENA.z1) / 2 - q.z), hp: B.hp * SC0.spkHp, max: B.hp * SC0.spkHp, dead: false }));
+    Object.assign(st.stats, { conf: 0, pushHit: 0, hornHit: 0, spkKill: 0, blinkA: 0, blinkB: 0 }) }
   /* ---------- 设计 83：会走动的 BOSS 找路、卡住换招（通用：这一关配置里有 walk 就用） ---------- */
   const WK = SG.walk || null; let NG = null;
   const navGrid = () => { const k = `${ARENA.x0},${ARENA.x1},${st.coverVer || 0}`; if (!NG || NG.k2 !== k) { NG = makeGrid(ARENA, COVERS, CFG.coverR); NG.k2 = k } return NG };
@@ -199,6 +229,7 @@ export function createFight(n, hero, opt = {}) {
   function hitEnemy(tg, dmg, crit, kind) {
     if (tg === Bo) { if (Bo.dead) return; if (st.rage) { if (!(st.immT > 0)) { st.immT = 1; E('immune') } return }   /* 设计 106b：灭杀一开始 BOSS 无敌，不掉血（「免疫」字 1 秒最多一次） */ if (Bo.armorT > 0) dmg *= ROCK_CFG.armor; Bo.hp -= dmg; st.stats.dmg += dmg; if (hero.bleed) { Bo.bleed = 3; Bo.bleedDps = Math.max(Bo.bleedDps, dmg * 0.1) } if (hero.slow) Bo.slowHit = 1.5;
       E('hit', { who: 'boss', a: Math.round(dmg), crit, kind }); if (Bo.hp <= 0) { Bo.hp = 0; bossDie() } }
+    else if (tg.spk) { if (tg.dead) return; tg.hp -= dmg; E('hit', { who: 'spk', m: tg, a: Math.round(dmg), crit }); if (tg.hp <= 0) { tg.hp = 0; tg.dead = true; st.stats.spkKill++; E('spkDie', { s: tg }) } }   /* 设计 114：喇叭 */
     else { if (tg.dead) return; tg.hp -= dmg; E('hit', { who: 'mob', m: tg, a: Math.round(dmg), crit }); if (tg.hp <= 0) { tg.dead = true; tg.deadT = 0; st.stats.mobsKilled++; E('mobDie', { m: tg }) } }
     if (hero.leech) { P.hp = Math.min(P.max, P.hp + dmg * hero.leech) }
   }
@@ -209,7 +240,7 @@ export function createFight(n, hero, opt = {}) {
     return b.yaw;
   }
   function bossDie() {
-    Bo.dead = true; Bo.cast = null; st.warns.length = 0; Bo.act = 'dead'; if (!TOX) Bo.yaw = fallYaw(Bo); Bo.look = null; setAnim('die');
+    Bo.dead = true; Bo.cast = null; st.warns.length = 0; Bo.act = 'dead'; if (SCR) { Bo.hidden = false; Bo.y = 0; Bo.onTower = false; st.rings.length = 0; st.bombQ.length = 0 } if (!TOX) Bo.yaw = fallYaw(Bo); Bo.look = null; setAnim('die');
     for (const m of st.mobs) if (!m.dead) { m.dead = true; m.deadT = 0; E('mobDie', { m }) }
     E('bossDie'); end(true);
   }
@@ -218,7 +249,7 @@ export function createFight(n, hero, opt = {}) {
   /* ---------- 主角开枪 ---------- */
   /* 设计 64：目标粘一会儿——锁上的目标出了射程，再多 1.5 米或 0.5 秒才放；小丧尸和 BOSS 之间换目标至少隔 0.4 秒。
      返回 { tg（瞄着谁，脸朝它）, shoot（真的在射程里、可以开枪） } */
-  const inRange = (t, extra = 0) => !t || (t === Bo ? Bo.dead : t.dead) ? false : t === Bo ? hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + BR + extra : hyp(t.x - P.x, t.z - P.z) < hero.range + extra && (extra > 0 || segHit(P.x, P.z, t.x, t.z, 0, true) === null);
+  const inRange = (t, extra = 0) => !t || (t === Bo ? Bo.dead || Bo.hidden : t.dead) ? false : t === Bo ? hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + BR + extra : hyp(t.x - P.x, t.z - P.z) < hero.range + extra && (extra > 0 || segHit(P.x, P.z, t.x, t.z, 0, true) === null);
   function lockTarget(dt) {
     const L = P.lock || (P.lock = { tg: null, out: 0, sw: 9 }); L.sw += dt;
     const cand = targetOf();
@@ -233,7 +264,9 @@ export function createFight(n, hero, opt = {}) {
     let best = null, bd = 1e9;
     for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const d = hyp(m.x - P.x, m.z - P.z); if (d < rng && d < bd && segHit(P.x, P.z, m.x, m.z, 0, true) === null) { best = m; bd = d } }
     if (best) return best;
-    if (!Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < rng + BR) return Bo;
+    if (!Bo.dead && !Bo.hidden && hyp(Bo.x - P.x, Bo.z - P.z) < rng + BR) return Bo;
+    /* 设计 114：BOSS 不在射程里（或闪走了）时，顺手打射程里没坏的喇叭 */
+    if (st.speakers) { let sp = null, sd = 1e9; for (const q of st.speakers) { if (q.dead) continue; const d = hyp(q.x - P.x, q.z - P.z); if (d < rng && d < sd && segHit(P.x, P.z, q.x, q.z, 0, true) === null) { sp = q; sd = d } } if (sp) return sp }
     return null;
   }
   function shoot(tg, mult, kind) {
@@ -283,7 +316,7 @@ export function createFight(n, hero, opt = {}) {
   function doomStep(dt) {
     if (Bo.dead) return false;
     if (!st.rage) { if (st.t < FB.time) return false;
-      st.rage = true; if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
+      st.rage = true; if (SCR) screamRage(); if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
       st.doom = { n: 0, t: 0, ph: 'cast' }; E('rage'); doomCast(); return true }
     const D = st.doom; D.t += dt; if (st.immT > 0) st.immT -= dt; if (Bo.cast) Bo.cast.t = D.ph === 'cast' ? D.t : Bo.cast.t;
     if (D.ph === 'cast' && D.t >= FB.doom.cast) { D.n++; D.ph = 'wait'; D.t = 0; Bo.cast = null; Bo.act = 'doomWait'; E('doomHit', { n: D.n });
@@ -292,11 +325,12 @@ export function createFight(n, hero, opt = {}) {
     return true;
   }
   function doomCast() { Bo.act = 'doom'; Bo.interruptible = false; Bo.cast = { k: 'doom', t: 0, dur: FB.doom.cast, ws: [], w: { ult: true }, doom: true }; Bo.yaw = Math.atan2(P.x - Bo.x, P.z - Bo.z);
-    setAnim(TOX ? 'enrage' : ROCK ? 'roar' : 'enrage', ROCK ? ROCK_ANIM.roar.hit / FB.doom.cast : 1); E('cast', { k: 'doom', dur: FB.doom.cast, ult: true, name: '灭杀（全场）' }) }
+    setAnim(TOX ? 'enrage' : ROCK ? 'roar' : SCR ? 'scream' : 'enrage', ROCK ? ROCK_ANIM.roar.hit / FB.doom.cast : SCR ? SCREAM_ANIM.scream.hit / FB.doom.cast : 1); E('cast', { k: 'doom', dur: FB.doom.cast, ult: true, name: '灭杀（全场）' }) }
   function bossStep(dt) {
-    if (doomStep(dt)) return;
+    if (doomStep(dt)) { if (SCR) screamHazards(dt); return }
     if (TOX) { toxStep(dt); return }
     if (ROCK) { rockStep(dt); return }
+    if (SCR) { screamStep(dt); return }
     const b = Bo; if (b.dead) return;
     const tf = b.slow > 0 ? 0.5 : 1; if (b.slow > 0) b.slow -= dt;
     if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
@@ -590,11 +624,149 @@ export function createFight(n, hero, opt = {}) {
     /* 设计 103：普攻冷却 2.5 秒；离下一个大技能不到 2.5 秒不放（落石雨期间不算大技能） */
     if (b.basicCd <= 0 && (st.rain || b.skillT > RK.basicGuard)) { if (d < RK.sweepR - 0.3) { b.basicCd = RK.basicCd; rockCast('sweep') } else if (d < 16) { b.basicCd = RK.basicCd; rockCast('throw') } }
   }
+  /* ---------- 设计 114：尖啸者（第 4 关）。远程、到处闪现、不追人；技能之间至少安静 1.8 秒；大技能 6 秒一招，只在闲着（含安静）时倒数 ---------- */
+  const SC = SCREAM_CFG;
+  const swarn = (w, k, dur) => { w.id = st.nid++; w.k = k; w.t = 0; w.dur = dur; st.warns.push(w); return w };
+  const okSpot = (x, z) => x > ARENA.x0 + 1 && x < ARENA.x1 - 1 && z > ARENA.z0 + 1 && z < ARENA.z1 - 1 && !inCover(x, z, 0.9) && !(st.speakers || []).some(q => hyp(q.x - x, q.z - z) < 1.3);
+  /* 闪现落点。A：离主角 6～10 米，尽量在主角北边（镜头往北看，脸在画面里）；B：主角身前 2 米（朝 BOSS 原来那边，偏北） */
+  function blinkSpot(kind) {
+    if (kind === 'B') { let a0 = Math.atan2(Bo.x - P.x, Bo.z - P.z); if (Math.cos(a0) > -0.2) a0 = Math.PI;   // 原来那边偏南：改成正北
+      for (let i = 0; i < 13; i++) { const a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.35, x = P.x + Math.sin(a) * SC.pushGap, z = P.z + Math.cos(a) * SC.pushGap; if (okSpot(x, z)) return { x, z } }
+      return null }
+    let best = null, bs = -1e9;
+    for (let i = 0; i < 40; i++) { const a = Math.PI + (rnd() - 0.5) * 1.9, r = SC.blinkA[0] + rnd() * (SC.blinkA[1] - SC.blinkA[0]), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r;
+      if (!okSpot(x, z)) continue; const sc = -Math.abs(x) * 0.15 - hyp(x - Bo.x, z - Bo.z) * 0.02 + rnd(); if (sc > bs) { bs = sc; best = { x, z } } }
+    if (!best) for (let i = 0; i < 60 && !best; i++) { const x = ARENA.x0 + 1 + rnd() * (ARENA.x1 - ARENA.x0 - 2), z = ARENA.z0 + 1 + rnd() * (ARENA.z1 - ARENA.z0 - 2); if (okSpot(x, z) && hyp(x - P.x, z - P.z) > 5) best = { x, z } }
+    return best || { x: ARENA.boss.x, z: ARENA.boss.z };
+  }
+  function startBlink(kind, after = null) {
+    const q = blinkSpot(kind); if (!q) { if (after === 'push') kind = 'A'; else return false }
+    const to = q || blinkSpot('A'); if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null;
+    Bo.act = 'blink'; Bo.blink = { t: 0, kind, x0: Bo.x, z0: Bo.z, x1: to.x, z1: to.z, after: kind === 'B' ? 'push' : null }; Bo.interruptible = false; Bo.look = null;
+    st.stats['blink' + kind]++; setAnim('vanish', SCREAM_ANIM.vanish.T / SC.vanishT);
+    E('blinkOut', { x: Bo.x, z: Bo.z, y: Bo.y || 0 }); E('blinkMark', { x: to.x, z: to.z, dur: SC.shadowT, kind }); Bo.blinkCd = SC.blinkCd; return true;
+  }
+  function screamCast(k) {
+    if (k === 'horn' && !st.speakers.some(q => !q.dead)) k = 'rings';   /* 喇叭全坏了：喇叭音爆换成声波三环 */
+    const b = Bo, c = { k, t: 0, ws: [], w: { ult: k === 'bomb' } }, dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
+    st.stats.casts[k] = (st.stats.casts[k] || 0) + 1; b.yaw = Math.atan2(dx, dz); b.look = 'p';
+    c.cancel = () => { for (const w of c.ws) { const i = st.warns.indexOf(w); if (i >= 0) st.warns.splice(i, 1) } };
+    if (k === 'bolt') { c.dur = SC.boltWarn; c.hideBar = true; const n = st.half ? 3 : 1;
+      for (let i = 0; i < n; i++) { const yaw = b.yaw + (n > 1 ? (i - 1) * SC.bolt3A : 0); c.ws.push(swarn({ type: 'line', x: b.x, z: b.z, yaw, len: Math.min(d + 1.5, 18), w: SC.boltW, n }, 'bolt', c.dur)) }
+      setAnim('throw', SCREAM_ANIM.throw.hit / Math.max(0.2, c.dur - SC.boltFly)) }
+    else if (k === 'push') { c.dur = SC.pushWarn; c.ws.push(swarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: SC.pushR, r0: 0.4, a: SC.pushA }, 'push', c.dur)); setAnim('push', SCREAM_ANIM.push.hit / c.dur) }
+    else if (k === 'rings') { c.dur = SC.ringCast; setAnim('scream', SCREAM_ANIM.scream.hit / c.dur);
+      /* 3 道环一开始就定好缺口（读条时地上就看得到）：第 1 道在主角那边偏一点，后面每道往同一边挪 26～34°（缺口 50°，前后两道的缺口有一点重叠），要跟着走 */
+      const pa = Math.atan2(dx, dz); const sg = rnd() < 0.5 ? -1 : 1; let ga = pa - sg * (0.15 + rnd() * 0.3);
+      for (let i = 0; i < SC.ringN; i++) { ringGo(b.x, b.z, SC.ringK, ga, -(SC.ringCast + i * SC.ringGap) * SC.ringSpd); ga += sg * (0.45 + rnd() * 0.15) } }
+    else if (k === 'horn') { const live = st.speakers.filter(q => !q.dead);
+      const sp = live.reduce((p, q) => hyp(q.x - P.x, q.z - P.z) < hyp(p.x - P.x, p.z - P.z) ? q : p); c.spk = sp; c.dur = SC.hornWarn;
+      c.ws.push(swarn({ type: 'fan', x: sp.x, z: sp.z, yaw: Math.atan2(P.x - sp.x, P.z - sp.z), r: SC.hornR, r0: 0.5, a: SC.hornA, spk: sp.id }, 'horn', c.dur));
+      b.yaw = Math.atan2(sp.x - b.x, sp.z - b.z); b.look = { x: sp.x, z: sp.z }; setAnim('horn', SCREAM_ANIM.horn.hit / c.dur); E('hornCharge', { s: sp, dur: c.dur }) }
+    else if (k === 'flock') { c.dur = SC.flockWarn; const W = ARENA.x1 - ARENA.x0, sd = P.x > 0 ? -1 : 1, z = clamp(P.z, ARENA.z0 + SC.flockW / 2, ARENA.z1 - SC.flockW / 2);
+      c.ws.push(swarn({ type: 'line', x: sd < 0 ? ARENA.x0 - 0.3 : ARENA.x1 + 0.3, z, yaw: sd < 0 ? Math.PI / 2 : -Math.PI / 2, len: W + 0.6, w: SC.flockW, sd }, 'flock', c.dur));
+      if (st.half) { const x = clamp(P.x, ARENA.x0 + SC.flockW / 2, ARENA.x1 - SC.flockW / 2); c.ws.push(swarn({ type: 'line', x, z: ARENA.z0 - 0.3, yaw: 0, len: ARENA.z1 - ARENA.z0 + 0.6, w: SC.flockW, sd: 0 }, 'flock', c.dur)) }   // 嗜血：两条带交叉
+      setAnim('spread', SCREAM_ANIM.spread.hit / c.dur) }
+    else if (k === 'shriek') { c.dur = SC.shriekWarn; setAnim('scream', SCREAM_ANIM.scream.hit / c.dur) }
+    else if (k === 'bomb') { c.dur = SC.bombCast; E('blinkOut', { x: b.x, z: b.z, y: b.y || 0 }); b.x = SC.tower.x; b.z = SC.tower.z; b.y = SC.towerY; b.yaw = Math.atan2(P.x - b.x, P.z - b.z); E('blinkIn', { x: b.x, z: b.z, y: b.y, tower: true });
+      for (const q of st.speakers) if (!q.dead) E('hornCharge', { s: q, dur: c.dur }); setAnim('scream', SCREAM_ANIM.scream.hit / c.dur) }
+    b.cast = c; b.act = 'cast'; b.interruptible = k === 'horn' || k === 'flock' || k === 'push';
+    E('cast', { k, dur: c.dur, ult: k === 'bomb', name: SCREAM_NAME[k], hide: !!c.hideBar });
+  }
+  function ringGo(x, z, k, holeA = null, r0 = 0.3) {   /* 一道往外扩的声波圆环（缺口位置各不相同）。r0 < 0：还没出来（读条时先画缺口位置） */
+    const ga = holeA != null ? holeA : rnd() * Math.PI * 2; const r = { id: st.nid++, type: 'ring', x, z, r: r0, w: SC.ringW, hole: st.half ? SC.ringHoleRage : SC.ringHole, ga, k, hit: false };
+    st.rings.push(r); E('ringGo', { r }); return r }
+  function hornBlast(sp, w, k) {   /* 喇叭音爆：扇形里扣血 + 往外推 3 米；推到女儿墙再撞一下 */
+    E('hornBlast', { s: sp, w });
+    if (!inWarn(w, P.x, P.z)) return;
+    if (hurtPlayer(bossDmg(false) * k, 'horn') > 0 || P.inv <= 0) { st.stats.hornHit++; const ex = P.x - sp.x, ez = P.z - sp.z, el = hyp(ex, ez) || 1, ux = ex / el, uz = ez / el;
+      const tx = P.x + ux * SC.hornPush, tz = P.z + uz * SC.hornPush, wall = tx < ARENA.x0 + 0.42 || tx > ARENA.x1 - 0.42 || tz < ARENA.z0 + 0.42 || tz > ARENA.z1 - 0.42;
+      E('knock', { x: ux * SC.hornPush * 6, z: uz * SC.hornPush * 6 }); if (wall) { hurtPlayer(bossDmg(false) * SC.hornWallK, 'hornWall', false); E('wallBump', { x: clamp(tx, ARENA.x0, ARENA.x1), z: clamp(tz, ARENA.z0, ARENA.z1) }) } }
+  }
+  function screamRelease() {
+    const b = Bo, c = b.cast; b.cast = null;
+    for (const w of c.ws) { const i = st.warns.indexOf(w); if (i >= 0) st.warns.splice(i, 1) }
+    let rec = 0.4;
+    if (c.k === 'bolt') { for (const w of c.ws) {   /* 乌鸦沿直线飞：掩体能挡（撞上去散羽毛） */
+        const len = hyp(P.x - w.x, P.z - w.z), t = segHit(w.x, w.z, w.x + Math.sin(w.yaw) * w.len, w.z + Math.cos(w.yaw) * w.len, 0, true), stop = t === null ? w.len : t * w.len;
+        const hitP = inWarn(w, P.x, P.z) && stop >= len - 0.3; E('crowShot', { x: w.x, z: w.z, yaw: w.yaw, len: hitP ? len : stop, blocked: !hitP && t !== null, red: st.half });
+        if (hitP) hurtPlayer(bossDmg(false) * (w.n > 1 ? SC.bolt3K : SC.boltK), 'bolt') }
+      b.basicCd = st.half ? SC.boltGapRage : SC.boltGap; rec = 0.15 }
+    else if (c.k === 'push') { const w = c.ws[0]; E('pushGo', { w, red: st.half }); if (inWarn(w, P.x, P.z) && hurtPlayer(bossDmg(false) * SC.pushK, 'push') > 0) st.stats.pushHit++; rec = 0.3; c.thenA = true }
+    else if (c.k === 'rings') { E('screamFx', { x: b.x, z: b.z, y: b.y || 0 }); rec = 0.6 }
+    else if (c.k === 'horn') { hornBlast(c.spk, c.ws[0], SC.hornK); rec = 0.5 }
+    else if (c.k === 'flock') { for (const w of c.ws) { E('flockGo', { w, red: st.half }); if (inWarn(w, P.x, P.z)) hurtPlayer(bossDmg(false) * SC.flockK, 'flock') }
+      for (let i = 0; i < SC.crowN; i++) { const a = i / SC.crowN * Math.PI * 2, m = { id: st.nid++, crow: true, x: P.x + Math.sin(a) * 2.5, z: P.z + Math.cos(a) * 2.5, a, yaw: 0, hp: B.hp * SC.crowHp, max: B.hp * SC.crowHp, rise: 0.4, stun: 0, cd: 0, dead: false, red: st.half }; st.mobs.push(m); E('mobSpawn', { m }) }
+      rec = 0.5 }
+    else if (c.k === 'shriek') { E('screamFx', { x: b.x, z: b.z, y: b.y || 0, shriek: true }); hurtPlayer(SC.shriek, 'shriek', true);
+      if (!P.dead && !(P.confImm > 0)) { P.confT = SC.confT; P.confImm = SC.confT + SC.confImm; st.stats.conf++; E('pconf', { t: SC.confT }) }
+      rec = 0.3; c.thenB = true }
+    else if (c.k === 'bomb') { const live = st.speakers.filter(q => !q.dead);
+      live.forEach((q, i) => st.bombQ.push({ t: i * SC.bombGap, f: () => { const w = swarn({ type: 'fan', x: q.x, z: q.z, yaw: Math.atan2(P.x - q.x, P.z - q.z), r: SC.hornR, r0: 0.5, a: SC.hornA, spk: q.id, ult: true }, 'bombHorn', SC.bombWarn); w.spkRef = q } }));
+      ringGo(SC.tower.x, SC.tower.z, -1, Math.atan2(P.x - SC.tower.x, P.z - SC.tower.z) + (rnd() - 0.5) * 1.2, -(live.length * SC.bombGap + SC.bombWarn) * SC.ringSpd);
+      rec = live.length * SC.bombGap + SC.bombWarn + 0.6; c.thenA = true; b.onTower = true }
+    b.act = 'recover'; b.at = rec; b.lastK = c.k; b.then = c.thenB ? 'B' : c.thenA ? 'A' : null;
+  }
+  function screamRage() {   /* 灭杀：BOSS 回到地上、看得见；喇叭都修好 */
+    if (Bo.hidden || Bo.onTower || Bo.y) { Bo.hidden = false; Bo.onTower = false; Bo.y = 0; Bo.x = ARENA.boss.x; Bo.z = ARENA.boss.z; E('blinkIn', { x: Bo.x, z: Bo.z, y: 0 }) }
+    Bo.blink = null; st.bombQ.length = 0; for (const q of st.speakers) { q.dead = false; q.hp = q.max; E('spkFix', { s: q }) }
+  }
+  function screamHazards(dt) {
+    /* 排着的事（声波一道一道出去、广播轰炸一个一个喇叭） */
+    for (let i = st.bombQ.length - 1; i >= 0; i--) { const q = st.bombQ[i]; q.t -= dt; if (q.t <= 0) { st.bombQ.splice(i, 1); q.f() } }
+    /* 广播轰炸的喇叭预警到点 */
+    for (let i = st.warns.length - 1; i >= 0; i--) { const w = st.warns[i]; if (w.k !== 'bombHorn' || w.t < w.dur) continue; st.warns.splice(i, 1); if (!w.spkRef.dead) hornBlast(w.spkRef, w, SC.hornK) }
+    /* 声波圆环往外扩：扫过主角那一圈，不在缺口里、不在翻滚无敌里就扣血（掩体不挡） */
+    for (let i = st.rings.length - 1; i >= 0; i--) { const r = st.rings[i]; const d0 = r.r; r.r += SC.ringSpd * dt; const d = hyp(P.x - r.x, P.z - r.z);
+      if (r.r <= 0) continue;
+      if (!r.hit && d >= d0 - r.w / 2 - 0.35 && d <= r.r + r.w / 2 + 0.35 && inWarn({ ...r, r: clamp(d, d0, r.r) }, P.x, P.z)) { r.hit = true; hurtPlayer(r.k < 0 ? B.ult * SC.bombRingK * (st.half ? SC.rageK : 1) : bossDmg(false) * r.k, r.k < 0 ? 'towerRing' : 'ring') }
+      if (r.r > 45) { st.rings.splice(i, 1); E('ringGone', { id: r.id }) } }
+    /* 小乌鸦：绕着主角飞、啄；普攻优先打它们 */
+    for (const m of st.mobs) { if (!m.crow || m.dead) continue; if (m.rise > 0) { m.rise -= dt; continue } if (m.stun > 0) { m.stun -= dt; continue }
+      m.a += dt * 2.2; const tx = P.x + Math.sin(m.a) * SC.crowR, tz = P.z + Math.cos(m.a) * SC.crowR, ex = tx - m.x, ez = tz - m.z, el = hyp(ex, ez), sp = SC.crowSpd * dt;
+      if (el > sp) { m.x += ex / el * sp; m.z += ez / el * sp } else { m.x = tx; m.z = tz } m.yaw = Math.atan2(P.x - m.x, P.z - m.z);
+      if (hyp(P.x - m.x, P.z - m.z) < SC.crowR + 0.4) { m.acc = (m.acc || 0) + dt; if (m.acc >= 0.5) { m.acc -= 0.5; hurtPlayer(bossDmg(false) * SC.crowDps * 0.5, 'crow') } } }
+    st.hazards = st.rings.map(r => ({ ...r, w: r.w + 1.2 }));
+  }
+  function screamStep(dt) {
+    const b = Bo; screamHazards(dt); if (b.dead) return;
+    const tf = b.slow > 0 ? 0.5 : 1; if (b.slow > 0) b.slow -= dt;
+    if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
+    if (b.slowHit > 0) b.slowHit -= dt;
+    const dts = dt * tf; b.basicCd -= dts; b.blinkCd -= dts;
+    const dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
+    if (b.act === 'wait') { b.look = 'p'; if (st.t > 0.6) { b.act = 'idle'; setAnim('idle') } return }
+    /* 闪现：消失（0.25 秒）→ 落点黑影 0.3 秒到了就出现（0.3 秒）；B 接鸦群喷射 */
+    if (b.act === 'blink') { const K = b.blink; K.t += dt;
+      if (!b.hidden && K.t >= SC.vanishT) { b.hidden = true; b.y = 0; b.onTower = false }
+      if (K.t >= SC.shadowT) { b.x = K.x1; b.z = K.z1; b.hidden = false; b.y = 0; b.yaw = Math.atan2(P.x - b.x, P.z - b.z); b.act = 'appear'; b.at = SC.appearT; setAnim('appear', SCREAM_ANIM.appear.T / SC.appearT); E('blinkIn', { x: b.x, z: b.z, y: 0 });
+        if (K.after === 'push' && !st.rage) { screamCast('push'); b.appearT = SC.appearT } }
+      return }
+    if (b.act === 'appear') { b.at -= dt; if (b.at <= 0) { b.act = 'idle'; b.look = 'p'; setAnim('idle') } return }
+    /* 半血：嗜血（抱头尖叫 1.8 秒；没坏的喇叭修好回满血） */
+    if (!st.half && b.hp < b.max * 0.5 && !b.cast && b.act !== 'recover') { st.half = true; b.act = 'rageAnim'; b.at = SCREAM_ANIM.rage.T; b.look = null; setAnim('rage'); for (const q of st.speakers) if (!q.dead) { q.hp = q.max; E('spkFix', { s: q }) } E('half'); return }
+    if (b.act === 'stun' || b.act === 'recover' || b.act === 'rageAnim') { b.at -= dts; if (b.at <= 0) { const th = b.then; b.then = null; b.onTower = false;
+      if (b.act !== 'rageAnim' && b.lastK !== 'bolt') b.calm = SC.calm; b.act = 'idle'; b.look = 'p'; setAnim('idle');
+      if (th && !st.rage) startBlink(th) } return }
+    if (b.act === 'cast') { const c = b.cast; c.t += dts; if (c.k === 'bolt') { b.calm -= dts; b.skillT -= dts } if (c.k === 'push' && b.appearT > 0) b.appearT -= dt;
+      if ((c.k === 'push') && c.t < c.dur * 0.5) { b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -2 * dts, 2 * dts); c.ws[0].yaw = b.yaw }
+      if (c.t >= c.dur) screamRelease(); return }
+    /* 闲着：看着主角；离主角太远慢慢挪过去；太近马上闪走（A） */
+    b.look = 'p'; b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -3 * dts, 3 * dts);
+    if (d > SC.far[1]) { const v = SC.walk * (b.slowHit > 0 ? 1 - hero.slow : 1) * dts; b.x += dx / d * v; b.z += dz / d * v; push(b, 0.6); if (b.anim !== 'walk') setAnim('walk', 1); b.ts = SC.walk / (SCREAM_ANIM.walk.speed * SCREAM_K) }
+    else if (b.anim !== 'idle') setAnim('idle');
+    if (d < SC.near && b.blinkCd <= 0) { if (startBlink('A')) return }
+    b.skillT -= dts; b.blinkT -= dts;
+    if (b.calm > 0) { b.calm -= dts;   /* 安静时间：照样扔鸦弹、闪现 */ }
+    else if (b.skillT <= 0) { const k = SC.order[b.oi % SC.order.length]; b.oi++; b.skillT = st.half ? SC.gapRage : SC.gap; screamCast(k); return }
+    if (b.blinkT <= 0) { const E2 = st.half ? SC.blinkEveryRage : SC.blinkEvery; b.blinkT = E2[0] + rnd() * (E2[1] - E2[0]); if (startBlink(rnd() < (st.half ? SC.blinkBRage : SC.blinkB) ? 'B' : 'A')) return }
+    if (b.basicCd <= 0 && b.skillT > SC.boltGuard && d < 20) { screamCast('bolt'); return }
+  }
   /* ---------- 小丧尸 ---------- */
   function mobStep(dt) {
     for (const m of st.mobs) {
       if (m.dead) { m.deadT += dt; continue }
-      if (m.pus) continue;   // 设计 81：脓包不走（毒囊那边管）
+      if (m.pus || m.crow) continue;   // 设计 81：脓包不走（毒囊那边管）；设计 114：小乌鸦尖啸者那边管
       if (m.rise > 0) { m.rise -= dt; continue }
       if (m.stun > 0) { m.stun -= dt; continue }
       const dx = P.x - m.x, dz = P.z - m.z, d = hyp(dx, dz); m.yaw = Math.atan2(dx, dz); m.cd -= dt;
@@ -617,6 +789,9 @@ export function createFight(n, hero, opt = {}) {
     const pre = !st.locked;   /* 设计 95：还没进战斗区：只能走路、翻滚，不计时，BOSS 不动，打不到 BOSS */
     st.clk += dt; if (!pre) st.t += dt;
     if (!pre && st.lockZ != null && ARENA.z1 > st.lockZ) ARENA.z1 = Math.max(st.lockZ, ARENA.z1 - 2.5 * dt);
+    /* 设计 114：错乱——摇杆方向全反（走路、翻滚都反） */
+    if (P.confImm > 0) P.confImm -= dt;
+    if (P.confT > 0) { P.confT -= dt; if (P.confT <= 0) E('pconfEnd'); inp = { ...inp, mx: -(inp.mx || 0), mz: -(inp.mz || 0) } }
     if (hyp(inp.mx || 0, inp.mz || 0) >= 0.2) st.lastMv = { x: inp.mx, z: inp.mz, t: st.clk };   /* 设计 79：最近一次推摇杆的方向（翻滚用） */
     for (const k of ['focus', 'roll', 'stun', 'nade']) if (P.cd[k] > 0) P.cd[k] -= dt; if (P.heartT > 0) P.heartT -= dt;
     if (P.cd.roll <= 0 && P.charges < SKILLS.roll.charges(sk('roll'))) { P.charges++; if (P.charges < SKILLS.roll.charges(sk('roll'))) P.cd.roll = cdOf('roll') }
@@ -634,10 +809,10 @@ export function createFight(n, hero, opt = {}) {
       const l = hyp(ax, az); ax /= l; az /= l; st.lastRoll = { ax, az, src, t: st.t, age: st.lastMv ? +(st.clk - st.lastMv.t).toFixed(2) : null };
       P.rootT = 0; P.roll = { ax, az, t: 0 }; P.inv = SKILLS.roll.inv; P.charges--; if (P.cd.roll <= 0) P.cd.roll = cdOf('roll'); P.yaw = Math.atan2(ax, az); E('roll', { ax, az });
     }
-    if (s === 'focus' && !pre && P.cd.focus <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
+    if (s === 'focus' && !pre && P.cd.focus <= 0 && !Bo.dead && !Bo.hidden && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
     if (s === 'stun' && !pre && P.cd.stun <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) {
       P.cd.stun = cdOf('stun'); const dur = SKILLS.stun.stun(sk('stun'));
-      if (Bo.cast && Bo.interruptible) { if (Bo.cast.cancel) Bo.cast.cancel(); else st.warns.splice(st.warns.indexOf(Bo.cast.w), 1); E('interrupt', { k: Bo.cast.k }); Bo.cast = null; Bo.act = 'stun'; Bo.at = dur; Bo.look = null; if (ROCK) setAnim('stagger', ROCK_ANIM.stagger.T / Math.max(0.8, dur)); else setAnim('hit', 0.35); st.stats.interrupts++ }
+      if (Bo.cast && Bo.interruptible) { if (Bo.cast.cancel) Bo.cast.cancel(); else st.warns.splice(st.warns.indexOf(Bo.cast.w), 1); E('interrupt', { k: Bo.cast.k }); Bo.cast = null; Bo.act = 'stun'; Bo.at = dur; Bo.look = null; if (ROCK) setAnim('stagger', ROCK_ANIM.stagger.T / Math.max(0.8, dur)); else if (SCR) setAnim('stagger', SCREAM_ANIM.stagger.T / Math.max(0.6, dur)); else setAnim('hit', 0.35); st.stats.interrupts++ }
       else { Bo.slow = 2; E('slowed') }
       for (const m of st.mobs) if (!m.dead && hyp(m.x - Bo.x, m.z - Bo.z) < 7) m.stun = 3;
       E('stunShot', { x: Bo.x, z: Bo.z });
@@ -702,7 +877,7 @@ export function createFight(n, hero, opt = {}) {
     for (const w of st.warns) if (w !== (Bo.cast && Bo.cast.w)) w.t += dt;
     return st;
   }
-  st.step = step; st.cdOf = cdOf; st.forceCast = k => { Bo.act = TOX ? 'idle' : 'chase'; Bo.cast = null; if (!TOX) st.warns.length = 0; const keep = st.ev; st.ev = []; if (TOX) toxCast(k); else if (ROCK) { Bo.calm = 0; rockCast(k) } else startCast(k); st.pend = st.ev; st.ev = keep };   // 截图、测试用
+  st.step = step; st.cdOf = cdOf; st.forceCast = k => { Bo.act = TOX ? 'idle' : 'chase'; Bo.cast = null; if (!TOX) st.warns.length = 0; const keep = st.ev; st.ev = []; if (TOX) toxCast(k); else if (ROCK) { Bo.calm = 0; rockCast(k) } else if (SCR) { Bo.calm = 0; Bo.hidden = false; Bo.y = 0; screamCast(k) } else startCast(k); st.pend = st.ev; st.ev = keep };   // 截图、测试用
   st.clearCovers = () => { if (!ROCK) return; const keep = st.ev; st.ev = st.pend || []; for (const c of realCovers()) coverGone(c, 'crumble'); st.pend = st.ev; st.ev = keep }; st.coverN = () => realCovers().length;   /* 设计 110：测试用（掩体扔光） */
   st.killPlayer = () => { if (st.over) return; const keep = st.ev; st.ev = []; P.hp = 0; P.dead = true; end(false); st.pend = st.ev; st.ev = keep };   /* 设计 109：测试用（打输） */
   st.killBoss = () => { if (st.over) return; const keep = st.ev; st.ev = []; Bo.hp = 0; bossDie(); st.pend = st.ev; st.ev = keep };   /* 设计 74：测试用（打赢） */

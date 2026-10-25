@@ -26,6 +26,9 @@ function simBlocked(st, x, z, r) { const P = st.player, B = st.boss, far = B.dea
   return false }
 const BLK = { n: 0, b: 0 }; const AVG = process.env.SKILL === 'avg', REACT = 0.35, seenAt = new WeakMap();
 if (process.env.GEARSET === 'e4x4') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a1', lv: 2, st: 4 }; S.fb.eq.g = { id: 4, k: 'e_g1', lv: 2, st: 4 } }
+/* 设计 114：第 4 关的装备线。atk5 / def5 = 全身史诗 5 星（5 件 + 护符，第 3 关掉的 Lv3）：全攻击 / 偏防御；上一关的线还是 e4x4（4 件史诗 4 星） */
+if (process.env.GEARSET === 'atk5' || process.env.GEARSET === 'def5') { const D = process.env.GEARSET === 'def5', st = +(process.env.STAR || 5), it = (id, k) => ({ id, k, lv: 3, st });
+  Object.assign(S.fb.eq, D ? { w: it(1, 'e_w1'), h: it(2, 'e_h1'), a: it(3, 'e_a2'), g: it(4, 'e_g2'), b: it(5, 'e_b2'), m: it(6, 'e_m1') } : { w: it(1, 'e_w1'), h: it(2, 'e_h2'), a: it(3, 'e_a1'), g: it(4, 'e_g1'), b: it(5, 'e_b1'), m: it(6, 'e_m2') }) }
 const hero = { ...fbHero(S, hs), speed: 5 };
 const GAP3 = {}, GAP3m = {}; const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
 let SL = null; const DBG = []; const FACE = { n: 0, near: 0 }; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
@@ -49,7 +52,7 @@ for (let r = 0; r < N; r++) {
       if (near) { let ex = P.x - near.x, ez = P.z - near.z; const l = Math.hypot(ex, ez) || 1; ex /= l; ez /= l; if (P.x + ex * 1.5 < ARENA.x0 + 0.6 || P.x + ex * 1.5 > ARENA.x1 - 0.6) { ex = 0; ez = ez >= 0 ? 1 : -1 } if (P.z + ez * 1.5 > ARENA.z1 - 0.6 || P.z + ez * 1.5 < ARENA.z0 + 0.6) { ez = 0; ex = P.x > 0 ? -1 : 1 } mx = ex; mz = ez } }
     let skill = null, danger = null;
     for (const w of st.warns) if (!seenAt.has(w)) { seenAt.set(w, st.t); if (STG === 3 && (w.k === 'rain' || w.k === 'toss') && w.type === 'circle') { BLK.n++; if (simBlocked(st, w.x, w.z, w.r)) BLK.b++ } }
-    const VIS = [...st.warns.filter(w => !AVG || st.t - seenAt.get(w) >= REACT - 1e-6), ...(st.hazards || [])];   /* 设计 106：走位一般只看得到出现 0.35 秒以上的预警 */
+    const VIS = [...st.warns.filter(w => !AVG || st.t - seenAt.get(w) >= REACT - 1e-6), ...(STG === 4 ? [] : st.hazards || [])];   /* 设计 114：声波圆环单独躲（下面） */   /* 设计 106：走位一般只看得到出现 0.35 秒以上的预警 */
     for (const w of VIS) if (inWarn(w, P.x, P.z, 0.7)) { danger = w; break }
     if (process.env.DBGR && r === 0) { const fw = st.warns.find(w => w.type === 'field'); if (fw && Math.round(st.t * 30) % 6 === 0) console.log('ROLL', st.t.toFixed(2), 'P', P.x.toFixed(1), P.z.toFixed(1), 'danger', !!danger, 'sh', JSON.stringify(fw.sh.map(q => [q.x0, q.x1, q.z0, q.z1].map(v => +v.toFixed(1))))); for (const e of st.ev) { if (e.e === 'proot') console.log('ROOT', st.t.toFixed(2), P.x.toFixed(1), P.z.toFixed(1), 'charges', P.charges); if (e.e === 'roll') console.log('ROLL!', st.t.toFixed(2)); if (e.e === 'bossLand') console.log('LAND', st.t.toFixed(2), B.x.toFixed(1), B.z.toFixed(1), 'P', P.x.toFixed(1), P.z.toFixed(1)); if (e.e === 'pdmg' && e.src === 'combo') console.log('COMBO HIT', st.t.toFixed(2)) } }
     if (danger) { const w = danger; let best = null;
@@ -64,6 +67,17 @@ for (let r = 0; r < N; r++) {
     /* 设计 110：被禁锢——走位好 0.1 秒、走位一般 0.35 秒后往远离 BOSS 的方向翻滚（解除禁锢 + 无敌，躲接下来的横扫） */
     for (const e of st.ev) if (e.e === 'proot') P.rootAt = st.t;
     if (P.rootT > 0 && P.charges > 0 && st.t - (P.rootAt || -9) >= (AVG ? 0.35 : 0.1) - 1e-6) { skill = 'roll'; const ex = P.x - B.x, ez = P.z - B.z, el = Math.hypot(ex, ez) || 1; mx = ex / el; mz = ez / el }
+    /* 设计 114：声波圆环——看到（走位一般晚 0.35 秒）以后：在缺口里就不动；来得及走进缺口就走过去；来不及、马上扫到就翻滚 */
+    if (STG === 4) { const up = [];
+      for (const g of st.rings) { if (!seenAt.has(g)) seenAt.set(g, st.t); if (g.hit || (AVG && st.t - seenAt.get(g) < REACT)) continue; const d = Math.hypot(P.x - g.x, P.z - g.z), arr = (d - g.r - g.w / 2) / 7; if (d - g.r + g.w / 2 + 0.5 > 0 && arr <= 1.6) up.push({ g, d, arr })   /* 还没完全扫过去（环有宽度）都算这一道 */ }
+      up.sort((a, b) => a.arr - b.arr);
+      if (up.length) { const { g, d, arr } = up[0], nx = up.find(u => u !== up[0] && u.g.x === g.x && u.g.z === g.z), m = Math.atan2(0.55, Math.max(d, 0.5)), h = Math.max(0.02, g.hole / 2 - m - 0.04);
+        const ang = q => Math.atan2(Math.sin(q), Math.cos(q)), pa = Math.atan2(P.x - g.x, P.z - g.z);
+        const want = nx && !AVG ? g.ga + Math.max(-h, Math.min(h, ang(nx.g.ga - g.ga))) : AVG ? g.ga : g.ga + Math.max(-h, Math.min(h, ang(pa - g.ga)));   // 这一道的缺口里、离下一道缺口最近的那一边（走位一般：只看这一道，往缺口中间走）
+        const qx = g.x + Math.sin(want) * d, qz = g.z + Math.cos(want) * d, ql = Math.hypot(qx - P.x, qz - P.z), sp = st.hero.speed * st.hero.spd, inHole = Math.abs(ang(pa - g.ga)) < g.hole / 2 - m;
+        if (process.env.DR && r === 0) console.log('RING', st.t.toFixed(2), 'd', d.toFixed(1), 'arr', arr.toFixed(2), 'da', (ang(pa - g.ga) * 57).toFixed(0), inHole, 'ql', ql.toFixed(1), 'ch', P.charges);
+        if (ql > 0.15) { mx = (qx - P.x) / ql; mz = (qz - P.z) / ql } else { mx = 0; mz = 0 }
+        if (!inHole && ql / sp > arr - 0.02 && arr < 0.12 && P.charges > 0 && !P.roll) skill = 'roll' } }
     if (!skill && P.cd.focus <= 0 && fireOn) skill = 'focus';
     if (!skill && P.cd.nade <= 0 && (st.mobs.some(m => !m.dead && m.rise <= 0) || Math.hypot(P.x - B.x, P.z - B.z) < hs.range)) skill = 'nade';
     if (!skill && B.cast && B.interruptible && B.cast.k !== 'swing' && B.cast.k !== 'spit') { if (stunWait < 0) stunWait = rng() < 0.7 ? 0.3 : 99; stunWait -= dt; if (stunWait <= 0 && P.cd.stun <= 0) { skill = 'stun'; stunWait = -1 } } else if (!B.cast) stunWait = -1;
@@ -72,6 +86,9 @@ for (let r = 0; r < N; r++) {
     /* 设计 64：有输入但几乎没动的帧数（翻滚、击退不算）；脸一帧转超过 70° 的次数 */
     const px0 = P.x, pz0 = P.z, yaw0 = P.yaw, rollB = !!P.roll || !!P.kb;
     if (process.env.DBG2 && r === 0 && st.t > 8 && st.t < 8.3) console.log('dbg', st.t.toFixed(2), P.x.toFixed(2), P.z.toFixed(2), mx.toFixed(2), mz.toFixed(2), skill, st.moveK, JSON.stringify(P.kb), !!P.roll, P.inv.toFixed(2), danger && danger.type);
+    /* 设计 114：错乱——走位好 0.3 秒、走位一般 0.6 秒以后才反着推（之前照常推，就往反方向走了） */
+    for (const e of st.ev) if (e.e === 'pconf') P.confAt = st.t;
+    if (P.confT > 0 && st.t - (P.confAt || -9) >= (AVG ? 0.6 : 0.3) - 1e-6) { mx = -mx; mz = -mz }
     st.step(dt, { mx, mz, fire: fireOn, skill });
     if (STG === 3 && !B.dead) { FACE.n++; if (Math.hypot(P.x - B.x, P.z - B.z) <= 6) FACE.near++ }   /* 设计 102：离巨人 6 米以内（镜头能把整张脸放在 BOSS 框下面）的时间占多少 */
     /* 设计 95：毒池占了多少场地（每 0.5 秒在区域里撒 0.5 米的点；上涌那半边单独算） */
@@ -91,9 +108,9 @@ for (let r = 0; r < N; r++) {
       GAP.wasBusy = busy || !!B.cast }
     { const want = Math.hypot(mx, mz), got = Math.hypot(P.x - px0, P.z - pz0) / dt; const intoWall = (P.x >= ARENA.x1 - 0.43 && mx > 0.5 * want) || (P.x <= ARENA.x0 + 0.43 && mx < -0.5 * want) || (P.z <= ARENA.z0 + 0.43 && mz < -0.5 * want) || (P.z >= ARENA.z1 - 0.43 && mz > 0.5 * want);
       if (want > 0.5 && !intoWall && !rollB && !P.roll && !P.kb && !P.dead && got < want * st.hero.speed * st.hero.spd * 0.15) { FT.stuck++; if (process.env.STK) { const why = Math.hypot(P.x - B.x, P.z - B.z) < 1.8 ? 'boss' : Math.abs(P.x) > 6.0 || P.z < ARENA.z0 + 0.6 || P.z > ARENA.z1 - 0.6 ? 'edge' : 'cover/other'; FT.why = FT.why || {}; FT.why[why] = (FT.why[why] || 0) + 1; if (FT.why[why] < 4) console.log('stuck', why, P.x.toFixed(2), P.z.toFixed(2), 'in', mx.toFixed(2), mz.toFixed(2), 'B', B.x.toFixed(1), B.z.toFixed(1)) } } let dy = P.yaw - yaw0; dy = Math.abs(Math.atan2(Math.sin(dy), Math.cos(dy))); if (dy > 70 * Math.PI / 180 && !P.roll) FT.flip++ }
-    FT.n++; if (P.target === B) FT.boss++; else if (P.target) FT.mob++; else if (fireOn) FT.none++; for (const e of st.ev) { if (e.e === 'shot' && e.blocked) FT.blk++; if (e.e === 'shot') FT.sh++ } for (const e of st.ev) { if (e.e === 'cast' && e.k === 'slam') SL = { d0: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x: P.x.toFixed(1), z: P.z.toFixed(1), ch: P.charges }; if (e.e === 'pdmg' && e.src === 'slam' && DBG.length < 8) DBG.push({ ...SL, d1: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x1: P.x.toFixed(1), z1: P.z.toFixed(1), ch1: P.charges, inv: P.inv.toFixed(2) }) } for (const e of st.ev) if (e.e === 'pdmg') { SRC[e.src] = (SRC[e.src] || 0) + e.a / N; HIT[e.src] = (HIT[e.src] || 0) + 1 / N; if (e.src === 'quake' || e.src === 'rubble') sure += e.a }
+    FT.n++; if (P.target === B) FT.boss++; else if (P.target) FT.mob++; else if (fireOn) FT.none++; for (const e of st.ev) { if (e.e === 'shot' && e.blocked) FT.blk++; if (e.e === 'shot') FT.sh++ } for (const e of st.ev) { if (e.e === 'cast' && e.k === 'slam') SL = { d0: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x: P.x.toFixed(1), z: P.z.toFixed(1), ch: P.charges }; if (e.e === 'pdmg' && e.src === 'slam' && DBG.length < 8) DBG.push({ ...SL, d1: Math.hypot(P.x - B.x, P.z - B.z).toFixed(1), x1: P.x.toFixed(1), z1: P.z.toFixed(1), ch1: P.charges, inv: P.inv.toFixed(2) }) } for (const e of st.ev) if (e.e === 'pdmg') { SRC[e.src] = (SRC[e.src] || 0) + e.a / N; HIT[e.src] = (HIT[e.src] || 0) + 1 / N; if (e.src === 'quake' || e.src === 'rubble' || e.src === 'shriek') sure += e.a }
   }
-  res.push({ bhp: B.hp / B.max * 100, win: st.win, t: st.over || st.t, hp: P.hp / P.max, taken: st.stats.taken, casts: st.stats.casts, mobs: st.stats.mobsKilled, intr: st.stats.interrupts, sure: sure / P.max, doom: st.doom ? st.doom.n : 0, stun: st.stats.stun || 0, root: st.stats.root || 0, jump: st.stats.combo || 0 });
+  res.push({ bhp: B.hp / B.max * 100, win: st.win, t: st.over || st.t, hp: P.hp / P.max, taken: st.stats.taken, casts: st.stats.casts, mobs: st.stats.mobsKilled, intr: st.stats.interrupts, sure: sure / P.max, doom: st.doom ? st.doom.n : 0, stun: st.stats.stun || 0, root: st.stats.root || 0, jump: st.stats.combo || 0, conf: st.stats.conf || 0, pushHit: st.stats.pushHit || 0, hornHit: st.stats.hornHit || 0, spk: st.stats.spkKill || 0, bA: st.stats.blinkA || 0, bB: st.stats.blinkB || 0 });
 }
 if (STG === 2) { const q = a => a.sort((x, y) => x - y)[Math.floor(a.length / 2)]; console.log(`设计 92：技能之间最短空档 普通 ${GAP.min.norm.g.toFixed(2)} 秒（下一个是 ${GAP.min.norm.k}），狂暴 ${GAP.min.rage.g === 1e9 ? '-' : GAP.min.rage.g.toFixed(2) + ' 秒（' + GAP.min.rage.k + '）'}；空档中位 ${q(GAP.norm)?.toFixed(2)} / 狂暴 ${GAP.rage.length ? q(GAP.rage).toFixed(2) : '-'}；喷吐预警 ${[...GAP.spit].join('、')} 秒`) }
 const wins = res.filter(r => r.win), ts = wins.map(r => r.t).sort((a, b) => a - b), avg = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
@@ -108,6 +125,7 @@ if (STG === 3) { const q = a => [...a].sort((x, y) => x - y)[Math.floor(a.length
   console.log(`设计 106（${AVG ? '走位一般' : '走位好'}，${process.env.GEARSET || '没装备'}）：3 分钟内打完 ${w180}/${N}；被灭杀 ${dd.length} 局（最晚倒下在第 ${dd.length ? Math.max(...dd.map(r => r.t)).toFixed(1) : '-'} 秒）；必吃伤害（地动 + 碎石雨）占最大生命 平均 ${(avg(sr) * 100).toFixed(0)}%、最多 ${((sr[sr.length - 1] || 0) * 100).toFixed(0)}%；剩血中位 ${(([...wins.map(r => r.hp)].sort((x, y) => x - y)[Math.floor(wins.length / 2)] || 0) * 100).toFixed(0)}%`) }
 if (BLK.n) console.log(`设计 106c：落石 / 扔石头的圈 ${BLK.n} 个，出现时被按钮、头像挡住的 ${(BLK.b / BLK.n * 100).toFixed(1)}%（瞄脚下的那个照落，算在里面）`);
 if (STG === 3) console.log(`设计 110：每局 被眩晕 ${avg(res.map(r => r.stun)).toFixed(2)} 次，被禁锢 ${avg(res.map(r => r.root)).toFixed(2)} 次，BOSS 跳过来横扫 ${avg(res.map(r => r.jump)).toFixed(2)} 次，被连招扫中 ${(HIT.combo || 0).toFixed(2)} 次`);
+if (STG === 4) console.log(`设计 114：每局 被错乱 ${avg(res.map(r => r.conf)).toFixed(2)} 次，被喷射打中 ${avg(res.map(r => r.pushHit)).toFixed(2)} 次，被音爆推 ${avg(res.map(r => r.hornHit)).toFixed(2)} 次，打坏喇叭 ${avg(res.map(r => r.spk)).toFixed(2)} 个；闪现 A ${avg(res.map(r => r.bA)).toFixed(1)} 次、B ${avg(res.map(r => r.bB)).toFixed(1)} 次`);
 if (FACE.n) console.log(`设计 102：离巨人 6 米以内（看得到整张脸）的时间 ${(FACE.near / FACE.n * 100).toFixed(0)}%`);
 console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
 console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));

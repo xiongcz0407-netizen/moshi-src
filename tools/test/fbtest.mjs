@@ -7,7 +7,7 @@ let S = mk(); FL.fbFix(S); S.fb.tix = 10;   /* 设计 108：副本用召唤券 *
 ok(!S.td.wins[103] && S.td.wins[3] === 1, '旧存档英雄关进度去掉，普通关留着');
 ok(FL.fbLockWhy({ ...S, lv: { store: 4 } }, 1) === '超市 5 级解锁', '超市 4 级：超市 5 级解锁');
 ok(FL.fbCanStart(S, 1) === null, '5 级、10 张召唤券：能打第 1 关');
-ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '先打赢前一关' && FL.fbLockWhy(S, 4) === '还没开放', '设计 102：第 3 关开放了（要先打赢第 2 关），第 4 关还没开放');
+ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '先打赢前一关' && FL.fbLockWhy(S, 4) === '先打赢前一关' && FL.fbLockWhy(S, 5) === '还没开放', '设计 102 / 114：第 3、4 关开放了（要先打赢前一关），第 5 关还没开放');
 FL.fbStart(S, 1); ok(S.fb.tix === 9 && S.td.scrolls === 10 && S.fb.run === 1, '设计 108：挑战第 1 关扣 1 张召唤券，尸潮券不动');
 FL.fbLose(S); ok(S.fb.run === 0 && !S.fb.pend && S.fb.crys === 0, '输了：没有掉落');
 FL.fbStart(S, 1); const c0 = S.coins; const r = FL.fbWin(S, 1, () => 0.3, 121);
@@ -59,13 +59,13 @@ import { heroStats } from '../../src/js/logic.js';
 { const T = mk(); FL.fbFix(T); for (const sl of ['w', 'h', 'a', 'g', 'b']) T.fb.eq[sl] = { id: sl, k: 's1_' + sl, lv: 5, st: 0 }; const g5 = FL.gearStats(T); T.fb.eq.h = null; const g4 = FL.gearStats(T); ok(g5.all - g4.all === 65 && g4.all === 10, `拾荒者 5 件全部伤害 +${g5.all - g4.all}%（要 65），4 件 +${g4.all}%`) }
 /* 设计 106：狂暴 = 灭杀：3 分钟到，不管多少血、有没有减伤 / 不灭之铠 / 不眠之心，8 秒内一定倒下；第 1 次扣最大生命 60%（无视减伤） */
 { const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
-  for (const n of [1, 2, 3]) { const T = mk(); FL.fbFix(T); const h = { ...fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), dr: 0.6, armor1: true, heart: true }, st = createFight(n, h, { rng: () => 0.5 });
+  for (const n of [1, 2, 3, 4]) { const T = mk(); FL.fbFix(T); const h = { ...fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), dr: 0.6, armor1: true, heart: true }, st = createFight(n, h, { rng: () => 0.5 });
     st.locked = true; st.t = 179.9; st.boss.hp = st.boss.max = 1e12; let first = null, dead = null; const dt = 1 / 30;
     for (let i = 0; i < 30 * 12 && !st.over; i++) { const hp0 = st.player.hp; st.step(dt, {}); if (first === null && st.player.hp < hp0 - 1) first = (hp0 - st.player.hp) / st.player.max; if (st.player.dead) dead = st.t - 180 }
     ok(dead !== null && dead <= 8 + 1 / 30 && first !== null && Math.abs(first - 0.6) < 0.02, `设计 106：第 ${n} 关 3 分钟到放灭杀，第 1 次扣 ${first === null ? '-' : Math.round(first * 100)}%（减伤 60% 也不管），${dead === null ? '没倒下' : dead.toFixed(1) + ' 秒倒下'}（≤ 8 秒）`) } }
 /* 设计 106b：灭杀一开始 BOSS 无敌（打上去血不掉），没打完 = 输 */
 { const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
-  for (const n of [1, 2, 3]) { const T = mk(); FL.fbFix(T); const st = createFight(n, fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), { rng: () => 0.5 });
+  for (const n of [1, 2, 3, 4]) { const T = mk(); FL.fbFix(T); const st = createFight(n, fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), { rng: () => 0.5 });
     st.locked = true; st.t = 179.95; st.boss.hp = 100; const dt = 1 / 30; st.step(dt, {}); st.step(dt, {});
     const b = st.boss; b.x = st.player.x; b.z = st.player.z - 4; let hp0 = b.hp;
     for (let i = 0; i < 30 * 10 && !st.over; i++) st.step(dt, { fire: true, skill: i % 30 === 0 ? 'focus' : i % 45 === 0 ? 'nade' : null });
@@ -95,4 +95,30 @@ import { heroStats } from '../../src/js/logic.js';
   { const r = rollAt(false, 0.1); ok(r.root === 1 && r.combo === 0, `设计 110：被禁锢 0.1 秒后翻滚：横扫打不中（${r.combo} 次）`) }
   { const st = mk3(); for (const c of M.COVERS.filter(c => !c.temp)) M.COVERS.splice(M.COVERS.indexOf(c), 1); st.forceCast("roll"); ok(M.COVERS.filter(c => !c.temp).length >= 2, `设计 110：场上掩体扔光了，放全场滚石前补到 ${M.COVERS.filter(c => !c.temp).length} 个（≥ 2）`) }
   { mk3(); M.COVERS.length = 0; M.COVERS.push({ k: 'spike', x: 0, z: 0, hx: 0.5, hz: 0.5, temp: true }); const a = M.segHit(0, 5, 0, -5, 0, true), b = M.segHit(0, 5, 0, -5); M.COVERS.length = 0; M.COVERS.push({ k: 'rock', x: 0, z: 0, hx: 0.5, hz: 0.5 }); const c = M.segHit(0, 5, 0, -5, 0, true); ok(!a && !!b && !!c, `设计 110b：石柱不挡子弹（${a ? '挡' : '不挡'}），但挡路（${b ? '挡' : '不挡'}）；掩体照样挡子弹（${c ? '挡' : '不挡'}）`) }
+}
+
+/* 设计 114：尖啸者——错乱（走、翻滚都反）、错乱后 2 秒不再错乱、闪现落点、掩体挡鸦弹、喇叭全坏不放音爆、半血修好喇叭 */
+{ const M = await import('../../src/js/fbcore.js'), { createFight } = M; const { fbHero } = await import('../../src/js/fblogic.js');
+  const H = { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }, dt = 1 / 30;
+  const mk4 = (seed = 0.5) => { const T = mk(); FL.fbFix(T); let q = seed; const st = createFight(4, { ...fbHero(T, H), hp: 1e6, speed: 5 }, { rng: () => (q = (q * 9301 + 0.49297) % 1) }); st.player.max = st.player.hp = 1e6; st.t = 10; const b = st.boss; b.act = 'idle'; b.skillT = 99; b.basicCd = 99; b.blinkT = 99; b.blinkCd = 99; return st };
+  const hold = st => { const b = st.boss; b.skillT = 99; b.basicCd = 99; b.blinkT = 99; b.blinkCd = 99 };
+  { const st = mk4(), P = st.player; P.x = 0; P.z = 8; P.confT = 2; const x0 = P.x; for (let i = 0; i < 6; i++) { hold(st); st.step(dt, { mx: 1, mz: 0 }) }
+    const went = P.x - x0; hold(st); st.step(dt, { mx: 1, mz: 0, skill: 'roll' }); const r = st.lastRoll;
+    ok(went < -0.3 && r && r.ax < -0.9, `设计 114：错乱时摇杆往右推，人往左走（${went.toFixed(2)} 米），翻滚也往左（${r ? r.ax.toFixed(2) : '-'}）`) }
+  { const st = mk4(), P = st.player, B = st.boss; P.x = 0; P.z = 8; B.x = 0; B.z = 0; let conf = 0; const cast = () => { hold(st); st.forceCast('shriek'); for (let i = 0; i < 30 * 1.6; i++) { hold(st); st.step(dt, {}); conf += st.ev.filter(e => e.e === 'pconf').length; if (st.boss.act === 'blink') { st.boss.act = 'idle'; st.boss.hidden = false } } };
+    cast(); const a = conf; for (let i = 0; i < 30 * 2.3; i++) { hold(st); st.step(dt, {}) } cast(); const b2 = conf; for (let i = 0; i < 30 * 2.5; i++) { hold(st); st.step(dt, {}) } cast();
+    ok(a === 1 && b2 === 1 && conf === 2, `设计 114：刺耳尖叫后错乱 2 秒；错乱完 2 秒内再叫不错乱（${a} → ${b2}），过了再叫又错乱（${conf}）`) }
+  { const st = mk4(0.37), P = st.player, B = st.boss; P.x = 0; P.z = 6; B.x = 0; B.z = -3; B.blinkT = 2; B.skillT = 3; const land = [];
+    for (let i = 0; i < 30 * 120 && !st.over; i++) { st.player.hp = 1e6; const mz = Math.sin(i / 90) * 0.8, mx = Math.cos(i / 70) * 0.8; st.step(dt, { mx, mz }); for (const e of st.ev) if (e.e === 'blinkIn' && !e.tower) land.push({ x: e.x, z: e.z }) }
+    const bad = land.filter(q => q.x < M.ARENA.x0 + 0.99 || q.x > M.ARENA.x1 - 0.99 || q.z < M.ARENA.z0 + 0.99 || q.z > M.ARENA.z1 - 0.99 || M.COVERS.some(c => Math.abs(q.x - c.x) < c.hx + 0.6 && Math.abs(q.z - c.z) < c.hz + 0.6) || st.speakers.some(s => Math.hypot(s.x - q.x, s.z - q.z) < 1.2));
+    ok(land.length > 20 && bad.length === 0, `设计 114：2 分钟里闪现落地 ${land.length} 次，落在场外 / 掩体里 / 喇叭杆上的 ${bad.length} 次`) }
+  { const st = mk4(), P = st.player, B = st.boss, tank = M.COVERS.find(c => c.k === 'tank'); B.x = tank.x; B.z = tank.z - 4; P.x = tank.x; P.z = tank.z + 3; const hp0 = P.hp;
+    st.forceCast('bolt'); for (let i = 0; i < 30; i++) { hold(st); st.step(dt, {}) } const hidden = hp0 - P.hp; P.x = tank.x + 3.2; B.x = P.x; const hp1 = P.hp; st.forceCast('bolt'); for (let i = 0; i < 30; i++) { hold(st); st.step(dt, {}) }
+    ok(hidden === 0 && hp1 - P.hp > 0, `设计 114：躲在圆水箱后面鸦弹打不到（扣 ${hidden}），没掩体扣 ${Math.round(hp1 - P.hp)}`) }
+  { const st = mk4(), P = st.player; P.x = 0; P.z = 8; for (const q of st.speakers) { q.hp = 0; q.dead = true } hold(st); st.forceCast('horn');
+    ok(st.boss.cast && st.boss.cast.k === 'rings' && !st.stats.casts.horn, `设计 114：喇叭全坏了：喇叭音爆换成声波三环（放的是 ${st.boss.cast && st.boss.cast.k}）`) }
+  { const st = mk4(), B = st.boss, [a, b2] = st.speakers; a.hp = 0; a.dead = true; b2.hp = b2.max * 0.3; B.hp = B.max * 0.49; hold(st); st.step(dt, {});
+    ok(st.half && b2.hp === b2.max && a.dead, `设计 114：半血嗜血：没坏的喇叭回满血（${Math.round(b2.hp / b2.max * 100)}%），坏了的还是坏的`) }
+  { const st = mk4(), P = st.player, B = st.boss; P.x = 0; P.z = 8; B.x = 0; B.z = 0; const q = st.speakers[0]; let shot = 0; for (let i = 0; i < 30 * 3; i++) { hold(st); B.x = 30; st.step(dt, { fire: true }); if (P.target === q) shot++ }
+    ok(shot > 0 || Math.hypot(q.x - P.x, q.z - P.z) > 12, `设计 114：BOSS 不在射程里时打射程里的喇叭`) }
 }

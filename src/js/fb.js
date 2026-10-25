@@ -8,6 +8,7 @@ import { addFlat } from './flatshadow.js';
 import { createFight, COVERS, ARENA, BUTCHER_ANIM, BOSS_SCALE, push as pushOut, setStage, FB_CFG } from './fbcore.js';
 import { buildTox, TOX_ASSETS } from './fbtox.js';   /* 设计 81：第 2 关毒囊 */
 import { buildRock, ROCK_ASSETS } from './fbrock.js';   /* 设计 102：第 3 关落石巨人 */
+import { buildScream, SCREAM_ASSETS } from './fbscream.js';   /* 设计 114：第 4 关尖啸者 */
 import { FB, BOSSES, QUAL, ITEMS, SKILLS } from './fbcfg.js';
 import { glowTex, glowMat, glowSprite } from './portal.js';
 
@@ -89,7 +90,7 @@ export function createFB(ctx) {
   /* 设计 74：每个文件失败自动重试 2 次（隔 1 秒）；整体失败时把 assets 清掉（以前失败的 Promise 一直留着，之后每次进副本都直接失败），出错的文件记进 FB_ERR */
   const glbRetry = async (u, tries = 2) => { for (let i = 0; ; i++) { try { return await loadGLB(u) } catch (e) { if (i >= tries) { const er = new Error(`${u.split('/').pop()}：${(e && e.message) || e}`); er.file = u; throw er } await new Promise(r => setTimeout(r, 1000)) } } };
   /* 设计 81：每关自己的模型（第 2 关毒囊在 models/fb2/，崖边石块、宝箱跟第 1 关共用） */
-  const ASSET_LIST = { 1: ['butcher', 'shed', 'block', 'cart', 'cleaver', 'gate_1', 'gate_2', 'gate_3', 'gate_4', 'rock_1', 'rock_2', 'rock_3', 'chest_1', 'chest_2'].map(k => 'fb/' + k), 2: TOX_ASSETS, 3: ROCK_ASSETS };
+  const ASSET_LIST = { 1: ['butcher', 'shed', 'block', 'cart', 'cleaver', 'gate_1', 'gate_2', 'gate_3', 'gate_4', 'rock_1', 'rock_2', 'rock_3', 'chest_1', 'chest_2'].map(k => 'fb/' + k), 2: TOX_ASSETS, 3: ROCK_ASSETS, 4: SCREAM_ASSETS };
   const assetsP = {};
   function load(lv = 1) {
     if (assetsP[lv]) return assetsP[lv];
@@ -105,10 +106,15 @@ export function createFB(ctx) {
   /* 设计 74：场地建到一半出错：scene / boss 都丢掉，下次进副本从头再建（以前 scene 已经有值，下次不重建，boss 是空的） */
   /* 设计 81：每关一个场景，建好了留着（第 1 关屠夫照旧 buildAll，第 2 关毒囊在 fbtox.js） */
   const SCN = {}; let stg = null, occl = []; const tox = () => !!(stg && stg.tox);   // 设计 102：毒囊（不走动）专用的位置判断，第 3 关会走动的巨人不算   // occl：设计 97，挡住主角时会变半透明的东西（屠夫关南边矮墙、铁门、崖脚石头）
-  function build(g) { try { if (n === 2) buildTox2(g); else if (n === 3) buildRock3(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg, occl } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; occl = []; delete SCN[n]; throw e } }
+  function build(g) { try { if (n === 2) buildTox2(g); else if (n === 3) buildRock3(g); else if (n === 4) buildScream4(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg, occl } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; occl = []; delete SCN[n]; throw e } }
   function buildRock3(g) {   /* 设计 102 */
     scene = new THREE.Scene(); occl = []; T = { dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), star: tex('img/fb/fx_star.png'), crack: tex('img/fb/mark_crack.png'), hole: tex('img/fb/mark_hole.png'), drag: tex('img/fb/mark_drag.png') };
     stg = buildRock({ scene, g, T, tex, part, mark, dust, rocks, shock, glowTex, glowMat, glowSprite, flatGeo, ADD, ctx, ARENA, COVERS });
+    boss = stg.boss; mixer = stg.mixer; acts = stg.acts; boss.userData.mats = stg.mats; occl = stg.occl;
+  }
+  function buildScream4(g) {   /* 设计 114 */
+    scene = new THREE.Scene(); occl = []; T = { dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), star: tex('img/fb/fx_star.png'), crack: tex('img/fb/mark_crack.png'), hole: tex('img/fb/mark_hole.png'), drag: tex('img/fb/mark_drag.png') };
+    stg = buildScream({ scene, g, T, tex, part, mark, dust, rocks, shock, glowTex, glowMat, glowSprite, flatGeo, ADD, ctx, ARENA, COVERS, fight: () => fight });
     boss = stg.boss; mixer = stg.mixer; acts = stg.acts; boss.userData.mats = stg.mats; occl = stg.occl;
   }
   function buildTox2(g) {
@@ -235,7 +241,7 @@ export function createFB(ctx) {
   /* ---------- 战斗界面（学魔兽：左上头像框、上面中间 BOSS 框和施法条、右上倒计时；右下攻击 + 3 个技能，王者荣耀样式） ---------- */
   const inp = { fire: false, skill: null };
   /* 设计 106：全屏一闪（灭杀、地动） */
-  let tintT = 0, tintD = 1, stunFx = 0;
+  let tintT = 0, tintD = 1, stunFx = 0, confSpr = null;
   function tint(col, dur) { const el = hud && hud.querySelector('.fbtint'); if (!el) return; tintT = dur; tintD = dur || 1; el.style.background = col ? '#' + col.toString(16).padStart(6, '0') : 'transparent'; el.style.opacity = dur ? 0.55 : 0 }
   const scatter = (n, f) => { for (let i = 0; i < n; i++) f(ARENA.x0 + 0.8 + Math.random() * (ARENA.x1 - ARENA.x0 - 1.6), ARENA.z0 + 0.8 + Math.random() * (ARENA.z1 - ARENA.z0 - 1.6)) };
   /* 设计 106：灭杀打下来——屠夫：狂暴砸地，全场冲击波；毒囊：毒雾吞没全场；落石巨人：整个采石场塌下来 */
@@ -243,6 +249,7 @@ export function createFB(ctx) {
     const P = fight.player, B = fight.boss; ctx.shake(1.2);
     if (n === 1) { for (let i = 0; i < 4; i++) shock(B.x, B.z, 14 + i * 9, 0xff6a3a, 0.9 - i * 0.15); dust(B.x, B.z, 24, 2.2, 9, 1.5); rocks(B.x, B.z, 14); scatter(16, (x, z) => { dust(x, z, 3, 1.4, 2); mark(T.crack, x, z, 3 + Math.random() * 2, 8, Math.random() * 6) }); tint(0xff3010, 0.7) }
     else if (n === 2) { scatter(40, (x, z) => part(T.dust, x, 0.8 + Math.random() * 1.5, z, { size: 4 + Math.random() * 3, grow: 1.8, life: 1.8, color: 0x7ad040, op: 0.85 })); part(glowTex().ball, P.x, 1, P.z, { size: 9, grow: 2, life: 1.2, add: true, color: 0x6cff40, op: 0.6 }); tint(0x3a8a10, 1.0) }
+    else if (n === 4 && stg && stg.doomFx) { stg.doomFx(k); tint(0xffffff, 0.8) }   /* 设计 114：全部喇叭 + 信号塔一起轰、漫天乌鸦，画面全白闪 */
     else { scatter(26, (x, z) => { rocks(x, z, 4); dust(x, z, 4, 1.6, 3); part(T.rock, x, 9 + Math.random() * 5, z, { vy: -18, size: 1.6 + Math.random(), life: 0.6, g: -20 }) }); rocks(P.x, P.z, 8); dust(P.x, P.z, 10, 2, 5); tint(0x6a5038, 0.9) }
     if (k >= 2) tint(0x8a0000, 1.4);
   }
@@ -272,7 +279,7 @@ export function createFB(ctx) {
     if (hud) return hud;
     const el = document.createElement('div'); el.id = 'fbHud'; el.className = 'hidden';
     const btn = (k, img) => `<button class="fbk ${k}" data-fbk="${k}"><i style="background-image:url(${A('img/fb/btn_' + img + '.png')})"></i><em class="cdv"></em><b class="cdn"></b>${k === 'roll' ? '<s class="chg"></s>' : ''}</button>`;
-    el.innerHTML = `<div class="fbtint"></div><div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
+    el.innerHTML = `<div class="fbtint"></div><div class="fbconf"></div><div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
       <div class="fbb"><div class="bav"><img src="${A('img/fb/boss_' + 1 + '.png')}" alt=""></div><div class="bnm"><b></b><small></small></div><div class="bbar"><i class="lag"></i><i class="cur"></i><s style="left:75%"></s><s style="left:50%"></s><s style="left:25%"></s><span class="bpct"></span></div><div class="bcast hidden"><i></i><span></span></div></div>
       <div class="fbt"><b>3:00</b></div><div class="fbrage hidden">BOSS 狂暴</div><button class="fbq">撤退</button>
       <div class="fbend hidden"></div>
@@ -310,7 +317,7 @@ export function createFB(ctx) {
     const left = FB.time - fight.t, tt = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : '狂暴';
     const tb = $h('.fbt b'); if (tb.textContent !== tt) tb.textContent = tt; $h('.fbt').classList.toggle('red', left < 30);
     /* 增益 / 减益小图标 */
-    const bf = []; if (P.stunT > 0) bf.push(['眩晕', P.stunT]); if (P.rootT > 0) bf.push(['禁锢', P.rootT]); if (P.inv > 0 && P.inv <= 3) bf.push(['无敌', P.inv]);   /* 设计 61：只有翻滚（0.4 秒）、不灭之铠（2 秒）的无敌；测试用的长时间无敌不显示 */ if (P.regen10 > 0) bf.push(['回血', P.regen10]); if (P.hurtT > FB_CFG.regenDelay && P.hp < P.max) bf.push(['回血', 0]);   /* 设计 101：跟 fbcore 的自动回血一样（5 秒） */ if (fight.rage) bf.push(['BOSS 狂暴', 0]);
+    const bf = []; if (P.stunT > 0) bf.push(['眩晕', P.stunT]); if (P.rootT > 0) bf.push(['禁锢', P.rootT]); if (P.confT > 0) bf.push(['错乱', P.confT]);   /* 设计 114 */ if (P.inv > 0 && P.inv <= 3) bf.push(['无敌', P.inv]);   /* 设计 61：只有翻滚（0.4 秒）、不灭之铠（2 秒）的无敌；测试用的长时间无敌不显示 */ if (P.regen10 > 0) bf.push(['回血', P.regen10]); if (P.hurtT > FB_CFG.regenDelay && P.hp < P.max) bf.push(['回血', 0]);   /* 设计 101：跟 fbcore 的自动回血一样（5 秒） */ if (fight.rage) bf.push(['BOSS 狂暴', 0]);
     const bh = bf.map(([n, s]) => `<span>${n}${s > 0 ? ' ' + s.toFixed(1) : ''}</span>`).join(''); if ($h('.fbuffs').innerHTML !== bh) $h('.fbuffs').innerHTML = bh;
     for (const kk of ['focus', 'roll', 'stun', 'nade']) {
       const b = $h(`.fbk.${kk}`), cd = P.cd[kk], full = fight.cdOf(kk), ready = kk === 'roll' ? P.charges > 0 : cd <= 0;
@@ -509,12 +516,13 @@ export function createFB(ctx) {
       else if (e.e === 'far') ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '太远了', 'far');   // 设计 64
       else if (e.e === 'noTarget') ctx.UI.toast('附近没有能扔的目标', '', 1200);
       else if (e.e === 'heart') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '不眠之心：减伤 +30%', 'x10'); part(glowTex().ball, P.x, 1.2, P.z, { size: 2.6, grow: 1.4, life: 0.8, add: true, color: 0xffb040 }) }
-      else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
+      else if (e.e === 'mobSpawn') { if ((e.m.pus || e.m.crow) && stg) stg.spawnPus(e.m); else spawnMob(e.m) }   /* 设计 114：小乌鸦第 4 关自己画 */
       else if (e.e === 'rage') { rageT = 0.01; $h('.fbrage').classList.remove('hidden'); ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}要放「灭杀」，吃两次必倒`, 'bad', 3000) }   /* 设计 106 */
       else if (e.e === 'doomHit') doomFx(e.n);
       else if (e.e === 'quake') quakeFx();
       else if (e.e === 'pstun') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '眩晕', 'bad'); stunFx = e.t }   /* 设计 110 */
       else if (e.e === 'proot') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '禁锢', 'bad'); for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; part(T.rock, P.x + Math.cos(a) * 0.5, 0.15, P.z + Math.sin(a) * 0.5, { size: 0.55 + Math.random() * 0.25, life: e.t, op: 1, noFloor: true }) } dust(P.x, P.z, 6, 0.9, 1.5, 0.3) }
+      else if (e.e === 'pconf') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '错乱：方向反了', 'bad') }   /* 设计 114：头顶紫色漩涡、画面边缘紫色波纹 */
       else if (e.e === 'immune') ctx.UI.floatText(new THREE.Vector3(B.x, 5.6, tox() ? ARENA.z0 : B.z), '免疫', '');   /* 设计 106b：灭杀期间打 BOSS 不掉血 */
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
       else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 6.3 : 6.4, tox() ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
@@ -522,6 +530,10 @@ export function createFB(ctx) {
     qfxFrame(dt); rubFrame(dt);
     if (stunFx > 0) { stunFx -= dt; if (Math.random() < dt * 14) { const a = clock * 9 + Math.random(); part(T.star, P.x + Math.cos(a) * 0.45, 2.15, P.z + Math.sin(a) * 0.45, { size: 0.45, life: 0.3, add: true, color: 0xffe066 }) } }   /* 设计 110：眩晕——头顶星星转圈、身子晃 */
     if (ctx.player) ctx.player.rotation.z = P.stunT > 0 ? Math.sin(clock * 16) * 0.12 : 0;
+    /* 设计 114：错乱——头顶紫色漩涡转圈，画面边缘紫色一圈（刺耳尖叫读条时也慢慢泛紫） */
+    { const on = P.confT > 0; if (on && !confSpr && stg && T.blk) { confSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.blk[3], transparent: true, blending: ADD, depthWrite: false, fog: false })); confSpr.scale.setScalar(1.1) }
+      if (confSpr) { if (confSpr.parent !== scene) scene.add(confSpr); confSpr.visible = on; if (on) { confSpr.position.set(P.x, 2.45, P.z); confSpr.material.rotation += dt * 6; confSpr.material.opacity = Math.min(1, P.confT * 3) } }
+      const cv = hud && hud.querySelector('.fbconf'), ck = B.cast && B.cast.k === 'shriek' ? 0.6 * Math.min(1, B.cast.t / B.cast.dur) : 0, op = on ? 0.75 + 0.25 * Math.sin(clock * 8) : ck; if (cv && cv._op !== op) { cv._op = op; cv.style.opacity = op } }
     if (tintT > 0) { tintT -= dt; const el = hud.querySelector('.fbtint'); if (el) el.style.opacity = 0.55 * Math.max(0, tintT / tintD) }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
     for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (tox() ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
@@ -555,11 +567,11 @@ export function createFB(ctx) {
     else ctx.aimArms(ctx.player);
     ctx.player.visible = !(P.inv > 0 && P.inv < 3 && !P.roll && Math.floor(P.inv * 12) % 2);
     /* 小丧尸 */
-    for (const m of fight.mobs) { if (m.pus) continue; const v = mobVis.get(m.id); if (!v) continue;
+    for (const m of fight.mobs) { if (m.pus || m.crow) continue; const v = mobVis.get(m.id); if (!v) continue;
       v.m.position.set(m.x, m.rise > 0 ? -1.7 * (m.rise / 0.9) : m.dead ? -Math.max(0, m.deadT - 1.2) * 0.8 : 0, m.z); v.m.rotation.y = m.yaw || 0;
       if (m.dead) { v.m.rotation.x = -Math.min(1, m.deadT * 3) * Math.PI / 2 * 0.9; v.bar.visible = false } else { ctx.animH(v.m, clock + v.off, m.rise > 0 || m.stun > 0 || m.wind > 0 ? 0 : 2.3); v.bar.visible = m.hp < m.max; const k = m.hp / m.max; v.fg.scale.x = Math.max(0.001, k); v.fg.position.x = -(1 - k) / 2; v.bar.position.set(m.x, 2.2, m.z); v.bar.quaternion.copy(ctx.camera.quaternion) }
       v.stun.visible = m.stun > 0 && !m.dead; if (v.stun.visible) { v.stun.position.set(m.x, 2.05, m.z); v.stun.material.rotation += dt * 4 } }
-    for (const [id, v] of mobVis) if (!fight.mobs.find(m => m.id === id && !m.pus)) { scene.remove(v.m); scene.remove(v.bar); scene.remove(v.stun); mobVis.delete(id) }
+    for (const [id, v] of mobVis) if (!fight.mobs.find(m => m.id === id && !m.pus && !m.crow)) { scene.remove(v.m); scene.remove(v.bar); scene.remove(v.stun); mobVis.delete(id) }
     /* 手雷：抛物线飞过去 */
     for (let i = nades.length - 1; i >= 0; i--) { const g = nades[i]; g.t += dt; const k = Math.min(1, g.t / g.dur); g.m.position.set(g.x0 + (g.x - g.x0) * k, 1.2 + 3 * k * (1 - k) - 1.0 * k, g.z0 + (g.z - g.z0) * k); g.m.rotation.x += dt * 12; if (k >= 1) { scene.remove(g.m); nades.splice(i, 1) } }
     /* 子弹 */
