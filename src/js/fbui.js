@@ -167,13 +167,13 @@ export const FB_PANELS = {
       const it = S.fb.bag.find(x => x.id === +id); if (!it) return ''; const D = ITEMS[it.k], lv = lvOf(it), busy = swapBusy();
       const fx = swapFx && swapFx.id === it.id && performance.now() - swapFx.at < 60000 ? swapFx : null;
       const res = fx ? `<div class="swapres${busy ? ' play' : ''}"><div class="swl">传说转换</div><div class="swt"><b class="old">${FL.nameAt(fx.from, fx.lv)}</b> Lv${fx.lv} <span>→</span> <b style="color:${QUAL.l.tx}">${FL.nameAt(fx.to, fx.lv)}</b> Lv${fx.lv}</div><div class="swfx">${ITEMS[fx.to].fx}</div></div>` : '';
-      const tg = FL.swapTargets(it).map(k => `<span class="swtg">${FL.nameAt(k, lv)}<small>${SLOT_NAME[ITEMS[k].slot]}</small></span>`).join('');
+      const tg = FL.swapTargets(it).map(k => `<span class="swtg eqtip" data-nm="${FL.nameAt(k, lv)}（${SLOT_NAME[ITEMS[k].slot]}）：${ITEMS[k].fx}">${FL.nameAt(k, lv)}</span>`).join('');   /* 设计 107b：5 个名字一行排开、不用滚就看得到；点名字看部位和特效 */
       const okSt = FL.swapOk(it), can = okSt && S.coins >= LEG_SWAP && !busy;
       return `<div class="fbdw"><div class="fbds">${res}
         <h5>${eqIcon(it)} ${iname(it)}<small>${qName(D.q)} · ${SLOT_NAME[D.slot]} · Lv${lv} · ${it.st || 0}★</small></h5>
-        <div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div>
-        ${okSt ? `<p class="note">随机换成同一关（Lv${lv}）的另外 5 种传说之一（机会一样），<b>Lv 不变</b>：</p>
-        <div class="swtgs">${tg}</div>` : '<p class="note warn swnote">升过星的传说不能转换（只有 0★ 的能转）。</p>'}</div>
+        ${okSt ? `<p class="note swnote2">随机换成下面 5 种之一（机会一样，Lv 不变）：</p>
+        <div class="swtgs">${tg}</div>` : '<p class="note warn swnote">升过星的传说不能转换（只有 0★ 的能转）。</p>'}
+        <div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div></div>
         <div class="fbfoot"><span class="fbfl need${S.coins >= LEG_SWAP || !okSt ? '' : ' lack'}"><i class="ico-coin"></i>${LEG_SWAP}</span><button class="btn" data-act="fbLegSwap" data-arg="${it.id}" ${can ? '' : 'disabled'}>转换</button></div></div>` };
     return frame('smith', { tabs, cols: 5, rows: 3, cells, detail, dw: 260, res, help,
       none: '背包里没有传说装备。副本里打到的传说，没升星前可以在这里换成同一关的其他传说。', empty: `<p class="note">点一件背包里没升过星的传说：花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说。</p>` });

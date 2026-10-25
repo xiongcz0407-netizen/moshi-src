@@ -1337,3 +1337,7 @@ body.kbon .cin{margin-top:4px}
 @keyframes swGlow{0%{opacity:1;transform:scale(.3)}60%{opacity:.8}100%{opacity:0;transform:scale(1.4)}}
 .pf-cell.eqcell.swno{opacity:.5;filter:grayscale(.7)}.itag.swst{position:absolute;right:2px;top:2px;font-size:9px;white-space:nowrap;background:#8f8678;color:#fff;border-radius:4px;padding:0 3px}
 .rfw .rfwarn{flex:none;margin:0;padding:2px 8px;font-size:12px;font-weight:700;color:#b04a10;background:#fbe2b8;border-top:1px dashed #c99257;text-align:center}
+/* 设计 107b：传说转换的 5 个名字放在特效上面，一行排开（窄屏两行），不被底部价格栏挡住 */
+.pf-detail .swnote2{margin:2px 0 0;font-size:11.5px;line-height:1.3}
+.pf-detail .swtgs{flex:none;gap:3px 4px;margin:2px 0 4px}.pf-detail .swtg{font-size:11.5px;padding:0 5px;white-space:nowrap;cursor:pointer}
+@media (max-width:720px){ .pf-detail .swtg{font-size:11px;padding:0 4px} .pf-detail .swnote2{font-size:11px} }
