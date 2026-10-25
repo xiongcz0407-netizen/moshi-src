@@ -414,9 +414,9 @@ export function createFB(ctx) {
     if (!win) setTimeout(() => showEnd(false), 1400);
   }
   function showEnd(win) {
-    const e = hud.querySelector('.fbend'), sc = FB.tix;   /* 设计 108：召唤券，每关 1 张 */
-    e.innerHTML = win ? `<div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张召唤券）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`
-      : `<div class="fblose"><b>你倒下了</b><small>没有掉落，召唤券不退</small></div><div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张召唤券）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`;
+    const e = hud.querySelector('.fbend'), sc = FB.tix, ag = ctx.tixHave && ctx.tixHave() < sc ? `再打一次（买 ${sc} 张召唤券）` : `再打一次（${sc} 张召唤券）`;   /* 设计 108：召唤券，每关 1 张；设计 109：没券写「买 1 张」 */
+    e.innerHTML = win ? `<div class="fbbtns"><button class="btn" data-fbe="again">${ag}</button><button class="btn ghost" data-fbe="home">回超市</button></div>`
+      : `<div class="fblose"><b>你倒下了</b><small>没有掉落，召唤券不退</small></div><div class="fbbtns"><button class="btn" data-fbe="again">${ag}</button><button class="btn ghost" data-fbe="home">回超市</button></div>`;
     e.classList.remove('hidden');
   }
   /* 宝箱：BOSS 倒下 1 秒后从上面掉下来，周围一直有光（按品质染色），走近点「打开宝箱」 */

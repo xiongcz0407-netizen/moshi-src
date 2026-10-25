@@ -8,6 +8,7 @@
 | `fbtest.mjs` | 副本存档逻辑 42 项：解锁、扣券、第一次保底、**掉率（设计 98：66 / 25 / 3 / 6）**、背包满、炼宝、技能、晶石…… | `node tools/test/fbtest.mjs` |
 | `fblogtest.mjs` | 掉落记录 8 项（设计 90 / 94） | `node tools/test/fblogtest.mjs` |
 | `spitdodge.mjs` | 毒囊酸液喷吐在锁定区域 40 个位置躲不躲得开（设计 95） | `node tools/test/spitdodge.mjs` |
+| `fb109test.mjs` | 设计 109：买 n 张尸潮券 / 召唤券（扣钱、钓鱼区 ×1.2、刚好够 / 差 1 块、最多） | `node tools/test/fb109test.mjs` |
 | `fb105test.mjs` | 设计 105：300 个名字都不一样、传说 12 种每关都能掉（各约 1/12）、Lv 跟关卡、套装 Lv5 / Lv10、老存档迁移、同星对比 | `node tools/test/fb105test.mjs` |
 | `fb108test.mjs` | 设计 108：召唤券（新存档 0、老存档送 3 张只送一次、每关 1 张、尸潮券不动、不够不能打、输了不退、买 1 / 5 张、钓鱼区贵 20%） | `node tools/test/fb108test.mjs` |
 | `tank.mjs` | 设计 101：「站着不躲」机器人（走到 BOSS 前 6 米一直开枪，不躲不滚），5 套装备 × 两关，报输赢、最低血、吸血 / 自动回血 / 拾荒者 4 件各回多少 | `node tools/test/tank.mjs 30`（`GEAR=xiongL STAGE=2` 只跑一种） |
