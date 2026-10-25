@@ -21,13 +21,13 @@ export const STAGES = {
     covers: [{ k: 'block', x: 0, z: 0.5, hx: 1.05, hz: 0.85 }, { k: 'cart', x: -5.4, z: 6.5, hx: 1.2, hz: 0.7 }, { k: 'crates', x: 5.65, z: -3.2, hx: 0.95, hz: 0.95 }, { k: 'barrels', x: -5.7, z: -6.6, hx: 0.9, hz: 0.9 }],
     walk: { stuck: 2, stuckGain: 1, replan: 0.3, replanMove: 1 } },
   /* 第 2 关毒囊：毒雾断崖。台地宽 14、长 38（北边 z −16 是崖边，毒囊在崖下 z −17.6，露上半身、手扒崖边）；南边接破铁桥。掩体两边错开 */
-  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 2.5, hitY: 2.8, lockZ: -5,   /* 设计 95：毒囊缩到 0.7（bossR 3.6 → 2.5，受击高度 4.2 → 2.8）。 */   /* 设计 95：主角往北走过 z = -5 才开打，身后封死，只在北边 11 米里打（毒囊一直在画面里） */
+  2: { arena: { x0: -7, x1: 7, z0: -16, z1: 22, start: { x: 0, z: 19 }, boss: { x: 0, z: -17.6 } }, bossR: 2.5, hitY: 2.8, lockZ: -5,   /* 设计 99：出生点照旧在南边铁桥头（z = 19），自己走过台地。设计 95：毒囊缩到 0.7（bossR 3.6 → 2.5，受击高度 4.2 → 2.8）。 */   /* 设计 95：主角往北走过 z = -5 才开打，身后封死，只在北边 11 米里打（毒囊一直在画面里） */
     covers: [{ k: 'rock', x: -3.9, z: -7.5, hx: 1.0, hz: 0.95 }, { k: 'barrels', x: 3.8, z: -6.9, hx: 0.95, hz: 1.1 }, { k: 'pipe', x: -3.4, z: 2.8, hx: 1.45, hz: 0.5 }, { k: 'stump', x: 3.6, z: 8.2, hx: 0.7, hz: 0.75 }] },
 };
 export let ARENA = null, COVERS = null;
 export function setStage(n) {
   const g = STAGES[n] || STAGES[1];
-  ARENA = { ...g.arena, start: { ...g.arena.start }, boss: { ...g.arena.boss } }; if (g.lockZ != null) ARENA.start.z = g.lockZ + 5.5;   /* 设计 95：出生点在封线南边 5.5 米 */ COVERS = g.covers.map(c => ({ ...c }));
+  ARENA = { ...g.arena, start: { ...g.arena.start }, boss: { ...g.arena.boss } }; COVERS = g.covers.map(c => ({ ...c }));
   return g;
 }
 setStage(1);
