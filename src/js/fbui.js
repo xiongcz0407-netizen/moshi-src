@@ -11,7 +11,17 @@ const scrollIc = () => icon('it', 'scroll');
 /* 设计 85：套装（q-s）图标：左上角红色星星角标 + 边框流光；星越高越华丽（t0 0～3★、t1 4～7★、t2 8～11★、t3 12★），全是 CSS 动画，不跑 JS */
 export const setTier = st => st >= 12 ? 3 : st >= 8 ? 2 : st >= 4 ? 1 : 0;
 export const setDeco = (q, st) => q !== 's' ? '' : `${setTier(st) >= 3 ? `<i class="srn" style="background-image:url(${A('img/fb/set_ring.png')})"></i>` : ''}<i class="sfl"></i>${setTier(st) >= 2 ? '<i class="sdt"></i>' : ''}<i class="sbg"></i>`;
-export const eqIcon = (it, big) => { const D = ITEMS[it.k], st = it.st || 0; return `<span class="eqic q-${D.q}${D.q === 's' ? ' t' + setTier(st) : ''}${big ? ' big' : ''}">${setDeco(D.q, st)}<img src="${A('img/fb/eq_' + (D.ic || it.k) + '.png')}" alt="">${st ? `<em${st >= 12 ? ' class="mx"' : ''}>${st}★</em>` : ''}</span>` };
+/* 设计 105：左下角「Lv3」牌子（物品等级 = 第几关；套装按这套的 Lv5 / Lv10），四种品质都标 */
+export const lvOf = it => { const D = ITEMS[it.k]; return D && D.set ? D.lv : it.lv || 1 };
+const lvTag = lv => `<b class="eqlv">Lv${lv}</b>`;
+export const eqIcon = (it, big) => { const D = ITEMS[it.k], st = it.st || 0; return `<span class="eqic q-${D.q}${D.q === 's' ? ' t' + setTier(st) : ''}${big ? ' big' : ''}">${setDeco(D.q, st)}<img src="${A('img/fb/eq_' + (D.ic || it.k) + '.png')}" alt="">${lvTag(lvOf(it))}${st ? `<em${st >= 12 ? ' class="mx"' : ''}>${st}★</em>` : ''}</span>` };
+const iname = it => FL.itemName(it);
+/* 设计 105（设计104 第 7 条）：套装效果一档一档列，穿够的那档整行绿色加粗，没生效的灰色；以后新套装照样用 */
+export const setRows = (k, n) => `<div class="setrows">${[['2 件', 'two', 2], ['4 件', 'four', 4], ['5 件', 'five', 5]].map(([t, f, c]) => `<div class="setrow ${n >= c ? 'on' : 'off'}"><span>${t}</span><b>${SETS[k][f]}</b></div>`).join('')}</div>`;
+const setHead = (k, n) => `${SETS[k].name}套装（穿了 <span class="${n >= 2 ? 'setn on' : 'setn'}">${n}/5</span>）`;
+/* 设计 105：背包、炼宝的排序 品质 → Lv（高的在前）→ 星级 */
+const QO = { l: 4, s: 3, e: 2, n: 1 };
+export const gearKey = it => QO[ITEMS[it.k].q] * 10000 + lvOf(it) * 100 + (it.st || 0);
 const qName = q => `<b style="color:${QUAL[q].tx}">${QUAL[q].name}</b>`;
 const statLines = it => { const s = FL.itemStats(it); return Object.entries(s.main).map(([k, v]) => `<div class="drow"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + v + '%' : '+' + v}</b></div>`).join('') + s.aff.map(([k, v]) => `<div class="drow aff"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + v + '%' : '+' + v}</b></div>`).join('') };
 const fmtS = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
@@ -28,11 +38,12 @@ export const FB_PANELS = {
       return { id: String(n), cls: 'fbcell' + (lock ? ' locked' : '') + (won ? ' won' : ''), html: `${bossIc(n)}<b>第 ${n} 关</b><small>${B.name}</small>${lock ? `<span class="tdst lk">🔒 ${B.open ? lock : '还没开放'}</span>` : ''}` } });
     const g = gst('fb'); if (g.sel == null) g.sel = '1';
     /* 设计 82：能掉的全列出来（按品质 4 行，从 fblogic.dropTable / firstDrop 读；82b：不写掉落率，每件写名字）；「挑战」固定在详情最下面一条 */
-    const smIc = k => { const D = ITEMS[k]; return `<span class="eqic sm q-${D.q}${D.q === 's' ? ' t0' : ''} eqtip" data-nm="${D.name}" data-nmc="${QUAL[D.q].color}">${setDeco(D.q, 0)}<img src="${A('img/fb/eq_' + (D.ic || k) + '.png')}" alt=""></span>` };
+    /* 设计 105：第 n 关的名字（传说点图标看全名 + 特效）、Lv 牌子 */
+    const smIc = (k, n) => { const D = ITEMS[k], nm = FL.nameAt(k, n) + (D.fx ? '：' + D.fx : ''); return `<span class="eqic sm q-${D.q}${D.q === 's' ? ' t0' : ''} eqtip" data-nm="${nm}" data-nmc="${QUAL[D.q].color}">${setDeco(D.q, 0)}<img src="${A('img/fb/eq_' + (D.ic || k) + '.png')}" alt="">${lvTag(D.set ? D.lv : n)}</span>` };
     const detail = id => { const n = +id, B = BOSSES[n], why = FL.fbCanStart(S, n), need = FB.scrolls(n), lock = FL.fbLockWhy(S, n), fd = !(S.fb.won[n] > 0) && FL.firstDrop(n);
       const ORD = { s: 0, l: 1, e: 2, n: 3 };   /* 设计 87：显示顺序套装 → 传说 → 史诗 → 普通（只改显示，dropTable 本身不动） */
-      const rows = FL.dropTable(n).slice().sort((a, b) => ORD[a.q] - ORD[b.q]).map(r => `<div class="fbdq"><b style="color:${QUAL[r.q].tx}">${QUAL[r.q].name}</b><span class="fbdics">${r.keys.map(k => `<span class="fbdit">${smIc(k)}<small style="color:${QUAL[ITEMS[k].q].tx}">${ITEMS[k].name}</small></span>`).join('')}</span></div>`).join('');
-      const fdTxt = fd ? `<p class="fbfirst">第一次打赢必掉：${fd.what}（${fd.keys.length <= 3 ? fd.keys.map(k => ITEMS[k].name).join(' / ') : `${fd.keys.length} 件里随机`}）</p>` : '';
+      const rows = FL.dropTable(n).slice().sort((a, b) => ORD[a.q] - ORD[b.q]).map(r => `<div class="fbdq"><b style="color:${QUAL[r.q].tx}">${QUAL[r.q].name}</b><span class="fbdics">${r.keys.map(k => `<span class="fbdit">${smIc(k, n)}<small style="color:${QUAL[ITEMS[k].q].tx}">${FL.nameAt(k, n)}</small></span>`).join('')}</span></div>`).join('');
+      const fdTxt = fd ? `<p class="fbfirst">第一次打赢必掉：${fd.what}（${fd.keys.length <= 3 ? fd.keys.map(k => FL.nameAt(k, n)).join(' / ') : `${fd.keys.length} 件里随机`}）</p>` : '';
       const btn = S.td.scrolls < need && !lock ? `<button class="btn grey" data-act="needScroll">挑战</button>` : `<button class="btn" data-act="fbGo" data-arg="${n}" ${why ? 'disabled' : ''}>挑战</button>`;
       const foot = lock ? `<span class="fbfl lk">🔒 ${lock}</span>` : `<span class="fbfl need${S.td.scrolls >= need ? '' : ' lack'}">${scrollIc()}尸潮卷 ×${need}</span>`;   /* 82d：只写要几张（不写我有几张），居中 */
       return `<div class="fbdw"><div class="fbds">
@@ -67,11 +78,16 @@ export const FB_PANELS = {
       const rows = keys.map(k => { const v = ownT[k], d = worn ? 0 : +((after[k] || 0) - (before[k] || 0)).toFixed(1); return `<div class="drow"><span>${STAT[k].name}</span><b>${v != null ? '+' + +(+v).toFixed(1) + (STAT[k].pct ? '%' : '') : '—'}${d ? ` <em class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : ''}${d}${STAT[k].pct ? '%' : ''}</em>` : ''}</b></div>` }).join('');
       const setChg = worn ? '' : Object.keys(SETS).filter(k => (after.sets[k] || 0) !== (before.sets[k] || 0)).map(k => { const a = before.sets[k] || 0, b = after.sets[k] || 0, da = +((after.all || 0) - (before.all || 0)).toFixed(0);
         return `<p class="setchg ${b < a ? 'dn' : 'up'}">${b < a ? '卸下身上那件' : '换上'}：${SETS[k].name} ${a}/5 → ${b}/5${da ? `，全部伤害 ${da > 0 ? '+' : '−'}${Math.abs(da)}%` : ''}</p>` }).join('');
-      const setP = D.set ? `<div class="dsub">${SETS[D.set].name}套装（穿了 ${gs.sets[D.set] || 0}/5）</div><div class="setrows">${[['2 件', 'two', 2], ['4 件', 'four', 4], ['5 件', 'five', 5]].map(([n, k, c]) => `<div class="setrow${(gs.sets[D.set] || 0) >= c ? ' on' : ''}"><span>${n}</span><b>${SETS[D.set][k]}</b></div>`).join('')}</div>` : D.slot === 'm' ? '<p class="note">护符不属于套装。</p>' : '';
-      return `<h5>${eqIcon(it)} ${D.name}<small>${qName(D.q)} · ${SLOT_NAME[D.slot]}</small></h5>
-        <div class="drow"><span>物品等级</span><b>${it.lv}　${it.st || 0}★</b></div>${!worn ? '<div class="dsub">属性（右边小字：换上以后整身变化，含套装）</div>' : ''}${rows}${setChg}
+      const setP = D.set ? `<div class="dsub">${setHead(D.set, gs.sets[D.set] || 0)}</div>${setRows(D.set, gs.sets[D.set] || 0)}` : D.slot === 'm' ? '<p class="note">护符不属于套装。</p>' : '';
+      /* 设计 105（设计104 第 4、5 条）：炼到跟身上一样的星级时比一比；现在不如身上、同星更好时金色 ⇡ */
+      const upAt = !worn && !up && FL.betterAt(S, it);
+      const same = !worn && cur ? (() => { const at = FL.capSt(it, cur.st), a = FL.statsAt(it, cur.st), b = FL.itemStats(cur), pc = k => STAT[k].pct ? '%' : '';
+        const ln = Object.keys(a.main).map(k => { const x = a.main[k], y = b.main[k] || 0; return `<span class="${x > y + 0.05 ? 'good' : x < y - 0.05 ? 'bad' : ''}">${STAT[k].name} ${x}${pc(k)}（身上 ${y}${pc(k)}）${x > y + 0.05 ? '↑' : x < y - 0.05 ? '↓' : ''}</span>` }).join('　');
+        return `<div class="samest"><small>炼到跟身上一样的 ${at}★${at < (cur.st || 0) ? `（这件最高 ${at}★）` : ''}：</small>${ln}</div>` })() : '';
+      return `<h5>${eqIcon(it)} ${iname(it)}<small>${qName(D.q)} · ${SLOT_NAME[D.slot]}</small></h5>
+        <div class="drow"><span>物品等级</span><b>Lv${lvOf(it)}　${it.st || 0}★</b></div>${!worn ? '<div class="dsub">属性（右边小字：换上以后整身变化，含套装）</div>' : ''}${rows}${setChg}
         ${D.fx ? `<div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div>` : ''}${setP}
-        ${!worn ? `<div class="dsub">${cur ? `身上：${ITEMS[cur.k].name} ${cur.st || 0}★　<span class="${up ? 'good' : 'warn'}">${up ? '↑ 这件更好' : '身上的更好'}</span>` : `身上${SLOT_NAME[D.slot]}还空着`}</div>` : ''}
+        ${!worn ? `<div class="dsub">${cur ? `身上：${iname(cur)} Lv${lvOf(cur)} ${cur.st || 0}★　<span class="${up ? 'good' : upAt ? 'gold' : 'warn'}">${up ? '↑ 这件更好' : upAt ? '⇡ 炼了更好' : '身上的更好'}</span>` : `身上${SLOT_NAME[D.slot]}还空着`}</div>${same}` : ''}
         <div class="btns">${worn ? `<button class="btn" data-act="fbSwap" data-arg="${D.slot}">换一件</button>` : `<button class="btn" data-act="fbEquip" data-arg="${it.id}">穿上</button><button class="btn ghost" data-act="fbDis" data-arg="${it.id}">分解（${crysIc}${FL.dismantleGain(it)}）</button>`}<button class="btn ghost" data-act="fbToRef" data-arg="${it.id}">去炼宝</button></div>` };
     if (g.tab === 'sk') {
       const cells = SKILL_IDS.map(k => ({ id: k, cls: 'skcell', html: `<img class="skic" src="${A('img/fb/btn_' + k + '.png')}" alt=""><b>${SKILLS[k].name}</b><small>${S.fb.sk[k]} 级</small>` }));
@@ -84,8 +100,8 @@ export const FB_PANELS = {
     }
     if (g.tab === 'ref') {
       const H = refHold(), show = it => H && it && H.id === it.id ? { ...it, st: H.st, pity: H.pity } : it;   /* 设计 80：敲打动画放着时照炼之前画 */
-      const all = [...SLOTS.map(s => S.fb.eq[s]).filter(Boolean), ...S.fb.bag].map(show);
-      const cells = all.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${ITEMS[it.k].name}</small>${Object.values(S.fb.eq).some(e => e && e.id === it.id) ? '<span class="itag ok">穿着</span>' : ''}` }));
+      const all = [...SLOTS.map(s => S.fb.eq[s]).filter(Boolean), ...S.fb.bag].map(show).sort((a, b) => gearKey(b) - gearKey(a));   /* 设计 105：品质 → Lv → 星 */
+      const cells = all.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>${Object.values(S.fb.eq).some(e => e && e.id === it.id) ? '<span class="itag ok">穿着</span>' : ''}` }));
       const detail = id => { const it = show(FL.itemById(S, +id)); if (!it) return ''; const D = ITEMS[it.k], max = QUAL[D.q].stars, inf = FL.refineInfo(it);
         const stars = Array.from({ length: 12 }, (_, i) => `<i class="${i < (it.st || 0) ? 'on' : i < max ? '' : 'no'}${refFx && refFx.id === it.id && performance.now() - refFx.at < 1500 && i === (refFx.ok ? it.st - 1 : it.st) ? (refFx.ok ? ' pop' : ' bad') : ''}">★</i>`).join('');
         const nx = inf.max ? null : { ...it, st: inf.to };
@@ -97,18 +113,18 @@ export const FB_PANELS = {
         const foot = inf.max ? `<div class="fbfoot rffoot"><span class="fbfl lk">已满星</span><button class="btn" disabled>炼宝</button></div>`
           : `<div class="fbfoot rffoot"><span class="fbfl"><b>升到 ${inf.to} 星　${inf.luck ? '<span class="warn">看运气</span> ' : ''}成功率 ${Math.round(inf.rate * 100)}%${inf.pity ? `（保底 +${Math.round(inf.pity * 100)}%）` : ''}</b><span class="${S.fb.crys >= inf.cost ? '' : 'lack'}">${crysIc}${inf.cost}（有 ${S.fb.crys}）</span></span>
             <button class="btn" data-act="fbRefine" data-arg="${it.id}" ${ok ? '' : 'disabled'}>炼宝</button></div>`;
-        return `<div class="fbdw rfw"><div class="rftop"><div class="rfhd">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${D.name}</b><small>${QUAL[D.q].name} · 最高 ${max} 星</small></div></div><div class="refstars">${stars}</div></div>
+        return `<div class="fbdw rfw"><div class="rftop"><div class="rfhd">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${iname(it)}</b><small>${QUAL[D.q].name} · Lv${lvOf(it)} · 最高 ${max} 星</small></div></div><div class="refstars">${stars}</div></div>
           <div class="fbds">${attrs}${inf.max ? `<p class="note">最高 ${max} 星，满了。</p>` : ''}
           ${refFx && refFx.id === it.id && performance.now() - refFx.at < 2500 ? `<p class="note ${refFx.ok ? 'good' : 'warn'}">${refFx.ok ? `成功！升到 ${it.st} 星` : '失败了，星星没掉'}</p>` : ''}</div>${foot}</div>` };
       return frame('gear', { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
     }
     if (g.tab === 'bag') {
-      const f = g.f || 'all', sort = g.sort || 'q', QO = { l: 4, s: 3, e: 2, n: 1 };
+      const f = g.f || 'all', sort = g.sort || 'q';
       let list = S.fb.bag.filter(it => f === 'all' || ITEMS[it.k].slot === f);
-      const key = { q: it => QO[ITEMS[it.k].q] * 100 + (it.st || 0), st: it => (it.st || 0) * 100 + QO[ITEMS[it.k].q], lv: it => it.lv * 100 + QO[ITEMS[it.k].q], new: it => it.id }[sort];
+      const key = { q: gearKey, st: it => (it.st || 0) * 10000 + QO[ITEMS[it.k].q] * 100 + lvOf(it), lv: it => lvOf(it) * 10000 + QO[ITEMS[it.k].q] * 100 + (it.st || 0), new: it => it.id }[sort];
       list = list.slice().sort((a, b) => key(b) - key(a));
       const sel = g.sel != null ? FL.itemById(S, +g.sel) : null; if (sel && sel.nw) delete sel.nw;   // 看过了：红点去掉
-      const cells = list.map(it => { const up = FL.better(S, it); return { id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${ITEMS[it.k].name}</small>${up ? '<span class="equp">↑</span>' : ''}${it.nw ? '<i class="eqnew"></i>' : ''}` } });
+      const cells = list.map(it => { const up = FL.better(S, it), upAt = !up && FL.betterAt(S, it); return { id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>${up ? '<span class="equp">↑</span>' : upAt ? '<span class="equp gold">⇡</span>' : ''}${it.nw ? '<i class="eqnew"></i>' : ''}` } });
       const chip = (act, v, cur, txt) => `<button class="gchip${v === cur ? ' on' : ''}" data-act="${act}" data-arg="${v}">${txt}</button>`;
       const lead = `<div class="baghd"><b class="${full ? 'warn' : ''}">${full ? `背包满了（${S.fb.bag.length}/${FB.bag}）` : `背包 ${S.fb.bag.length}/${FB.bag}`}</b></div>
         <div class="bagbar">${chip('fbFilter', 'all', f, '全部')}${SLOTS.map(sl => chip('fbFilter', sl, f, SLOT_NAME[sl])).join('')}</div>
@@ -122,8 +138,8 @@ export const FB_PANELS = {
     /* 装备页：只放身上 5 个格子 + 主角 + 总属性 + 套装进度；点格子右边看详情 */
     const slot = s => { const it = S.fb.eq[s]; return `<div class="eqslot ${it ? 'has' : ''}${g.sel === 'eq:' + s ? ' sel' : ''}" data-gsel="eq:${s}">${it ? eqIcon(it) : '<span class="eqic none"></span>'}<small>${SLOT_NAME[s]}</small></div>` };
     const tot = Object.entries(gs).filter(([k, v]) => STAT[k] && v > 0).map(([k, v]) => `<div class="drow"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + (+v.toFixed(1)) + '%' : '+' + Math.round(v)}</b></div>`).join('') || '<p class="note">还没穿装备，去副本打 BOSS 掉。</p>';
-    const sets = Object.entries(SETS).map(([k, d]) => { const n = gs.sets[k] || 0; return `<div class="drow"><span>${d.name} ${n}/5</span><b class="nw ${n >= 2 ? 'good' : 'dim'}">2 件：${d.two}</b></div><div class="drow"><span></span><b class="nw ${n >= 4 ? 'good' : 'dim'}">4 件：${d.four}</b></div><div class="drow"><span></span><b class="nw ${n >= 5 ? 'good' : 'dim'}">5 件：${d.five}</b></div>` }).join('');
-    const legs = gs.legs.map(k => `<div class="drow"><span>${ITEMS[k].name}</span><b class="nw" style="color:${QUAL.l.tx}">${ITEMS[k].fx}</b></div>`).join('');
+    const sets = Object.keys(SETS).map(k => { const n = gs.sets[k] || 0; return `<div class="setprog"><div class="setnm">${setHead(k, n)}</div>${setRows(k, n)}</div>` }).join('');   /* 设计 105：跟详情同一个 setRows */
+    const legs = SLOTS.map(s => S.fb.eq[s]).filter(it => it && ITEMS[it.k].q === 'l').map(it => `<div class="drow"><span>${iname(it)}</span><b class="nw" style="color:${QUAL.l.tx}">${ITEMS[it.k].fx}</b></div>`).join('');
     const left = `<div class="eqfig"><div class="eqcol">${['w', 'h', 'a'].map(slot).join('')}</div><div class="eqhero" data-heromount></div><div class="eqcol">${['g', 'b', 'm'].map(slot).join('')}</div></div>`;
     const detail = id => { const sl = id.slice(3), it = S.fb.eq[sl]; return it ? itemDetail(it, true) : `<h5>${SLOT_NAME[sl]}</h5><p class="note">还空着。</p><div class="btns"><button class="btn" data-act="fbSwap" data-arg="${sl}">换一件</button></div>` };
     const summary = `<h5>总属性</h5>${tot}<div class="dsub">套装</div>${sets}${legs ? `<div class="dsub">传说特效</div>${legs}` : ''}`;
@@ -133,9 +149,9 @@ export const FB_PANELS = {
   /* 「获得」框（设计53 第三节） */
   fbGot(S) {
     const r = S.fb.got; if (!r) return '<p class="note">没有东西。</p>';
-    const it = S.fb.pend, D = it && ITEMS[it.k], full = FL.bagFull(S), up = it && FL.better(S, it);
+    const it = S.fb.pend, D = it && ITEMS[it.k], full = FL.bagFull(S), up = it && FL.better(S, it), upAt = it && !up && FL.betterAt(S, it);
     return `<div class="got"><div class="gothd"><b>击败 ${BOSSES[r.n].name}</b><span>用时 ${fmtS(r.secs || 0)}</span>${r.first ? '<em>首次击败</em>' : ''}</div>
-      ${it ? `<div class="gotit q-${D.q}">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${D.name}</b><small>${QUAL[D.q].name} · ${SLOT_NAME[D.slot]}</small>${statLines(it)}${D.fx ? `<div class="note" style="color:${QUAL.l.tx}">${D.fx}</div>` : ''}${up ? '<div class="good">↑ 比身上的好</div>' : ''}</div></div>` : `<div class="note">装备已经收好了。</div>`}
+      ${it ? `<div class="gotit q-${D.q}">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${iname(it)}</b><small>${QUAL[D.q].name} · ${SLOT_NAME[D.slot]} · Lv${lvOf(it)}</small>${statLines(it)}${D.fx ? `<div class="note" style="color:${QUAL.l.tx}">${D.fx}</div>` : ''}${up ? '<div class="good">↑ 比身上的好</div>' : upAt ? '<div class="gold">⇡ 炼到跟身上一样的星级会更好</div>' : ''}</div></div>` : `<div class="note">装备已经收好了。</div>`}
       <div class="gotres"><span>${crysIc}×${r.crys}</span><span><i class="ico-coin"></i>×${r.coins}</span></div>
       ${it ? `<div class="btns">${up ? `<button class="btn" data-act="fbEquip" data-arg="${it.id}">穿上</button>` : ''}<button class="btn ${up ? 'ghost' : ''}" data-act="fbTake" ${full ? 'disabled' : ''}>${full ? '背包满了' : '收下'}</button><button class="btn ghost" data-act="fbDis" data-arg="${it.id}">分解（${crysIc}${FL.dismantleGain(it)}）</button></div>` : `<div class="btns"><button class="btn" data-act="fbGotClose">好的</button></div>`}</div>`;
   },
