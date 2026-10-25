@@ -19,14 +19,15 @@ export const storedMB = () => storedBytes / 1048576;
 const HOME_PIRATE = /\/(barrel|chest|crate|crate-bottles|flag-pennant|boat-row-small|flag-high-pennant|platform|ship-small)\.glb$/;
 export function packOf(p) {
   if (/_hi\.glb$/.test(p)) return 'hi';
-  if (/^models\/fb2\//.test(p) || /^img\/fb2\//.test(p)) return 'fb2';   /* 设计 81：每个 BOSS 一包（第 2 关毒囊） */
+  if (/^models\/fb2\//.test(p) || /^img\/fb2\//.test(p)) return 'fb2';
+  if (/^models\/fb3\//.test(p) || /^img\/fb3\//.test(p)) return 'fb3';   /* 设计 102：第 3 关落石巨人 */   /* 设计 81：每个 BOSS 一包（第 2 关毒囊） */
   if (/^models\/fb\//.test(p)) return /portal\.glb$/.test(p) ? 'base' : 'fb1';
   if (/^img\/fb\//.test(p)) return /\/(glow_\w+|vortex)\.jpg$/.test(p) ? 'base' : 'fb1';   // 传送门的光效在院子里就看得到
   if (/^models\/water\/[^/]+\.glb$/.test(p) || (/^models\/pirate\/[^/]+\.glb$/.test(p) && !HOME_PIRATE.test(p))) return 'fish';
   if (/^img\/fx\//.test(p) && !/(cloud|ground_deco|leaves)\./.test(p)) return 'td';
   return 'base';
 }
-export const PACK_NAME = { base: '基础', td: '尸潮', fb1: '副本·屠夫', fb2: '副本·毒囊', fish: '钓鱼', hi: '大模型原版' };
+export const PACK_NAME = { base: '基础', td: '尸潮', fb1: '副本·屠夫', fb2: '副本·毒囊', fb3: '副本·落石巨人', fish: '钓鱼', hi: '大模型原版' };
 export function packList(name) { return Object.keys(HASH).filter(p => packOf(p) === name) }
 export function packSize(name) { return packList(name).reduce((a, p) => a + (SIZE[p] || 0), 0) }
 /* 这一包下好了几成（0～100）；库不能用时算 100（照旧走网络） */

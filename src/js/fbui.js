@@ -15,7 +15,7 @@ export const eqIcon = (it, big) => { const D = ITEMS[it.k], st = it.st || 0; ret
 const qName = q => `<b style="color:${QUAL[q].tx}">${QUAL[q].name}</b>`;
 const statLines = it => { const s = FL.itemStats(it); return Object.entries(s.main).map(([k, v]) => `<div class="drow"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + v + '%' : '+' + v}</b></div>`).join('') + s.aff.map(([k, v]) => `<div class="drow aff"><span>${STAT[k].name}</span><b>${STAT[k].pct ? '+' + v + '%' : '+' + v}</b></div>`).join('') };
 const fmtS = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
-const bossIc = n => n <= 2 && BOSSES[n].open ? `<img class="bossic" src="${A(n === 1 ? 'img/fb/boss_1.png' : `img/fb${n}/boss_${n}.png`)}" alt="">` : `<span class="bossic q">?</span>`;   /* 设计 81：第 2 关毒囊的头像 */
+const bossIc = n => n <= 3 && BOSSES[n].open ? `<img class="bossic" src="${A(n === 1 ? 'img/fb/boss_1.png' : `img/fb${n}/boss_${n}.png`)}" alt="">` : `<span class="bossic q">?</span>`;   /* 设计 81：第 2 关毒囊的头像 */
 let refFx = null;   // 炼宝结果动画 { ok, at }
 export const setRefFx = r => { refFx = r ? { ...r, at: performance.now() } : null };
 

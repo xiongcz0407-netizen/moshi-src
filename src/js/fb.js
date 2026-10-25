@@ -7,6 +7,7 @@ import { prop } from './props.js';
 import { addFlat } from './flatshadow.js';
 import { createFight, COVERS, ARENA, BUTCHER_ANIM, BOSS_SCALE, push as pushOut, setStage, FB_CFG } from './fbcore.js';
 import { buildTox, TOX_ASSETS } from './fbtox.js';   /* 设计 81：第 2 关毒囊 */
+import { buildRock, ROCK_ASSETS } from './fbrock.js';   /* 设计 102：第 3 关落石巨人 */
 import { FB, BOSSES, QUAL, ITEMS, SKILLS } from './fbcfg.js';
 import { glowTex, glowMat, glowSprite } from './portal.js';
 
@@ -30,6 +31,12 @@ const warnMat = (kind) => new THREE.ShaderMaterial({
         float fill = 1.0 - smoothstep(p - 0.015, p, d);
         a = 0.16 + fill * 0.30 + edge * 0.75;
         a *= 1.0 - smoothstep(0.985, 1.0, d);
+      } else if (kind > 1.5) {                            // 设计 102：方格（石柱阵）：按到中心的方形距离
+        float d = max(abs(vP.x), abs(vP.z)) / (wid * 0.5);
+        float edge = smoothstep(0.86, 0.95, d);
+        float fill = 1.0 - smoothstep(p - 0.015, p, d);
+        a = 0.16 + fill * 0.30 + edge * 0.7;
+        a *= 1.0 - smoothstep(0.97, 1.0, d);
       } else {                                            // 长条：z 是往前（0～len），x 是左右
         float u = vP.z / len, s = abs(vP.x) / (wid * 0.5);
         float edge = smoothstep(0.86, 0.95, s);
@@ -48,6 +55,11 @@ function warnMesh(w) {
   if (w.type === 'circle') { geo = new THREE.CircleGeometry(w.r, 48); geo.rotateX(-Math.PI / 2); m = warnMat(0); m.uniforms.r.value = w.r }
   else if (w.type === 'fan') { geo = new THREE.RingGeometry(w.r0 || 0.01, w.r, 32, 1, Math.PI / 2 - w.a / 2, w.a);   /* 设计 61：从刀能碰到的地方开始画（屠夫身子外面） */ geo.rotateX(-Math.PI / 2); geo.rotateY(Math.PI); m = warnMat(0); m.uniforms.r.value = w.r }
   else if (w.type === 'line') { geo = new THREE.PlaneGeometry(w.w, w.len); geo.rotateX(-Math.PI / 2); geo.translate(0, 0, w.len / 2); m = warnMat(1); m.uniforms.len.value = w.len; m.uniforms.wid.value = w.w }
+  else if (w.type === 'cells') { const g = new THREE.Group(); for (const c of w.cells) { const q = new THREE.PlaneGeometry(w.s - 0.12, w.s - 0.12); q.rotateX(-Math.PI / 2); const mm = warnMat(2); mm.uniforms.wid.value = w.s - 0.12; const o = new THREE.Mesh(q, mm); o.position.set(c.x, 0.04, c.z); o.renderOrder = 4; g.add(o) } return g }   // 设计 102
+  else if (w.type === 'lanes' || w.type === 'segs') { const g = new THREE.Group();   // 设计 102：滚石铁轨（整条）、地裂（Y 字）
+    const segs = w.type === 'lanes' ? w.xs.map(x => ({ x0: x, z0: w.z0, x1: x, z1: w.z1 })) : w.segs;
+    for (const q of segs) { const L = Math.hypot(q.x1 - q.x0, q.z1 - q.z0), ge = new THREE.PlaneGeometry(w.w, L); ge.rotateX(-Math.PI / 2); ge.translate(0, 0, L / 2); const mm = warnMat(1); mm.uniforms.len.value = L; mm.uniforms.wid.value = w.w; if (w.ult) mm.uniforms.col.value.setHex(0xff1a0a);
+      const o = new THREE.Mesh(ge, mm); o.position.set(q.x0, 0.04, q.z0); o.rotation.y = Math.atan2(q.x1 - q.x0, q.z1 - q.z0); o.renderOrder = 4; g.add(o) } return g }
   else { const g = new THREE.Group(); for (const p of w.pts) { const c = new THREE.CircleGeometry(w.r, 28); c.rotateX(-Math.PI / 2); const mm = warnMat(0); mm.uniforms.r.value = w.r; const o = new THREE.Mesh(c, mm); o.position.set(p.x, 0.04, p.z); o.renderOrder = 4; g.add(o) } return g }
   if (w.ult) m.uniforms.col.value.setHex(0xff1a0a);
   const o = new THREE.Mesh(geo, m); o.position.set(w.x, 0.04, w.z); if (w.type !== 'circle') o.rotation.y = w.yaw; o.renderOrder = 4; return o;
@@ -71,7 +83,7 @@ export function createFB(ctx) {
   /* 设计 74：每个文件失败自动重试 2 次（隔 1 秒）；整体失败时把 assets 清掉（以前失败的 Promise 一直留着，之后每次进副本都直接失败），出错的文件记进 FB_ERR */
   const glbRetry = async (u, tries = 2) => { for (let i = 0; ; i++) { try { return await loadGLB(u) } catch (e) { if (i >= tries) { const er = new Error(`${u.split('/').pop()}：${(e && e.message) || e}`); er.file = u; throw er } await new Promise(r => setTimeout(r, 1000)) } } };
   /* 设计 81：每关自己的模型（第 2 关毒囊在 models/fb2/，崖边石块、宝箱跟第 1 关共用） */
-  const ASSET_LIST = { 1: ['butcher', 'shed', 'block', 'cart', 'cleaver', 'gate_1', 'gate_2', 'gate_3', 'gate_4', 'rock_1', 'rock_2', 'rock_3', 'chest_1', 'chest_2'].map(k => 'fb/' + k), 2: TOX_ASSETS };
+  const ASSET_LIST = { 1: ['butcher', 'shed', 'block', 'cart', 'cleaver', 'gate_1', 'gate_2', 'gate_3', 'gate_4', 'rock_1', 'rock_2', 'rock_3', 'chest_1', 'chest_2'].map(k => 'fb/' + k), 2: TOX_ASSETS, 3: ROCK_ASSETS };
   const assetsP = {};
   function load(lv = 1) {
     if (assetsP[lv]) return assetsP[lv];
@@ -86,8 +98,13 @@ export function createFB(ctx) {
   /* ---------- 场地（照场景样式图）：南边铁门 → 中间水泥空地和掩体 → 北边平台和屠宰棚，两边山崖 ---------- */
   /* 设计 74：场地建到一半出错：scene / boss 都丢掉，下次进副本从头再建（以前 scene 已经有值，下次不重建，boss 是空的） */
   /* 设计 81：每关一个场景，建好了留着（第 1 关屠夫照旧 buildAll，第 2 关毒囊在 fbtox.js） */
-  const SCN = {}; let stg = null, occl = [];   // occl：设计 97，挡住主角时会变半透明的东西（屠夫关南边矮墙、铁门、崖脚石头）
-  function build(g) { try { if (n === 2) buildTox2(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg, occl } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; occl = []; delete SCN[n]; throw e } }
+  const SCN = {}; let stg = null, occl = []; const tox = () => !!(stg && stg.tox);   // 设计 102：毒囊（不走动）专用的位置判断，第 3 关会走动的巨人不算   // occl：设计 97，挡住主角时会变半透明的东西（屠夫关南边矮墙、铁门、崖脚石头）
+  function build(g) { try { if (n === 2) buildTox2(g); else if (n === 3) buildRock3(g); else buildAll(g); SCN[n] = { scene, boss, mixer, acts, T, stg, occl } } catch (e) { scene = null; boss = null; mixer = null; acts = {}; T = null; stg = null; occl = []; delete SCN[n]; throw e } }
+  function buildRock3(g) {   /* 设计 102 */
+    scene = new THREE.Scene(); occl = []; T = { dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), star: tex('img/fb/fx_star.png'), crack: tex('img/fb/mark_crack.png'), hole: tex('img/fb/mark_hole.png'), drag: tex('img/fb/mark_drag.png') };
+    stg = buildRock({ scene, g, T, tex, part, mark, dust, rocks, shock, glowTex, glowMat, glowSprite, flatGeo, ADD, ctx, ARENA, COVERS });
+    boss = stg.boss; mixer = stg.mixer; acts = stg.acts; boss.userData.mats = stg.mats; occl = stg.occl;
+  }
   function buildTox2(g) {
     scene = new THREE.Scene(); T = { dust: tex('img/fb/fx_dust.png'), rock: tex('img/fb/fx_rock.png'), star: tex('img/fb/fx_star.png'), crack: tex('img/fb/mark_crack.png'), hole: tex('img/fb/mark_hole.png'), drag: tex('img/fb/mark_drag.png') };
     stg = buildTox({ scene, g, T, tex, place, part, mark, dust, rocks, shock, glowTex, glowMat, glowSprite, flatGeo, ADD, ctx, ARENA, COVERS });
@@ -247,7 +264,7 @@ export function createFB(ctx) {
     $h('.fbb .cur').style.width = (bk * 100) + '%'; $h('.fbb .lag').style.width = (bLag * 100) + '%';
     $h('.fbb').classList.toggle('rage', !!fight.rage && !B.dead); $h('.fbb').classList.toggle('dead', !!B.dead);   // 设计 61：狂暴头像框红色闪，击败变灰
     const pc = B.dead ? '击败' : Math.ceil(bk * 100) + '%'; if ($h('.bpct').textContent !== pc) $h('.bpct').textContent = pc;
-    const cast = $h('.bcast'), c = B.cast;
+    const cast = $h('.bcast'), c = B.cast && !B.cast.hideBar ? B.cast : null;   // 设计 102：巨人走去抓掩体那一段不显示施法条
     if (c) { cast.classList.remove('hidden'); cast.classList.toggle('ult', !!c.w.ult); cast.querySelector('i').style.width = Math.min(100, c.t / c.dur * 100) + '%'; const nm = stg ? stg.castName(c.k) : { swing: '挥刀', charge: '冲锋', slam: '砸地（大招）', summon: '叫小丧尸' }[c.k]; if (cast.querySelector('span').textContent !== nm) cast.querySelector('span').textContent = nm }
     else cast.classList.add('hidden');
     const left = FB.time - fight.t, tt = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : '狂暴';
@@ -353,7 +370,7 @@ export function createFB(ctx) {
     /* 屠夫往前扑倒（身子在前面 2 米多），宝箱放在他旁边、靠场地中间那一侧 */
     const B = fight.boss, s0 = Math.sin(B.yaw), c0 = Math.cos(B.yaw), side = (B.x * c0 - B.z * s0) > 0 ? -1 : 1;
     /* 设计 61：屠夫放大 1.5 倍，宝箱离身子远一点（2.6 → 3.9 米）；再从掩体里推出来（宝箱半径约 1.3 米）。设计 81：毒囊关落在台地北段 */
-    const cp = stg ? stg.chestSpot() : { x: Math.max(ARENA.x0 + 1.5, Math.min(ARENA.x1 - 1.5, B.x + c0 * 3.9 * side + s0 * 1.5)), z: Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 2, B.z - s0 * 3.9 * side + c0 * 1.5)) };
+    const cp = stg && stg.chestSpot ? stg.chestSpot() : { x: Math.max(ARENA.x0 + 1.5, Math.min(ARENA.x1 - 1.5, B.x + c0 * 3.9 * side + s0 * 1.5)), z: Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 2, B.z - s0 * 3.9 * side + c0 * 1.5)) };
     pushOut(cp, 1.7); const x = Math.max(ARENA.x0 + 1.5, Math.min(ARENA.x1 - 1.5, cp.x)), z = Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 2, cp.z));
     const q = res && res.item ? ITEMS[res.item.k].q : 'n', col = new THREE.Color(QUAL[q].color), G = glowTex(), legend = q === 'l';
     const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
@@ -422,8 +439,8 @@ export function createFB(ctx) {
       else if (e.e === 'drag') { const L = hyp(e.x1 - e.x0, e.z1 - e.z0); if (L > 1) { const s = Math.sin(e.yaw), c = Math.cos(e.yaw); for (const sd of [-0.55, 0.55]) mark(T.drag, (e.x0 + e.x1) / 2 + c * sd, (e.z0 + e.z1) / 2 - s * sd, L, 4, e.yaw, 0.7) } }
       else if (e.e === 'bump') { part(T.star, e.x, 1.6, e.z, { size: 2.2, grow: 1.5, life: 0.4, add: true }); dust(e.x, e.z, 8, 1.1, 3, 1.3); ctx.shake(0.5); ctx.UI.floatText(new THREE.Vector3(e.x, 3.4, e.z), '撞到掩体，晕了', 'good') }
       else if (e.e === 'knock' && e.star) { part(T.star, P.x, 1.4, P.z, { size: 1.6, grow: 1.6, life: 0.35, add: true }); ctx.shake(0.35) }
-      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '打断！', 'x10');
-      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 5.6 : 5.7, stg ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
+      else if (e.e === 'interrupt') ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 5.6 : 5.7, tox() ? ARENA.z0 : B.z), '打断！', 'x10');
+      else if (e.e === 'slowed') ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 5.6 : 5.7, tox() ? ARENA.z0 : B.z), '大招打断不了，慢 50%', '');
       else if (e.e === 'stunShot') { shock(e.x, e.z, 7, 0x9fe8ff); part(T.star, e.x, 2.2, e.z, { size: 2, grow: 1.4, life: 0.4, add: true, color: 0x9fe8ff }) }
       else if (e.e === 'roll') { rollFx = 0.32; dust(P.x, P.z, 3, 0.9, 1) }
       else if (e.e === 'nadeThrow') { const m = new THREE.Mesh(nadeGeo, nadeMat); m.position.set(e.x0, 1.2, e.z0); scene.add(m); nades.push({ m, ...e, t: 0 }) }
@@ -434,10 +451,10 @@ export function createFB(ctx) {
       else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
       else if (e.e === 'rage') { rageT = 0.01; ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}狂暴了！伤害 ×2`, 'bad', 3000) }
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
-      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, stg ? 6.3 : 6.4, stg ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
+      else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 6.3 : 6.4, tox() ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
-    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (stg ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
+    for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (tox() ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
     /* 预警 */
     const live = new Set(fight.warns.map(w => w.id));
     for (const [id, o] of warnObjs) if (!live.has(id)) { scene.remove(o); disposeTree(o); warnObjs.delete(id) }

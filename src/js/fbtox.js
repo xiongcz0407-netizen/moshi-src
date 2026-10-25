@@ -306,5 +306,5 @@ export function buildTox(api) {
   }
   /* 设计 94：镜头、红箭头用的毒囊的脸：头顶（上沿）、下巴（下沿），世界坐标 */
   const face = () => { const h = bone.Head.getWorldPosition(new THREE.Vector3()); return { x: h.x, z: h.z, top: h.y + 0.13 * TOX_SCALE * TOX_K, chin: wpos(mouth).y } };
-  return { face, fog, eyeRed, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus, pusFrame, chestSpot, reset, bone, look, castName: k => ({ spit: '酸液喷吐', bolt: '毒弹', burst: '毒囊爆裂', slam: '拍地', surge: '毒雾上涌（大招）' })[k] };
+  return { tox: true, face, fog, eyeRed, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus, pusFrame, chestSpot, reset, bone, look, castName: k => ({ spit: '酸液喷吐', bolt: '毒弹', burst: '毒囊爆裂', slam: '拍地', surge: '毒雾上涌（大招）' })[k] };
 }

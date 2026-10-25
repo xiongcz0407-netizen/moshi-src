@@ -11,9 +11,11 @@ let seed = 7; const rng = () => (seed = (seed * 16807) % 2147483647) / 214748364
 const S = { fb: fbNew() };
 /* 设计 81：GEARSET=e3x2 → 2 件史诗 3 星（第 1 关刷出来的武器 + 头盔，第 2 关的过关装备线） */
 if (process.env.GEARSET === 'e3x2') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 1, st: 3 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 1, st: 3 } }
+/* 设计 102：GEARSET=e4x4 → 4 件史诗 4 星（武器、头盔、护甲、手套；第 3 关的过关装备线） */
+if (process.env.GEARSET === 'e4x4') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a1', lv: 2, st: 4 }; S.fb.eq.g = { id: 4, k: 'e_g1', lv: 2, st: 4 } }
 const hero = { ...fbHero(S, hs), speed: 5 };
 const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
-let SL = null; const DBG = []; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
+let SL = null; const DBG = []; const FACE = { n: 0, near: 0 }; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
 for (let r = 0; r < N; r++) {
   const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false;
   let fireOn = true, fireT = 0, stunWait = -1, dt = 1 / 30;
@@ -51,6 +53,7 @@ for (let r = 0; r < N; r++) {
     const px0 = P.x, pz0 = P.z, yaw0 = P.yaw, rollB = !!P.roll || !!P.kb;
     if (process.env.DBG2 && r === 0 && st.t > 8 && st.t < 8.3) console.log('dbg', st.t.toFixed(2), P.x.toFixed(2), P.z.toFixed(2), mx.toFixed(2), mz.toFixed(2), skill, st.moveK, JSON.stringify(P.kb), !!P.roll, P.inv.toFixed(2), danger && danger.type);
     st.step(dt, { mx, mz, fire: fireOn, skill });
+    if (STG === 3 && !B.dead) { FACE.n++; if (Math.hypot(P.x - B.x, P.z - B.z) <= 6) FACE.near++ }   /* 设计 102：离巨人 6 米以内（镜头能把整张脸放在 BOSS 框下面）的时间占多少 */
     /* 设计 95：毒池占了多少场地（每 0.5 秒在区域里撒 0.5 米的点；上涌那半边单独算） */
     if (STG === 2 && st.locked && Math.round(st.t * 30) % 15 === 0) { let tot = 0, pool = 0, any = 0; for (let x = ARENA.x0 + 0.25; x < ARENA.x1; x += 0.5) for (let z = ARENA.z0 + 0.25; z < ARENA.z1; z += 0.5) { tot++; const p = st.pools.some(w => inWarn(w, x, z, 0)), h = (st.hazards || []).some(w => inWarn(w, x, z, 0)); if (p) pool++; if (p || h) any++ }
       POOLF.push(pool / tot); ANYF.push(any / tot); POOLN.push(st.pools.length) }
@@ -72,6 +75,7 @@ console.log(`${BOSSES[STG].name} 血 ${BOSSES[STG].hp}，角色页 ${LV} 级：�
 console.log(`${N} 局：赢 ${wins.length}（${(wins.length / N * 100).toFixed(0)}%）  用时 平均 ${avg(ts).toFixed(1)} 秒，中位 ${ts[Math.floor(ts.length / 2)]?.toFixed(1)}，10%～90% ${ts[Math.floor(ts.length * 0.1)]?.toFixed(1)}～${ts[Math.floor(ts.length * 0.9)]?.toFixed(1)}`);
 console.log(`剩血 平均 ${(avg(wins.map(r => r.hp)) * 100).toFixed(0)}%，挨打 ${avg(res.map(r => r.taken)).toFixed(0)}，打小丧尸 ${avg(res.map(r => r.mobs)).toFixed(1)}，打断 ${avg(res.map(r => r.intr)).toFixed(1)}`);
 if (POOLF.length) { const q = (a, f) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(b.length * f))] }; console.log(`设计 95：毒池占场地 中位 ${(q(POOLF, 0.5) * 100).toFixed(0)}%，95% 的时候 ≤ ${(q(POOLF, 0.95) * 100).toFixed(0)}%，最多 ${(q(POOLF, 1) * 100).toFixed(0)}%（同时最多 ${q(POOLN, 1)} 个）；连上涌、收边一起最多 ${(q(ANYF, 1) * 100).toFixed(0)}%`) }
+if (FACE.n) console.log(`设计 102：离巨人 6 米以内（看得到整张脸）的时间 ${(FACE.near / FACE.n * 100).toFixed(0)}%`);
 console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
 console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));
 if (FT.why) console.log(JSON.stringify(FT.why));
