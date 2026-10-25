@@ -88,9 +88,9 @@ export const TOX_NAME = { spit: '酸液喷吐', bolt: '毒弹', burst: '毒囊�
 const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angD = (a, b) => { let d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)) };
 /* 线段 p→q 有没有穿过掩体；返回第一个碰到的点的比例（0～1），没碰到返回 null */
-export function segHit(px, pz, qx, qz, pad = 0) {
+export function segHit(px, pz, qx, qz, pad = 0, shot = false) {   /* shot：算子弹（设计 110b：石柱阵的临时石柱只挡路、不挡子弹） */
   let best = null;
-  for (const c of COVERS) {
+  for (const c of COVERS) { if (shot && c.k === 'spike') continue;
     const dx = qx - px, dz = qz - pz; let t0 = 0, t1 = 1;
     for (const [p, d, lo, hi] of [[px, dx, c.x - c.hx - pad, c.x + c.hx + pad], [pz, dz, c.z - c.hz - pad, c.z + c.hz + pad]]) {
       if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) { t0 = 2; break } continue }
@@ -218,7 +218,7 @@ export function createFight(n, hero, opt = {}) {
   /* ---------- 主角开枪 ---------- */
   /* 设计 64：目标粘一会儿——锁上的目标出了射程，再多 1.5 米或 0.5 秒才放；小丧尸和 BOSS 之间换目标至少隔 0.4 秒。
      返回 { tg（瞄着谁，脸朝它）, shoot（真的在射程里、可以开枪） } */
-  const inRange = (t, extra = 0) => !t || (t === Bo ? Bo.dead : t.dead) ? false : t === Bo ? hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + BR + extra : hyp(t.x - P.x, t.z - P.z) < hero.range + extra && (extra > 0 || segHit(P.x, P.z, t.x, t.z) === null);
+  const inRange = (t, extra = 0) => !t || (t === Bo ? Bo.dead : t.dead) ? false : t === Bo ? hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + BR + extra : hyp(t.x - P.x, t.z - P.z) < hero.range + extra && (extra > 0 || segHit(P.x, P.z, t.x, t.z, 0, true) === null);
   function lockTarget(dt) {
     const L = P.lock || (P.lock = { tg: null, out: 0, sw: 9 }); L.sw += dt;
     const cand = targetOf();
@@ -231,13 +231,13 @@ export function createFight(n, hero, opt = {}) {
   function targetOf() {
     const rng = hero.range;
     let best = null, bd = 1e9;
-    for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const d = hyp(m.x - P.x, m.z - P.z); if (d < rng && d < bd && segHit(P.x, P.z, m.x, m.z) === null) { best = m; bd = d } }
+    for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const d = hyp(m.x - P.x, m.z - P.z); if (d < rng && d < bd && segHit(P.x, P.z, m.x, m.z, 0, true) === null) { best = m; bd = d } }
     if (best) return best;
     if (!Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < rng + BR) return Bo;
     return null;
   }
   function shoot(tg, mult, kind) {
-    const tx = tg.x, tz = tg.z, d = hyp(tx - P.x, tz - P.z), bl = segHit(P.x, P.z, tx, tz);
+    const tx = tg.x, tz = tg.z, d = hyp(tx - P.x, tz - P.z), bl = segHit(P.x, P.z, tx, tz, 0, true);
     const isB = tg === Bo, crit = rnd() < hero.crit + (isB ? hero.bossCrit : 0);
     const dmg = hero.dmg * mult * (crit ? hero.cdmg : 1) * (isB ? hero.boss : 1);
     st.stats.shots++;
@@ -451,7 +451,7 @@ export function createFight(n, hero, opt = {}) {
     const b = Bo, c = { k, t: 0, ws: [], w: { ult: k === 'ava' } }, dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
     st.stats.casts[k] = (st.stats.casts[k] || 0) + 1; b.yaw = Math.atan2(dx, dz); b.look = 'p';
     c.cancel = () => { for (const w of c.ws) dropWarn(w); if (c.held) { c.held = null } };
-    if (k === 'sweep') { c.dur = fast ? RK.comboWarn : wdur(RK.sweepWarn); if (fast) c.nm = '石拳横扫（快！）'; c.ws.push(rwarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: RK.sweepR, r0: 0.6, a: RK.sweepA, fast }, 'sweep', c.dur)); setAnim('sweep', ROCK_ANIM.sweep.hit / c.dur) }
+    if (k === 'sweep') { c.dur = fast ? RK.comboWarn : wdur(RK.sweepWarn); if (fast) c.nm = '快速横扫！'; c.ws.push(rwarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: RK.sweepR, r0: 0.6, a: RK.sweepA, fast }, 'sweep', c.dur)); setAnim('sweep', ROCK_ANIM.sweep.hit / c.dur) }
     else if (k === 'throw') { c.dur = wdur(RK.throwWarn); const w = rwarn({ type: 'circle', x: clamp(P.x, ARENA.x0 + 0.6, ARENA.x1 - 0.6), z: clamp(P.z, ARENA.z0 + 0.6, ARENA.z1 - 0.6), r: RK.throwR }, 'throw', c.dur); c.ws.push(w);
       setAnim('throw', ROCK_ANIM.throw.hit / Math.max(0.3, c.dur - RK.throwFly)) }   // 手松开 = 预警填满前 0.6 秒（石头飞过去，落地那一刻 = 填满）
     else if (k === 'grab') {   /* 先走到最近的掩体（最多 4 秒），抓起来 1 秒（能打断），再扔 */
@@ -462,7 +462,7 @@ export function createFight(n, hero, opt = {}) {
       if (cs.length < RK.minCovers) { const cand = []; for (const x of [-4.5, -1.5, 1.5, 4.5]) for (let dz = -7; dz <= 1; dz += 2) { const z = clamp(P.z + dz, ARENA.z0 + 3, ARENA.z1 - 4); cand.push({ x, z, s: Math.abs(hyp(x - P.x, z - P.z) - 4.5) + rnd() * 1.5 }) }   // 离主角 4～5 米最好（跑得到）
         cand.sort((p, q) => p.s - q.s);
         for (const q of cand) { if (cs.length >= RK.minCovers) break; if (inCover(q.x, q.z, 1.8) || hyp(q.x - P.x, q.z - P.z) < 2 || hyp(q.x - b.x, q.z - b.z) < 3) continue; coverAdd({ k: 'fallen', x: q.x, z: q.z, hx: 0.8, hz: 0.8, drop: true }); E('coverDrop', { x: q.x, z: q.z }); cs = realCovers() } }
-      c.dur = RK.rollWarn; c.nm = '全场滚石——躲到岩石后面！'; c.ws.push(rwarn({ type: 'field', x0: ARENA.x0, x1: ARENA.x1, z0: ARENA.z0, z1: ARENA.z1, sh: cs.map(shadowOf), x: 0, z: 0, ult: false }, 'roll', c.dur)); setAnim('pound', ROCK_ANIM.pound.hit / c.dur) }
+      c.dur = RK.rollWarn; c.nm = '全场滚石！躲岩石后'; c.ws.push(rwarn({ type: 'field', x0: ARENA.x0, x1: ARENA.x1, z0: ARENA.z0, z1: ARENA.z1, sh: cs.map(shadowOf), x: 0, z: 0, ult: false }, 'roll', c.dur)); setAnim('pound', ROCK_ANIM.pound.hit / c.dur) }
     else if (k === 'pillars') { c.dur = wdur(warnT); c.waves = st.half ? RK.pillarWavesHalf : RK.pillarWaves; c.wave = 0; c.cz = P.z; const g = cellsAround(c.cz, 0); c.ws.push(rwarn({ type: 'cells', ...g, x: P.x, z: P.z }, 'pillars', c.dur));
       setAnim('stomp', ROCK_ANIM.stomp.hit / c.dur) }
     else if (k === 'rift') { c.dur = wdur(warnT); const yaw = Math.atan2(dx, dz), L = Math.max(3, d + 1.2), ex = clamp(b.x + Math.sin(yaw) * L, ARENA.x0 + 0.3, ARENA.x1 - 0.3), ez = clamp(b.z + Math.cos(yaw) * L, ARENA.z0 + 0.3, ARENA.z1 - 0.3);

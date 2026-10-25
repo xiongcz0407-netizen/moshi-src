@@ -1073,7 +1073,7 @@ body.kbon .cin{margin-top:4px}
 .bcast{position:relative;height:14px;margin:0 10px;background:rgba(0,0,0,.6);border:1px solid #ddd;border-radius:3px;overflow:hidden}
 .bcast.hidden{visibility:hidden}
 .bcast i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#fff,#c9c9c9)}
-.bcast span{position:absolute;inset:0;text-align:center;font-size:10px;line-height:12px;color:#222;font-weight:700}
+.bcast span{position:absolute;inset:0;text-align:center;font-size:10px;line-height:12px;color:#fff;font-weight:700;white-space:nowrap;text-shadow:0 0 2px #000,0 0 2px #000,0 1px 1px #000}   /* 设计 110b：白字黑边，条填满的白色部分和没填满的黑色部分上都看得清（以前黑字在没填满的那半边看不见） */
 .bcast.ult{border-color:#ff5a40}.bcast.ult i{background:linear-gradient(180deg,#ff7a5a,#c8281c)}.bcast.ult span{color:#fff}
 .fbt{position:absolute;right:calc(12px + var(--sr));top:calc(10px + var(--st));background:rgba(20,16,14,.8);border:2px solid #8a7a5a;border-radius:10px;padding:2px 12px}
 .fbrage{position:absolute;right:calc(12px + var(--sr));top:calc(108px + var(--st));font-size:22px;font-weight:900;color:#ff3a2a;letter-spacing:3px;text-shadow:0 0 8px #000,0 2px 0 #300;pointer-events:none;white-space:nowrap;animation:fbrage 1s ease-in-out infinite alternate}   /* 设计 106b：放在右上角「撤退」下面（不压在 BOSS 血条和场景中间，三关都不挡 BOSS 脸） */

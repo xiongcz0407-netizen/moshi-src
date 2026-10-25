@@ -94,4 +94,5 @@ import { heroStats } from '../../src/js/logic.js';
   { const r = rollAt(false, null); ok(r.root === 1 && r.combo === 1, `设计 110：不在影子里：吃滚石并禁锢（${r.root} 次），不翻滚被接着的快速横扫打中（${r.combo} 次）`) }
   { const r = rollAt(false, 0.1); ok(r.root === 1 && r.combo === 0, `设计 110：被禁锢 0.1 秒后翻滚：横扫打不中（${r.combo} 次）`) }
   { const st = mk3(); for (const c of M.COVERS.filter(c => !c.temp)) M.COVERS.splice(M.COVERS.indexOf(c), 1); st.forceCast("roll"); ok(M.COVERS.filter(c => !c.temp).length >= 2, `设计 110：场上掩体扔光了，放全场滚石前补到 ${M.COVERS.filter(c => !c.temp).length} 个（≥ 2）`) }
+  { mk3(); M.COVERS.length = 0; M.COVERS.push({ k: 'spike', x: 0, z: 0, hx: 0.5, hz: 0.5, temp: true }); const a = M.segHit(0, 5, 0, -5, 0, true), b = M.segHit(0, 5, 0, -5); M.COVERS.length = 0; M.COVERS.push({ k: 'rock', x: 0, z: 0, hx: 0.5, hz: 0.5 }); const c = M.segHit(0, 5, 0, -5, 0, true); ok(!a && !!b && !!c, `设计 110b：石柱不挡子弹（${a ? '挡' : '不挡'}），但挡路（${b ? '挡' : '不挡'}）；掩体照样挡子弹（${c ? '挡' : '不挡'}）`) }
 }
