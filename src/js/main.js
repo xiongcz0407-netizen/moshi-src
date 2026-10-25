@@ -826,22 +826,29 @@ function fbGo(n) {
   if (TDR.active()) { UI.toast('尸潮中，打完再来', 'bad'); return }
   const w = FL.fbCanStart(S, n); if (w) { if ((S.fb.tix || 0) < FB.tix) toMerch('tix'); else UI.toast(w, 'bad'); return }
   UI.closePanel();
-  /* 主角走进门（门光一亮）→ 读取界面 → 屠夫场地。设计 74：读好、进去了才扣尸潮券（以前先扣券再读，读失败券白扣、S.fb.run 停着）；读失败主角从门里走回门前 */
+  /* 主角走进门（门光一亮）→ 读取界面 → 屠夫场地。设计 74：读好、进去了才扣召唤券（以前先扣券再读，读失败券白扣、S.fb.run 停着）；读失败主角从门里走回门前 */
   fbWalk = { from: P.pos.clone(), to: PORTAL_POS.clone().setZ(PORTAL_POS.z + 0.2), t: 0, dur: 0.85, done: () => fbLoad('正在进入副本…', async () => {
     await FBV.enter(n, fbHero(), S.look); FL.fbStart(S, n); SV.saveNow(); cur = FBV.scene(); UI.setLabelWorld('fb'); $('#hud').classList.add('hidden') }, () => fbFail(false)) };
   portal.flash();
 }
 function fbAgain(n) {
   const w = FL.fbCanStart(S, n); if (w) { UI.toast(w, 'bad'); return }
-  fbLoad('再来一次…', async () => { await FBV.enter(n, fbHero(), S.look); FL.fbStart(S, n); SV.saveNow(); cur = FBV.scene() }, () => fbFail(true));
+  /* 用户 10-25：人已经在副本里、东西都读好了，不要读取界面——屏幕黑一下（淡入 0.15 秒 → 重置场地 → 淡出 0.15 秒）就开打，不写字、不转圈、不硬等；真读失败照旧 fbFail */
+  const ov = fbBlack(); ov.style.opacity = '1'; window.__fbAgainT0 = performance.now();
+  setTimeout(async () => {
+    try { await FBV.enter(n, fbHero(), S.look); FL.fbStart(S, n); SV.saveNow(); cur = FBV.scene() } catch (e) { console.error(e); ov.style.opacity = '0'; fbFail(true); return }
+    last = performance.now(); requestAnimationFrame(() => { ov.style.opacity = '0'; window.__fbAgainT1 = performance.now() });
+  }, 150);
 }
+let fbBlackEl = null;
+function fbBlack() { if (!fbBlackEl) { fbBlackEl = document.createElement('div'); fbBlackEl.id = 'fbBlack'; Object.assign(fbBlackEl.style, { position: 'fixed', inset: '0', background: '#000', opacity: '0', pointerEvents: 'none', transition: 'opacity .15s linear', zIndex: '9000' }); document.body.appendChild(fbBlackEl) } return fbBlackEl }
 /* 设计 74：进副本失败：券没扣（本来就是进去以后才扣），run 清零，回超市（再来一次时人在副本里，也回超市），主角走到门前站好 */
 function fbFail(inFb) {
   FBV.abort(); if (S.fb.run) { S.fb.run = 0 } SV.saveNow();
   cur = scene; if (player.parent !== scene) scene.add(player); player.rotation.set(0, 0, 0); player.scale.set(1, 1, 1); player.visible = true; UI.setLabelWorld('main'); $('#hud').classList.remove('hidden');
   if (inFb) { P.pos.copy(PORTAL_POS).setZ(PORTAL_POS.z + 0.2); P.kb.set(0, 0); snapCam() }
   fbWalk = { from: P.pos.clone(), to: PORTAL_FRONT.clone(), t: 0, dur: 0.8, done: () => {} };
-  UI.raw.toast('副本没读出来（网络不好？），尸潮券没扣，再试一次', 'bad', 5000);
+  UI.raw.toast('副本没读出来（网络不好？），召唤券没扣，再试一次', 'bad', 5000);
 }
 function fbLeave() {
   fbLoad('正在回超市…', async () => {
@@ -1899,7 +1906,7 @@ addEventListener('pagehide', () => { if (S) { S.closedAt = SV.srvNow(); SV.saveN
 setInterval(() => { if (S && !document.hidden) SV.saveNow() }, 60000);
 
 /* ---------- 测试用：网址带 ?debug 时可以在控制台里操作 ---------- */
-if (/[?&]debug/.test(location.search)) setTimeout(() => { if (window.__g) Object.assign(window.__g, { FB_ERR, AD, ASSET, handleEvents }) }, 0);   /* 设计 74：副本读取的错 */
+if (/[?&]debug/.test(location.search)) setTimeout(() => { if (window.__g) Object.assign(window.__g, { FB_ERR, AD, ASSET, handleEvents, fbAgain }) }, 0);   /* 设计 74：副本读取的错 */
 if (/[?&]debug/.test(location.search)) window.__g = { RFX, topShot: (x0, x1, z0, z1, ppm = 24, sc = null) => {   /* 设计 79：sc = 别的场景（副本） */   /* 设计 70 检查：从正上方往下拍一块地（正交镜头，北在上） */
     const w = Math.round((x1 - x0) * ppm), h = Math.round((z1 - z0) * ppm), cam = new THREE.OrthographicCamera(x0, x1, -z0, -z1, 0.1, 200); cam.position.set(0, 80, 0); cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0);
     cam.left = x0; cam.right = x1; cam.top = -z0; cam.bottom = -z1; cam.updateProjectionMatrix();
