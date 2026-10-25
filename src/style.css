@@ -1079,6 +1079,8 @@ body.kbon .cin{margin-top:4px}
 .fbrage{position:absolute;right:calc(12px + var(--sr));top:calc(108px + var(--st));font-size:22px;font-weight:900;color:#ff3a2a;letter-spacing:3px;text-shadow:0 0 8px #000,0 2px 0 #300;pointer-events:none;white-space:nowrap;animation:fbrage 1s ease-in-out infinite alternate}   /* 设计 106b：放在右上角「撤退」下面（不压在 BOSS 血条和场景中间，三关都不挡 BOSS 脸） */
 @keyframes fbrage{from{opacity:.7}to{opacity:1}}
 .fbtint{position:absolute;inset:0;pointer-events:none;opacity:0;transition:none}
+/* 设计 114：错乱 / 刺耳尖叫——画面边缘一圈紫色 */
+.fbconf{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 60px 22px rgba(150,60,230,.75),inset 0 0 14px 4px rgba(210,150,255,.6)}
 .fbt b{font-size:20px;color:#ffe9b8;font-variant-numeric:tabular-nums}.fbt.red b{color:#ff4a3a}
 .fbq{position:absolute;right:calc(12px + var(--sr));top:calc(52px + var(--st));font-size:12px;background:rgba(40,30,26,.85);color:#e8d8c0;border:1px solid #8a7a5a;border-radius:8px;padding:3px 10px}
 /* 按键（右下，王者荣耀样式） */
