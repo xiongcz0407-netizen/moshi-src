@@ -68,7 +68,8 @@ export const ROCK_CFG = {
   lanes: [-3, 3], laneW: 2.5, rollK: 1.3, rollSpd: 13, ballR: 1.1,
   cell: 3, pillarRows: 5, pillarK: 1.0, pillarStay: 1.0, wave2: 0.8,
   riftW: 1.2, riftLife: 6, riftDps: 0.3, riftFork: 3.5, riftA: 0.55,
-  avaCast: 2.0, wallW: 2.2, rainT: 6, rainWaves: 7, rainR: 1.4, rainWarn: 0.6, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
+  avaCast: 2.0, wallW: 2.2, rainT: 6, rainWaves: 7, rainN: 3, quake: 70, rubbleDps: 10,   /* 设计 106：落石雨每波 3 个圈；地动、碎石雨（必吃伤害，fbsim 定） */
+  rainR: 1.4, rainWarn: 0.6, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
   maxCovers: 6, calm: 1.8, calmRage: 1.4, first: 3, gap: 4.2, gapRage: 3.5,
   /* 设计 103：出招更密、大招更多。10 招一轮，山崩每 5 招一次；半血以后 8 招一轮，山崩每 4 招一次 */
   order: ['grab', 'rift', 'roll', 'ava', 'pillars', 'grab', 'roll', 'rift', 'ava', 'pillars'], orderHalf: ['grab', 'rift', 'roll', 'ava', 'pillars', 'roll', 'rift', 'ava'],
@@ -77,7 +78,7 @@ export const ROCK_CFG = {
 export const ROCK_ANIM = { idle: { T: 3.2, loop: 1 }, walk: { T: 1.5, loop: 1, speed: 0.177 }, walk_fast: { T: 1.12, loop: 1, speed: 0.298 },
   sweep: { T: 1.7, hit: 0.8 }, throw: { T: 1.6, hit: 0.8 }, grab: { T: 1.0 }, toss: { T: 2.4, hit: 1.5 }, pound: { T: 2.7, hit: 1.5 }, stomp: { T: 2.5, hit: 1.5 },
   roar: { T: 3.1, hit: 2.0 }, hit: { T: 0.5 }, stagger: { T: 1.3 }, crack: { T: 2.1, hit: 0.7 }, die: { T: 2.7, hit: 1.95 } };
-export const ROCK_NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '铁轨滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（大招）' };
+export const ROCK_NAME = { sweep: '石拳横扫', throw: '投石', grab: '抓掩体投掷', roll: '铁轨滚石', pillars: '石柱阵', rift: '地裂', ava: '山崩（全场）' };
 /* 毒囊动作的时间（毒囊.glb，脚本 fb2/rig/anim.py 导出；hit = 喷出 / 拍到 / 炸开那一刻） */
 export const TOX_ANIM = { idle: { T: 3.0, loop: 1 }, spit: { T: 1.5, hit: 0.8 }, bolt_wind: { T: 0.6 }, bolt_spit: { T: 0.45, hit: 0.12 }, burst: { T: 2.1, hit: 1.15 },
   slam_l: { T: 2.6, hit: 1.5 }, slam_r: { T: 2.6, hit: 1.5 }, surge: { T: 2.8, hit: 2.0 }, hit: { T: 0.4 }, enrage: { T: 2.0 }, die: { T: 3.0, hit: 2.2 } };
@@ -142,8 +143,8 @@ export function createFight(n, hero, opt = {}) {
     hero,
   };
   const E = (e, o = {}) => st.ev.push({ e, ...o });
-  const bossDmg = ult => (ult ? B.ult : B.dmg) * (st.rage ? FB.rage.dmg : 1);
-  const wdur = base => base * (st.rage ? FB.rage.warn : 1);
+  const bossDmg = ult => ult ? B.ult : B.dmg;   /* 设计 106：狂暴不再加伤害（改成灭杀） */
+  const wdur = base => base;
   const setAnim = (a, ts = 1) => { const b = st.boss; b.anim = a; b.ts = ts; b.animId++; E('anim', { a, ts }) };
   const sk = k => hero.sk[k] || 1;
   const cdOf = k => { if (k === 'nade') return hero.nadeCd || 10; let c = SKILLS[k].cd(sk(k)) * (1 - hero.cdr); if (k === 'focus' && hero.s2four) c *= 0.7; return c };
@@ -184,8 +185,8 @@ export function createFight(n, hero, opt = {}) {
     return 'charge';
   }
 
-  function hurtPlayer(d, src) {
-    if (P.dead || P.inv > 0 || P.god || st.over) return 0;   // 设计 61：P.god 只给截图、测试用（不显示、正式版不会设）
+  function hurtPlayer(d, src, sure = false) {   /* sure：必吃伤害（设计 106），翻滚无敌也挡不住 */
+    if (P.dead || (P.inv > 0 && !sure) || P.god || st.over) return 0;   // 设计 61：P.god 只给截图、测试用（不显示、正式版不会设）
     const a = Math.round(d * (1 - Math.min(0.9, hero.dr + (P.heartT > 0 ? 0.3 : 0)))); P.hp -= a; P.hurtT = 0; st.stats.taken += a; E('pdmg', { a, src });
     if (hero.s1four && !(P.s1cd > 0)) { P.regen10 = 3; P.s1cd = CFG.s1cd }   // 设计 101：拾荒者 4 件每 15 秒最多触发一次（原来每挨一下都重新触发）
     if (hero.heart && !P.heartUsed && P.hp > 0 && P.hp < P.max * 0.3) { P.heartUsed = true; P.heartT = 5; E('heart') }   // 不眠之心
@@ -274,7 +275,23 @@ export function createFight(n, hero, opt = {}) {
       b.act = 'recover'; b.at = 0.5 }
     else if (c.k === 'charge') { b.act = 'dash'; b.dash = { yaw: w.yaw, left: w.len, hit: false, x0: b.x, z0: b.z }; setAnim('run', CFG.chargeSpd / (BUTCHER_ANIM.run.speed * BOSS_SCALE)) }
   }
+  /* 设计 106：狂暴改成「灭杀」（所有关）。3 分钟一到 BOSS 停下所有技能，读条 2 秒（打断不了），全场扣最大生命 60%（无视减伤、不触发保命、翻滚也挡不住）；
+     之后每 6 秒一次，第 2 次必死。返回 true = 这一帧 BOSS 只管灭杀 */
+  function doomStep(dt) {
+    if (Bo.dead) return false;
+    if (!st.rage) { if (st.t < FB.time) return false;
+      st.rage = true; if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
+      st.doom = { n: 0, t: 0, ph: 'cast' }; E('rage'); doomCast(); return true }
+    const D = st.doom; D.t += dt; if (Bo.cast) Bo.cast.t = D.ph === 'cast' ? D.t : Bo.cast.t;
+    if (D.ph === 'cast' && D.t >= FB.doom.cast) { D.n++; D.ph = 'wait'; D.t = 0; Bo.cast = null; Bo.act = 'doomWait'; E('doomHit', { n: D.n });
+      if (!P.dead && !st.over && !P.god) { const a = D.n >= 2 ? P.hp : Math.min(P.hp, Math.round(P.max * FB.doom.k)); P.hp -= a; P.hurtT = 0; st.stats.taken += a; E('pdmg', { a, src: 'doom' }); if (D.n >= 2 || P.hp <= 0) { P.hp = 0; P.dead = true; end(false) } } }
+    else if (D.ph === 'wait' && D.t >= FB.doom.gap - FB.doom.cast) { D.ph = 'cast'; D.t = 0; doomCast() }
+    return true;
+  }
+  function doomCast() { Bo.act = 'doom'; Bo.interruptible = false; Bo.cast = { k: 'doom', t: 0, dur: FB.doom.cast, ws: [], w: { ult: true }, doom: true }; Bo.yaw = Math.atan2(P.x - Bo.x, P.z - Bo.z);
+    setAnim(TOX ? 'enrage' : ROCK ? 'roar' : 'enrage', ROCK ? ROCK_ANIM.roar.hit / FB.doom.cast : 1); E('cast', { k: 'doom', dur: FB.doom.cast, ult: true, name: '灭杀（全场）' }) }
   function bossStep(dt) {
+    if (doomStep(dt)) return;
     if (TOX) { toxStep(dt); return }
     if (ROCK) { rockStep(dt); return }
     const b = Bo; if (b.dead) return;
@@ -283,7 +300,6 @@ export function createFight(n, hero, opt = {}) {
     if (b.slowHit > 0) b.slowHit -= dt;
     const dts = dt * tf;
     b.swingCd -= dts; b.skillT -= dts; b.summonT -= dts;
-    if (!st.rage && st.t >= FB.time) { st.rage = true; E('rage'); if (b.act !== 'dash' && !b.cast) { b.act = 'rageAnim'; b.at = BUTCHER_ANIM.enrage.T; setAnim('enrage') } }
     const dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
     if (b.act === 'wait') { if (d < 15 || st.t > 2.5) { b.act = 'rageAnim'; b.at = 1.6; setAnim('roar') } return }
     if (b.act === 'stun' || b.act === 'recover' || b.act === 'rageAnim') { b.at -= dts; if (b.at <= 0) { b.act = 'chase'; setAnim('walk', 1) } return }
@@ -315,7 +331,7 @@ export function createFight(n, hero, opt = {}) {
     }
     if (d < CFG.swingR - 0.4 && b.swingCd <= 0) { startCast('swing'); return }
     if (far && !go.end) { const face = WK ? Math.max(0.25, Math.cos(Math.min(Math.abs(turnD), Math.PI / 2))) : 1;   /* 设计 83：转身的时候走慢一点，不擦着掩体打滑 */
-      const sp = CFG.walk * (b.slowHit > 0 ? 1 - hero.slow : 1) * (st.rage ? 1.25 : 1) * dts * face; b.x += Math.sin(b.yaw) * sp; b.z += Math.cos(b.yaw) * sp; push(b, CFG.coverR);
+      const sp = CFG.walk * (b.slowHit > 0 ? 1 - hero.slow : 1) * dts * face; b.x += Math.sin(b.yaw) * sp; b.z += Math.cos(b.yaw) * sp; push(b, CFG.coverR);
       /* 设计 64：追人时慢慢让开场地两边，主角能从他和崖壁之间过去。设计 83：只在空地上让（屠夫和主角之间没有掩体）；路线要贴边走时可以走到离墙 coverR */
       if (!WK) { if (Math.abs(b.x) > lim) b.x -= Math.sign(b.x) * Math.min(Math.abs(b.x) - lim, sp) }
       if (b.anim !== 'walk') setAnim('walk', 1); b.ts = CFG.walk / (BUTCHER_ANIM.walk.speed * BOSS_SCALE) }
@@ -352,7 +368,7 @@ export function createFight(n, hero, opt = {}) {
     else if (c.k === 'burst') {
       const n = TX.pusN[0] + (rnd() < 0.5 ? 1 : 0), pts = [];
       for (let i = 0; i < n; i++) { let x = 0, z = 0; for (let t = 0; t < 40; t++) { const a = rnd() * Math.PI * 2, r = 2.5 + rnd() * 5; x = clamp(P.x + Math.sin(a) * r, ARENA.x0 + 1.2, ARENA.x1 - 1.2); z = clamp(P.z + Math.cos(a) * r, ARENA.z0 + 1.2, ARENA.z1 - 1.5); if (!inCover(x, z, 1.0) && pts.every(p => hyp(p.x - x, p.z - z) > 3)) break } pts.push({ x, z }) }
-      const fill = TX.pusFill * (st.rage ? FB.rage.warn : 1);
+      const fill = TX.pusFill;
       for (const p of pts) { const pw = { id: st.nid++, type: 'circle', x: p.x, z: p.z, r: TX.pusR, t: -TX.pusFly, dur: fill, k: 'pus' }; st.warns.push(pw);
         const m = { id: st.nid++, pus: true, x: p.x, z: p.z, yaw: 0, hp: B.hp * TX.pusHp, max: B.hp * TX.pusHp, rise: TX.pusFly, stun: 0, cd: 0, dead: false, w: pw }; st.mobs.push(m); E('mobSpawn', { m }) }
       E('release', { k: 'burst', pts }); b.act = 'recover'; b.at = 0.7 }
@@ -392,7 +408,6 @@ export function createFight(n, hero, opt = {}) {
     if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
     if (b.slowHit > 0) b.slowHit -= dt;
     const dts = dt * tf; b.spitCd = (b.spitCd ?? 2.5) - dts;
-    if (!st.rage && st.t >= FB.time) { st.rage = true; E('rage'); if (!b.cast) { b.act = 'rageAnim'; b.at = TOX_ANIM.enrage.T; b.look = null; setAnim('enrage') } }
     /* 半血以后：毒弹 5 个、毒池留 10 秒；每 25 秒两边毒雾往里收 0.6 米（最多 2 次），收之前 3 秒崖边亮红线 */
     if (!st.half && b.hp < b.max * 0.5) { st.half = true; st.shrinkT = TX.shrinkEvery; E('half') }
     if (st.half && st.shrink < TX.shrinkMax) { st.shrinkT -= dt;
@@ -488,9 +503,11 @@ export function createFight(n, hero, opt = {}) {
     /* 山崩之后的落石雨：一波一波，每波 2 个圈（一个在主角脚下附近），0.6 秒预警；有 3 块留下当掩体 */
     const R = st.rain; if (R) { R.t += dt;
       while (R.wave < RK.rainWaves && R.t >= R.wave * (RK.rainT - RK.rainWarn) / RK.rainWaves) { const keepW = R.wave % 2 === 1;
-        for (let j = 0; j < 2; j++) { let x = 0, z = 0; for (let tr = 0; tr < 20; tr++) { const a = rnd() * 6.28, rr = j === 0 ? rnd() * 1.5 : 2.5 + rnd() * 5; x = clamp(P.x + Math.sin(a) * rr, ARENA.x0 + 1, ARENA.x1 - 1); z = clamp(P.z + Math.cos(a) * rr, ARENA.z0 + 1, ARENA.z1 - 1); if (!inCover(x, z, 1)) break }
+        for (let j = 0; j < RK.rainN; j++) { let x = 0, z = 0; for (let tr = 0; tr < 20; tr++) { const a = rnd() * 6.28, rr = j === 0 ? rnd() * 1.5 : j === 1 ? 2.5 + rnd() * 5 : 1.5 + rnd() * 3.5; x = clamp(P.x + Math.sin(a) * rr, ARENA.x0 + 1, ARENA.x1 - 1); z = clamp(P.z + Math.cos(a) * rr, ARENA.z0 + 1, ARENA.z1 - 1); if (!inCover(x, z, 1)) break }
           rwarn({ type: 'circle', x, z, r: RK.rainR, keep: keepW && j === 1 && R.kept < RK.rainKeep }, 'rain', wdur(RK.rainWarn)); if (keepW && j === 1) R.kept++ }
         R.wave++ }
+      /* 设计 106：碎石雨——落石雨期间全场每秒掉血（躲不掉，算挨打，期间不自动回血） */
+      R.acc = (R.acc || 0) + dt; while (R.acc >= 0.5 && R.t <= RK.rainT) { R.acc -= 0.5; hurtPlayer(RK.rubbleDps * 0.5, 'rubble', true) }
       if (R.t >= RK.rainT) { st.rain = null; Bo.armorT = 0; E('rainEnd') } }
     if (Bo.armorT > 0) Bo.armorT -= dt;
     st.hazards = [...st.rifts.map(r => ({ type: 'segs', segs: r.segs, w: r.w, x: 0, z: 0 })), ...st.balls.map(bl => ({ type: 'line', x: bl.x, z: bl.z - 1, yaw: 0, len: 12, w: RK.laneW }))];
@@ -501,7 +518,6 @@ export function createFight(n, hero, opt = {}) {
     if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
     if (b.slowHit > 0) b.slowHit -= dt;
     const dts = dt * tf; b.basicCd -= dts;
-    if (!st.rage && st.t >= FB.time) { st.rage = true; E('rage') }
     /* 半血：石化那一侧掉下一大块（落地当掩体），走路快 30%；技能变强 */
     if (!st.half && b.hp < b.max * 0.5 && !b.cast) { st.half = true; E('half'); b.act = 'crackAnim'; b.at = ROCK_ANIM.crack.T; setAnim('crack'); b.chunkT = ROCK_ANIM.crack.hit }
     if (b.chunkT > 0) { b.chunkT -= dts; if (b.chunkT <= 0) { const s = Math.sin(b.yaw), c = Math.cos(b.yaw), x = clamp(b.x - c * 2.6 + s * 0.6, ARENA.x0 + 1, ARENA.x1 - 1), z = clamp(b.z + s * 2.6 + c * 0.6, ARENA.z0 + 1, ARENA.z1 - 1); coverAdd({ k: 'chunk', x, z, hx: 0.85, hz: 0.85 }) } }
@@ -522,7 +538,7 @@ export function createFight(n, hero, opt = {}) {
           if (gap > RK.grabReach + 1.5) { startToss(c); return }   // 走不到：直接抠一块石头扔
           c.phase = 'pick'; c.hideBar = false; c.t = 0; c.dur = RK.grabT; b.interruptible = true; setAnim('grab', 1); b.yaw = Math.atan2(cv.x - b.x, cv.z - b.z); b.look = { x: cv.x, z: cv.z };
           E('cast', { k: 'grab', dur: RK.grabT, ult: false, name: '抓掩体', pick: cv.id }); return }
-        const sp = (st.half ? RK.walkHalf : RK.walk) * (st.rage ? 1.25 : 1) * dts, wy = Math.atan2(cv.x - b.x, cv.z - b.z);
+        const sp = (st.half ? RK.walkHalf : RK.walk) * dts, wy = Math.atan2(cv.x - b.x, cv.z - b.z);
         b.x += Math.sin(wy) * sp; b.z += Math.cos(wy) * sp; push(b, CFG.coverR); if (b.anim !== (st.half ? 'walk_fast' : 'walk')) setAnim(st.half ? 'walk_fast' : 'walk', 1);
         b.ts = (st.half ? RK.walkHalf : RK.walk) / ((st.half ? ROCK_ANIM.walk_fast.speed : ROCK_ANIM.walk.speed) * ROCK_K); return }
       if (c.k === 'grab' && c.phase === 'pick') { if (c.t >= c.dur) { c.held = c.cv; coverGone(c.cv, 'grab'); startToss(c) } return }
@@ -532,7 +548,8 @@ export function createFight(n, hero, opt = {}) {
         if (c.k === 'throw') E('throwGo', { x: c.ws[0].x, z: c.ws[0].z, fly: RK.throwFly, id: c.ws[0].id }); else E('tossGo', { cv: c.held || null, pts: c.ws.map(w => ({ x: w.x, z: w.z, id: w.id })), fly: RK.tossFly }) }
       if (c.t >= c.dur) { b.cast = null;
         const rec = { sweep: 0.9, throw: 0.8, grab: 0.9, roll: 1.2, pillars: 1.0, rift: 1.2, ava: 1.0 }[c.k];
-        if (c.k === 'ava') { st.rain = { t: 0, wave: 0, kept: 0 }; b.armorT = RK.rainT; E('rainStart', { t: RK.rainT }) }
+        if (c.k === 'ava') { hurtPlayer(RK.quake, 'quake', true); E('quake');   /* 设计 106：山崩起手「地动」：砸地那一下全场伤害（躲不掉、翻滚无敌也挡不住） */
+          st.rain = { t: 0, wave: 0, kept: 0 }; b.armorT = RK.rainT; E('rainStart', { t: RK.rainT }) }
         b.act = 'recover'; b.at = rec; b.lastK = c.k }
       return }
     /* 追人（设计 83 的格子找路，掩体变了就重建） */
@@ -542,7 +559,7 @@ export function createFight(n, hero, opt = {}) {
     if (!near) { const lim = ARENA.x1 - CFG.coverR - 0.6; b.direct = segHit(b.x, b.z, P.x, P.z, CFG.coverR * (b.direct ? 0.7 : 1.0)) === null;
       const go = b.direct ? { x: clamp(P.x, -lim, lim), z: P.z } : navNext(b, dts), wy = Math.atan2(go.x - b.x, go.z - b.z), td = angD(wy, b.yaw);
       b.yaw += clamp(td, -2.2 * dts, 2.2 * dts);
-      if (!go.end) { const v = (st.half ? RK.walkHalf : RK.walk) * (b.slowHit > 0 ? 1 - hero.slow : 1) * (st.rage ? 1.25 : 1), face = Math.max(0.25, Math.cos(Math.min(Math.abs(td), Math.PI / 2)));
+      if (!go.end) { const v = (st.half ? RK.walkHalf : RK.walk) * (b.slowHit > 0 ? 1 - hero.slow : 1), face = Math.max(0.25, Math.cos(Math.min(Math.abs(td), Math.PI / 2)));
         b.x += Math.sin(b.yaw) * v * dts * face; b.z += Math.cos(b.yaw) * v * dts * face; push(b, CFG.coverR);
         const wa = st.half ? 'walk_fast' : 'walk'; if (b.anim !== wa) setAnim(wa, 1); b.ts = v / ((st.half ? ROCK_ANIM.walk_fast.speed : ROCK_ANIM.walk.speed) * ROCK_K) }
       else if (b.anim !== 'idle') setAnim('idle') }
@@ -560,7 +577,7 @@ export function createFight(n, hero, opt = {}) {
       if (m.rise > 0) { m.rise -= dt; continue }
       if (m.stun > 0) { m.stun -= dt; continue }
       const dx = P.x - m.x, dz = P.z - m.z, d = hyp(dx, dz); m.yaw = Math.atan2(dx, dz); m.cd -= dt;
-      if (m.wind > 0) { m.wind -= dt; if (m.wind <= 0) { m.cd = 0.9; if (d < 1.35) hurtPlayer(P.max * CFG.mobHit * (st.rage ? FB.rage.dmg : 1), 'mob') } continue }   // 抬手 0.45 秒，走开就打空
+      if (m.wind > 0) { m.wind -= dt; if (m.wind <= 0) { m.cd = 0.9; if (d < 1.35) hurtPlayer(P.max * CFG.mobHit, 'mob') } continue }   // 抬手 0.45 秒，走开就打空
       if (d > 0.95) { const sp = CFG.mobSpd * dt; m.x += dx / d * sp; m.z += dz / d * sp; push(m, CFG.mobR) }
       else if (m.cd <= 0) { m.wind = 0.45; E('mobAtk', { m }) }
     }

@@ -228,13 +228,27 @@ export function createFB(ctx) {
 
   /* ---------- 战斗界面（学魔兽：左上头像框、上面中间 BOSS 框和施法条、右上倒计时；右下攻击 + 3 个技能，王者荣耀样式） ---------- */
   const inp = { fire: false, skill: null };
+  /* 设计 106：全屏一闪（灭杀、地动） */
+  let tintT = 0, tintD = 1;
+  function tint(col, dur) { const el = hud && hud.querySelector('.fbtint'); if (!el) return; tintT = dur; tintD = dur || 1; el.style.background = col ? '#' + col.toString(16).padStart(6, '0') : 'transparent'; el.style.opacity = dur ? 0.55 : 0 }
+  const scatter = (n, f) => { for (let i = 0; i < n; i++) f(ARENA.x0 + 0.8 + Math.random() * (ARENA.x1 - ARENA.x0 - 1.6), ARENA.z0 + 0.8 + Math.random() * (ARENA.z1 - ARENA.z0 - 1.6)) };
+  /* 设计 106：灭杀打下来——屠夫：狂暴砸地，全场冲击波；毒囊：毒雾吞没全场；落石巨人：整个采石场塌下来 */
+  function doomFx(k) {
+    const P = fight.player, B = fight.boss; ctx.shake(1.2);
+    if (n === 1) { for (let i = 0; i < 4; i++) shock(B.x, B.z, 14 + i * 9, 0xff6a3a, 0.9 - i * 0.15); dust(B.x, B.z, 24, 2.2, 9, 1.5); rocks(B.x, B.z, 14); scatter(16, (x, z) => { dust(x, z, 3, 1.4, 2); mark(T.crack, x, z, 3 + Math.random() * 2, 8, Math.random() * 6) }); tint(0xff3010, 0.7) }
+    else if (n === 2) { scatter(40, (x, z) => part(T.dust, x, 0.8 + Math.random() * 1.5, z, { size: 4 + Math.random() * 3, grow: 1.8, life: 1.8, color: 0x7ad040, op: 0.85 })); part(glowTex().ball, P.x, 1, P.z, { size: 9, grow: 2, life: 1.2, add: true, color: 0x6cff40, op: 0.6 }); tint(0x3a8a10, 1.0) }
+    else { scatter(26, (x, z) => { rocks(x, z, 4); dust(x, z, 4, 1.6, 3); part(T.rock, x, 9 + Math.random() * 5, z, { vy: -18, size: 1.6 + Math.random(), life: 0.6, g: -20 }) }); rocks(P.x, P.z, 8); dust(P.x, P.z, 10, 2, 5); tint(0x6a5038, 0.9) }
+    if (k >= 2) tint(0x8a0000, 1.4);
+  }
+  /* 设计 106：第 3 关山崩起手「地动」——全场尘土、屏幕大震 */
+  function quakeFx() { ctx.shake(1.0); scatter(22, (x, z) => dust(x, z, 3, 1.5, 2.5)); tint(0xb09070, 0.45) }
   function mkHud() {
     if (hud) return hud;
     const el = document.createElement('div'); el.id = 'fbHud'; el.className = 'hidden';
     const btn = (k, img) => `<button class="fbk ${k}" data-fbk="${k}"><i style="background-image:url(${A('img/fb/btn_' + img + '.png')})"></i><em class="cdv"></em><b class="cdn"></b>${k === 'roll' ? '<s class="chg"></s>' : ''}</button>`;
-    el.innerHTML = `<div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
+    el.innerHTML = `<div class="fbtint"></div><div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
       <div class="fbb"><div class="bav"><img src="${A('img/fb/boss_' + 1 + '.png')}" alt=""></div><div class="bnm"><b></b><small></small></div><div class="bbar"><i class="lag"></i><i class="cur"></i><s style="left:75%"></s><s style="left:50%"></s><s style="left:25%"></s><span class="bpct"></span></div><div class="bcast hidden"><i></i><span></span></div></div>
-      <div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
+      <div class="fbt"><b>3:00</b></div><div class="fbrage hidden">BOSS 狂暴</div><button class="fbq">撤退</button>
       <div class="fbend hidden"></div>
       <div class="fbkeys">${btn('attack', 'attack')}${btn('focus', 'focus')}${btn('roll', 'roll')}${btn('stun', 'stun')}${btn('nade', 'nade')}</div>`;
     document.getElementById('app').appendChild(el);
@@ -265,7 +279,7 @@ export function createFB(ctx) {
     $h('.fbb').classList.toggle('rage', !!fight.rage && !B.dead); $h('.fbb').classList.toggle('dead', !!B.dead);   // 设计 61：狂暴头像框红色闪，击败变灰
     const pc = B.dead ? '击败' : Math.ceil(bk * 100) + '%'; if ($h('.bpct').textContent !== pc) $h('.bpct').textContent = pc;
     const cast = $h('.bcast'), c = B.cast && !B.cast.hideBar ? B.cast : null;   // 设计 102：巨人走去抓掩体那一段不显示施法条
-    if (c) { cast.classList.remove('hidden'); cast.classList.toggle('ult', !!c.w.ult); cast.querySelector('i').style.width = Math.min(100, c.t / c.dur * 100) + '%'; const nm = stg ? stg.castName(c.k) : { swing: '挥刀', charge: '冲锋', slam: '砸地（大招）', summon: '叫小丧尸' }[c.k]; if (cast.querySelector('span').textContent !== nm) cast.querySelector('span').textContent = nm }
+    if (c) { cast.classList.remove('hidden'); cast.classList.toggle('ult', !!c.w.ult); cast.querySelector('i').style.width = Math.min(100, c.t / c.dur * 100) + '%'; const nm = c.k === 'doom' ? '灭杀（全场）' : stg ? stg.castName(c.k) : { swing: '挥刀', charge: '冲锋', slam: '砸地（大招）', summon: '叫小丧尸' }[c.k]; if (cast.querySelector('span').textContent !== nm) cast.querySelector('span').textContent = nm }
     else cast.classList.add('hidden');
     const left = FB.time - fight.t, tt = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : '狂暴';
     const tb = $h('.fbt b'); if (tb.textContent !== tt) tb.textContent = tt; $h('.fbt').classList.toggle('red', left < 30);
@@ -293,7 +307,7 @@ export function createFB(ctx) {
     n = lv; const g = await load(n); setStage(n);
     if (SCN[n]) ({ scene, boss, mixer, acts, T, stg, occl } = SCN[n]); else build(g);
     await texWait(15000);   /* 设计 102b：场景里的贴图（地面、石壁、铁轨……）都读到了才开场，没读完时一直显示读取界面（以前先进场景，图没到的地方是黑的） */
-    mkHud(); hud.classList.remove('hidden'); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
+    mkHud(); hud.classList.remove('hidden'); $h('.fbrage').classList.add('hidden'); tint(0, 0); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
     $h('.fbb .bnm b').textContent = BOSSES[n].name; $h('.fbb .bnm small').textContent = `第 ${n} 关`; $h('.fbb .bav img').src = A('img/fb' + (n === 1 ? '' : n) + '/boss_' + n + '.png');
     $h('.fname').textContent = (look && look.name) || '我'; ctx.drawAvatar($h('.fav'));
     fight = createFight(n, hero); phase = 'fight'; active = true; endT = 0; res = null; hpLag = bLag = 1; rageT = 0;
@@ -437,6 +451,7 @@ export function createFB(ctx) {
       if (e.e === 'anim') play(e.a, e.ts, e.a === 'run' ? 0.12 : 0.2);
       else if (e.e === 'shot') tracer(e);
       else if (e.e === 'hit') { const key = e.who === 'boss' ? 'b' : e.m.id, o = dmgAcc.get(key) || { a: 0, crit: false, t: 0, m: e.m }; o.a += e.a; o.crit = o.crit || e.crit; dmgAcc.set(key, o); if (e.who === 'boss') { for (const m of boss.userData.mats) m.emissive.setHex(0x553322); setTimeout(() => { if (!fight.rage) for (const m of boss.userData.mats) m.emissive.setHex(0) }, 70) } }
+      else if (e.e === 'pdmg' && e.src === 'rubble') { scatter(8, (x, z) => part(T.rock, x, 6 + Math.random() * 4, z, { vy: -16, size: 0.4 + Math.random() * 0.4, life: 0.45 })); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }   /* 设计 106：碎石雨，全场往下掉细碎石（不闪红，只飘字） */
       else if (e.e === 'pdmg') { ctx.hurt(); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }
       else if (e.e === 'release') {
         const w = e.w;
@@ -457,10 +472,13 @@ export function createFB(ctx) {
       else if (e.e === 'noTarget') ctx.UI.toast('附近没有能扔的目标', '', 1200);
       else if (e.e === 'heart') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '不眠之心：减伤 +30%', 'x10'); part(glowTex().ball, P.x, 1.2, P.z, { size: 2.6, grow: 1.4, life: 0.8, add: true, color: 0xffb040 }) }
       else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
-      else if (e.e === 'rage') { rageT = 0.01; ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}狂暴了！伤害 ×2`, 'bad', 3000) }
+      else if (e.e === 'rage') { rageT = 0.01; $h('.fbrage').classList.remove('hidden'); ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}要放「灭杀」，吃两次必倒`, 'bad', 3000) }   /* 设计 106 */
+      else if (e.e === 'doomHit') doomFx(e.n);
+      else if (e.e === 'quake') quakeFx();
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
       else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 6.3 : 6.4, tox() ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
+    if (tintT > 0) { tintT -= dt; const el = hud.querySelector('.fbtint'); if (el) el.style.opacity = 0.55 * Math.max(0, tintT / tintD) }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
     for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (tox() ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
     /* 预警 */
