@@ -228,13 +228,47 @@ export function createFB(ctx) {
 
   /* ---------- 战斗界面（学魔兽：左上头像框、上面中间 BOSS 框和施法条、右上倒计时；右下攻击 + 3 个技能，王者荣耀样式） ---------- */
   const inp = { fire: false, skill: null };
+  /* 设计 106：全屏一闪（灭杀、地动） */
+  let tintT = 0, tintD = 1;
+  function tint(col, dur) { const el = hud && hud.querySelector('.fbtint'); if (!el) return; tintT = dur; tintD = dur || 1; el.style.background = col ? '#' + col.toString(16).padStart(6, '0') : 'transparent'; el.style.opacity = dur ? 0.55 : 0 }
+  const scatter = (n, f) => { for (let i = 0; i < n; i++) f(ARENA.x0 + 0.8 + Math.random() * (ARENA.x1 - ARENA.x0 - 1.6), ARENA.z0 + 0.8 + Math.random() * (ARENA.z1 - ARENA.z0 - 1.6)) };
+  /* 设计 106：灭杀打下来——屠夫：狂暴砸地，全场冲击波；毒囊：毒雾吞没全场；落石巨人：整个采石场塌下来 */
+  function doomFx(k) {
+    const P = fight.player, B = fight.boss; ctx.shake(1.2);
+    if (n === 1) { for (let i = 0; i < 4; i++) shock(B.x, B.z, 14 + i * 9, 0xff6a3a, 0.9 - i * 0.15); dust(B.x, B.z, 24, 2.2, 9, 1.5); rocks(B.x, B.z, 14); scatter(16, (x, z) => { dust(x, z, 3, 1.4, 2); mark(T.crack, x, z, 3 + Math.random() * 2, 8, Math.random() * 6) }); tint(0xff3010, 0.7) }
+    else if (n === 2) { scatter(40, (x, z) => part(T.dust, x, 0.8 + Math.random() * 1.5, z, { size: 4 + Math.random() * 3, grow: 1.8, life: 1.8, color: 0x7ad040, op: 0.85 })); part(glowTex().ball, P.x, 1, P.z, { size: 9, grow: 2, life: 1.2, add: true, color: 0x6cff40, op: 0.6 }); tint(0x3a8a10, 1.0) }
+    else { scatter(26, (x, z) => { rocks(x, z, 4); dust(x, z, 4, 1.6, 3); part(T.rock, x, 9 + Math.random() * 5, z, { vy: -18, size: 1.6 + Math.random(), life: 0.6, g: -20 }) }); rocks(P.x, P.z, 8); dust(P.x, P.z, 10, 2, 5); tint(0x6a5038, 0.9) }
+    if (k >= 2) tint(0x8a0000, 1.4);
+  }
+  /* 设计 106：第 3 关山崩起手「地动」——全场尘土、屏幕大震 */
+  /* 设计 106c：碎石雨看得出来——每 0.5 秒全场掉 16 块碎石（比原来大一倍），落地冒一小团尘；
+     用自己的一池精灵（最多 64 个，循环用，不新建材质），不占通用粒子上限，手机不发烫 */
+  const rub = [], RUB_MAX = 64;
+  function rubSprite() { let o = rub.find(q => !q.on); if (!o && rub.length < RUB_MAX) { o = { s: new THREE.Sprite(new THREE.SpriteMaterial({ map: T.rock, transparent: true, depthWrite: false, fog: false })), on: false }; scene.add(o.s); rub.push(o) } return o }
+  function rubbleFx() { const P = fight.player;
+    for (let i = 0; i < 16; i++) { const o = rubSprite(); if (!o) break; const nearP = i < 5;   // 5 块落在主角附近（画面里一定看得到），其余全场
+      const x = nearP ? P.x + (Math.random() - 0.5) * 7 : ARENA.x0 + 0.6 + Math.random() * (ARENA.x1 - ARENA.x0 - 1.2), z = nearP ? P.z + (Math.random() - 0.5) * 7 - 1 : ARENA.z0 + 0.6 + Math.random() * (ARENA.z1 - ARENA.z0 - 1.2);
+      if (o.s.parent !== scene) scene.add(o.s); o.on = true; o.ph = 0; o.y = 7 + Math.random() * 5; o.vy = -12 - Math.random() * 4; o.sz = 0.75 + Math.random() * 0.45; o.s.material.map = T.rock; o.s.material.color.setHex(0xd8ccb8); o.s.material.opacity = 1; o.s.material.rotation = Math.random() * 6.28;
+      o.s.position.set(x, o.y, z); o.s.scale.setScalar(o.sz); o.s.visible = true } }
+  function rubFrame(dt) { for (const o of rub) { if (!o.on) continue;
+    if (o.ph === 0) { o.vy -= 18 * dt; o.y += o.vy * dt; o.s.material.rotation += dt * 6; if (o.y <= 0.15) { o.ph = 1; o.t = 0; o.y = 0.3; o.s.material.map = T.dust; o.s.material.color.setHex(0xcbb894); o.s.material.rotation = Math.random() * 6.28 } o.s.position.y = o.y }
+    else { o.t += dt; const u = o.t / 0.4; if (u >= 1) { o.on = false; o.s.visible = false; continue } o.s.scale.setScalar(o.sz * (1.2 + 1.6 * u)); o.s.material.opacity = 0.75 * (1 - u) } } }
+  /* 设计 106b：地动尘土铺满全场（自己管的大尘团，不占粒子上限；中间淡一点） */
+  const qfx = [];
+  function quakeFx() { ctx.shake(1.0); tint(0xb09070, 0.45);
+    for (let x = ARENA.x0 + 1; x <= ARENA.x1 - 1; x += 2.6) for (let z = ARENA.z0 + 1.5; z <= ARENA.z1 - 1; z += 3.2) {
+      const edge = Math.min(1, Math.abs(x) / (ARENA.x1 * 0.7)), s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dust, color: 0xd8c6a2, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+      s.position.set(x + (Math.random() - 0.5) * 1.5, 0.7 + Math.random() * 0.8, z + (Math.random() - 0.5) * 1.8); s.material.rotation = Math.random() * 6.28; scene.add(s);
+      qfx.push({ s, t: -Math.random() * 0.1, op: 0.45 + 0.4 * edge, sz: 4.2 + Math.random() * 1.8 }) } }
+  function qfxFrame(dt) { for (let i = qfx.length - 1; i >= 0; i--) { const q = qfx[i]; q.t += dt; const u = Math.max(0, q.t) / 1.8; if (u >= 1) { scene.remove(q.s); q.s.material.dispose(); qfx.splice(i, 1); continue }
+    q.s.material.opacity = q.op * (u < 0.04 ? u / 0.04 : 1 - (u - 0.04) / 0.96); q.s.scale.setScalar(q.sz * (1 + 0.6 * u)) } }
   function mkHud() {
     if (hud) return hud;
     const el = document.createElement('div'); el.id = 'fbHud'; el.className = 'hidden';
     const btn = (k, img) => `<button class="fbk ${k}" data-fbk="${k}"><i style="background-image:url(${A('img/fb/btn_' + img + '.png')})"></i><em class="cdv"></em><b class="cdn"></b>${k === 'roll' ? '<s class="chg"></s>' : ''}</button>`;
-    el.innerHTML = `<div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
+    el.innerHTML = `<div class="fbtint"></div><div class="fbp"><canvas class="fav" width="96" height="96"></canvas><div class="fpi"><b class="fname">我</b><div class="fbar"><i class="lag"></i><i class="cur"></i><span class="ftxt"></span></div><div class="fbuffs"></div></div></div>
       <div class="fbb"><div class="bav"><img src="${A('img/fb/boss_' + 1 + '.png')}" alt=""></div><div class="bnm"><b></b><small></small></div><div class="bbar"><i class="lag"></i><i class="cur"></i><s style="left:75%"></s><s style="left:50%"></s><s style="left:25%"></s><span class="bpct"></span></div><div class="bcast hidden"><i></i><span></span></div></div>
-      <div class="fbt"><b>3:00</b></div><button class="fbq">撤退</button>
+      <div class="fbt"><b>3:00</b></div><div class="fbrage hidden">BOSS 狂暴</div><button class="fbq">撤退</button>
       <div class="fbend hidden"></div>
       <div class="fbkeys">${btn('attack', 'attack')}${btn('focus', 'focus')}${btn('roll', 'roll')}${btn('stun', 'stun')}${btn('nade', 'nade')}</div>`;
     document.getElementById('app').appendChild(el);
@@ -265,7 +299,7 @@ export function createFB(ctx) {
     $h('.fbb').classList.toggle('rage', !!fight.rage && !B.dead); $h('.fbb').classList.toggle('dead', !!B.dead);   // 设计 61：狂暴头像框红色闪，击败变灰
     const pc = B.dead ? '击败' : Math.ceil(bk * 100) + '%'; if ($h('.bpct').textContent !== pc) $h('.bpct').textContent = pc;
     const cast = $h('.bcast'), c = B.cast && !B.cast.hideBar ? B.cast : null;   // 设计 102：巨人走去抓掩体那一段不显示施法条
-    if (c) { cast.classList.remove('hidden'); cast.classList.toggle('ult', !!c.w.ult); cast.querySelector('i').style.width = Math.min(100, c.t / c.dur * 100) + '%'; const nm = stg ? stg.castName(c.k) : { swing: '挥刀', charge: '冲锋', slam: '砸地（大招）', summon: '叫小丧尸' }[c.k]; if (cast.querySelector('span').textContent !== nm) cast.querySelector('span').textContent = nm }
+    if (c) { cast.classList.remove('hidden'); cast.classList.toggle('ult', !!c.w.ult); cast.querySelector('i').style.width = Math.min(100, c.t / c.dur * 100) + '%'; const nm = c.k === 'doom' ? '灭杀（全场）' : stg ? stg.castName(c.k) : { swing: '挥刀', charge: '冲锋', slam: '砸地（大招）', summon: '叫小丧尸' }[c.k]; if (cast.querySelector('span').textContent !== nm) cast.querySelector('span').textContent = nm }
     else cast.classList.add('hidden');
     const left = FB.time - fight.t, tt = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : '狂暴';
     const tb = $h('.fbt b'); if (tb.textContent !== tt) tb.textContent = tt; $h('.fbt').classList.toggle('red', left < 30);
@@ -293,14 +327,14 @@ export function createFB(ctx) {
     n = lv; const g = await load(n); setStage(n);
     if (SCN[n]) ({ scene, boss, mixer, acts, T, stg, occl } = SCN[n]); else build(g);
     await texWait(15000);   /* 设计 102b：场景里的贴图（地面、石壁、铁轨……）都读到了才开场，没读完时一直显示读取界面（以前先进场景，图没到的地方是黑的） */
-    mkHud(); hud.classList.remove('hidden'); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
+    mkHud(); hud.classList.remove('hidden'); $h('.fbrage').classList.add('hidden'); tint(0, 0); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
     $h('.fbb .bnm b').textContent = BOSSES[n].name; $h('.fbb .bnm small').textContent = `第 ${n} 关`; $h('.fbb .bav img').src = A('img/fb' + (n === 1 ? '' : n) + '/boss_' + n + '.png');
     $h('.fname').textContent = (look && look.name) || '我'; ctx.drawAvatar($h('.fav'));
-    fight = createFight(n, hero); phase = 'fight'; active = true; endT = 0; res = null; hpLag = bLag = 1; rageT = 0;
+    fight = createFight(n, hero); fight.blocked = scrBlocked; phase = 'fight'; active = true; endT = 0; res = null; hpLag = bLag = 1; rageT = 0;
     /* 设计 89：上一次的东西可能挂在别的关的场景里（这时 scene 已经换成这一关的了），用 removeFromParent 从它自己的场景里拿掉 */
     for (const [, o] of warnObjs) { o.removeFromParent(); disposeTree(o) } warnObjs.clear();
     for (const [, v] of mobVis) { v.m.removeFromParent(); if (v.bar) v.bar.removeFromParent(); if (v.stun) v.stun.removeFromParent() } mobVis.clear();
-    for (const p of parts) p.s.removeFromParent(); parts.length = 0; for (const m of marks) m.m.removeFromParent(); marks.length = 0;
+    for (const q of qfx) { q.s.removeFromParent(); q.s.material.dispose() } qfx.length = 0; for (const o of rub) { o.s.removeFromParent(); o.s.material.dispose() } rub.length = 0; for (const p of parts) p.s.removeFromParent(); parts.length = 0; for (const m of marks) m.m.removeFromParent(); marks.length = 0;
     for (const g of nades) g.m.removeFromParent(); nades.length = 0; for (const b of tracers) { b.on = false; b.m.visible = false; scene.add(b.m) }
     if (chest) { chest.g.removeFromParent(); chest = null }
     if (stg) stg.reset(); else { boss.position.set(fight.boss.x, 0, fight.boss.z); boss.rotation.y = 0; boss.visible = true; for (const m of boss.userData.mats) m.emissive.setHex(0);
@@ -321,6 +355,18 @@ export function createFB(ctx) {
     camOff.copy(camOff0);   /* 设计 89：每关都用这一套（偏移、往北多看、南北边界），新关卡默认也是 */
     if (stg && stg.face && !B.dead) toxLook(P);
     keyAvoid(P);
+  }
+  /* 设计 106c：地上一个圈在画面上会不会被右下角按钮、左上角头像血条挡住（圈心和四周 4 个点投到屏幕上，落进挡住的框就算） */
+  let blkBox = null, blkAt = 0; const _bv = new THREE.Vector3();
+  function scrBlocked(x, z, r) {
+    if (!hud) return false;
+    if (performance.now() - blkAt > 500) { blkAt = performance.now(); const ks = [...hud.querySelectorAll('.fbkeys .fbk')].map(b => b.getBoundingClientRect()).filter(q => q.width > 0), pp = hud.querySelector('.fbp'), pr = pp && pp.getBoundingClientRect();
+      blkBox = []; if (ks.length) blkBox.push({ l: Math.min(...ks.map(q => q.left)) - 6, t: Math.min(...ks.map(q => q.top)) - 6, r: innerWidth, b: innerHeight }); if (pr && pr.width > 0) blkBox.push({ l: 0, t: 0, r: pr.right + 6, b: pr.bottom + 6 }) }
+    if (!blkBox.length || !(innerWidth > 0)) return false;
+    const cam = ctx.camera; cam.updateMatrixWorld();
+    for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { _bv.set(x + dx, 0, z + dz).project(cam); const sx = (_bv.x + 1) / 2 * innerWidth, sy = (1 - _bv.y) / 2 * innerHeight;
+      for (const q of blkBox) if (sx >= q.l && sx <= q.r && sy >= q.t && sy <= q.b) return true }
+    return false;
   }
   /* 设计 96：主角走到右下角时会躲到技能按钮后面（毒囊关区域浅、离底边近，最明显）。
      主角越靠近按钮那一块的高度，镜头越往右挪，让主角整个人留在最左边那颗按钮的左边（再空 10px）；
@@ -437,6 +483,7 @@ export function createFB(ctx) {
       if (e.e === 'anim') play(e.a, e.ts, e.a === 'run' ? 0.12 : 0.2);
       else if (e.e === 'shot') tracer(e);
       else if (e.e === 'hit') { const key = e.who === 'boss' ? 'b' : e.m.id, o = dmgAcc.get(key) || { a: 0, crit: false, t: 0, m: e.m }; o.a += e.a; o.crit = o.crit || e.crit; dmgAcc.set(key, o); if (e.who === 'boss') { for (const m of boss.userData.mats) m.emissive.setHex(0x553322); setTimeout(() => { if (!fight.rage) for (const m of boss.userData.mats) m.emissive.setHex(0) }, 70) } }
+      else if (e.e === 'pdmg' && e.src === 'rubble') { rubbleFx(); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }   /* 设计 106/106c：碎石雨 */
       else if (e.e === 'pdmg') { ctx.hurt(); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }
       else if (e.e === 'release') {
         const w = e.w;
@@ -457,10 +504,15 @@ export function createFB(ctx) {
       else if (e.e === 'noTarget') ctx.UI.toast('附近没有能扔的目标', '', 1200);
       else if (e.e === 'heart') { ctx.UI.floatText(new THREE.Vector3(P.x, 2.6, P.z), '不眠之心：减伤 +30%', 'x10'); part(glowTex().ball, P.x, 1.2, P.z, { size: 2.6, grow: 1.4, life: 0.8, add: true, color: 0xffb040 }) }
       else if (e.e === 'mobSpawn') { if (e.m.pus && stg) stg.spawnPus(e.m); else spawnMob(e.m) }
-      else if (e.e === 'rage') { rageT = 0.01; ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}狂暴了！伤害 ×2`, 'bad', 3000) }
+      else if (e.e === 'rage') { rageT = 0.01; $h('.fbrage').classList.remove('hidden'); ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}要放「灭杀」，吃两次必倒`, 'bad', 3000) }   /* 设计 106 */
+      else if (e.e === 'doomHit') doomFx(e.n);
+      else if (e.e === 'quake') quakeFx();
+      else if (e.e === 'immune') ctx.UI.floatText(new THREE.Vector3(B.x, 5.6, tox() ? ARENA.z0 : B.z), '免疫', '');   /* 设计 106b：灭杀期间打 BOSS 不掉血 */
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
       else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 6.3 : 6.4, tox() ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
+    qfxFrame(dt); rubFrame(dt);
+    if (tintT > 0) { tintT -= dt; const el = hud.querySelector('.fbtint'); if (el) el.style.opacity = 0.55 * Math.max(0, tintT / tintD) }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
     for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (tox() ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }
     /* 预警 */

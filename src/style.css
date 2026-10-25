@@ -1076,6 +1076,9 @@ body.kbon .cin{margin-top:4px}
 .bcast span{position:absolute;inset:0;text-align:center;font-size:10px;line-height:12px;color:#222;font-weight:700}
 .bcast.ult{border-color:#ff5a40}.bcast.ult i{background:linear-gradient(180deg,#ff7a5a,#c8281c)}.bcast.ult span{color:#fff}
 .fbt{position:absolute;right:calc(12px + var(--sr));top:calc(10px + var(--st));background:rgba(20,16,14,.8);border:2px solid #8a7a5a;border-radius:10px;padding:2px 12px}
+.fbrage{position:absolute;right:calc(12px + var(--sr));top:calc(108px + var(--st));font-size:22px;font-weight:900;color:#ff3a2a;letter-spacing:3px;text-shadow:0 0 8px #000,0 2px 0 #300;pointer-events:none;white-space:nowrap;animation:fbrage 1s ease-in-out infinite alternate}   /* 设计 106b：放在右上角「撤退」下面（不压在 BOSS 血条和场景中间，三关都不挡 BOSS 脸） */
+@keyframes fbrage{from{opacity:.7}to{opacity:1}}
+.fbtint{position:absolute;inset:0;pointer-events:none;opacity:0;transition:none}
 .fbt b{font-size:20px;color:#ffe9b8;font-variant-numeric:tabular-nums}.fbt.red b{color:#ff4a3a}
 .fbq{position:absolute;right:calc(12px + var(--sr));top:calc(52px + var(--st));font-size:12px;background:rgba(40,30,26,.85);color:#e8d8c0;border:1px solid #8a7a5a;border-radius:8px;padding:3px 10px}
 /* 按键（右下，王者荣耀样式） */

@@ -57,3 +57,16 @@ import { heroStats } from '../../src/js/logic.js';
 { const T = mk(); FL.fbFix(T); T.fb.crys = 100; T.fb.pend = null; T.fb.bag = [{ id: 9, k: 'e_m2', lv: 1, st: 0, crys: 0 }]; FL.refine(T, 9, () => 0); ok(T.fb.bag[0].st === 1, '护符能炼宝'); ok(FL.equip(T, 9) === true && T.fb.eq.m.k === 'e_m2', '护符能穿'); T.fb.bag.push({ id: 10, k: 'l_m', lv: 10, st: 0, crys: 0 }); ok(FL.dismantle(T, 10) === 6, '不眠之心分解 6 晶石') }
 { const T = mk(); FL.fbFix(T); for (const sl of ['w', 'h', 'a', 'g', 'b']) T.fb.eq[sl] = { id: sl, k: 's2_' + sl, lv: 6, st: 0 }; const g5 = FL.gearStats(T); T.fb.eq.h = null; const g4 = FL.gearStats(T); ok(g5.all - g4.all === 30 && g4.all === 10, `猎杀者 5 件全部伤害 ${g5.all}%，4 件 ${g4.all}%`) }
 { const T = mk(); FL.fbFix(T); for (const sl of ['w', 'h', 'a', 'g', 'b']) T.fb.eq[sl] = { id: sl, k: 's1_' + sl, lv: 5, st: 0 }; const g5 = FL.gearStats(T); T.fb.eq.h = null; const g4 = FL.gearStats(T); ok(g5.all - g4.all === 65 && g4.all === 10, `拾荒者 5 件全部伤害 +${g5.all - g4.all}%（要 65），4 件 +${g4.all}%`) }
+/* 设计 106：狂暴 = 灭杀：3 分钟到，不管多少血、有没有减伤 / 不灭之铠 / 不眠之心，8 秒内一定倒下；第 1 次扣最大生命 60%（无视减伤） */
+{ const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
+  for (const n of [1, 2, 3]) { const T = mk(); FL.fbFix(T); const h = { ...fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), dr: 0.6, armor1: true, heart: true }, st = createFight(n, h, { rng: () => 0.5 });
+    st.locked = true; st.t = 179.9; st.boss.hp = st.boss.max = 1e12; let first = null, dead = null; const dt = 1 / 30;
+    for (let i = 0; i < 30 * 12 && !st.over; i++) { const hp0 = st.player.hp; st.step(dt, {}); if (first === null && st.player.hp < hp0 - 1) first = (hp0 - st.player.hp) / st.player.max; if (st.player.dead) dead = st.t - 180 }
+    ok(dead !== null && dead <= 8 + 1 / 30 && first !== null && Math.abs(first - 0.6) < 0.02, `设计 106：第 ${n} 关 3 分钟到放灭杀，第 1 次扣 ${first === null ? '-' : Math.round(first * 100)}%（减伤 60% 也不管），${dead === null ? '没倒下' : dead.toFixed(1) + ' 秒倒下'}（≤ 8 秒）`) } }
+/* 设计 106b：灭杀一开始 BOSS 无敌（打上去血不掉），没打完 = 输 */
+{ const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
+  for (const n of [1, 2, 3]) { const T = mk(); FL.fbFix(T); const st = createFight(n, fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), { rng: () => 0.5 });
+    st.locked = true; st.t = 179.95; st.boss.hp = 100; const dt = 1 / 30; st.step(dt, {}); st.step(dt, {});
+    const b = st.boss; b.x = st.player.x; b.z = st.player.z - 4; let hp0 = b.hp;
+    for (let i = 0; i < 30 * 10 && !st.over; i++) st.step(dt, { fire: true, skill: i % 30 === 0 ? 'focus' : i % 45 === 0 ? 'nade' : null });
+    ok(st.rage && b.hp === hp0 && !b.dead && st.over && !st.win, `设计 106b：第 ${n} 关灭杀开始后开枪、集火、手雷，BOSS 血 ${hp0} → ${b.hp}（不变），结果：${st.win ? '赢' : '输'}`) } }
