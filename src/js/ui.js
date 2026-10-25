@@ -67,6 +67,10 @@ function msgBadge(S) { const n = msgUnread(S), e = $('#msgN'); if (e) { e.classL
 let whDrop = null;
 /* 设计 77：星星兑换换几颗（右边详情「−10 −1 [n] +1 +10 全部」，默认 1，换完回到 1） */
 let starQty = 1;
+/* 设计 109：商人买尸潮券 / 召唤券选几张（两格共用一个数，换格子时回到 1；跟星星兑换的 starQty 分开） */
+let ticQty = 1, ticFor = null;
+export const ticQ = () => ticQty;
+export function ticCtl(a) { if (a === 'reset') ticQty = 1; else if (a === 'all') ticQty = 1e9; else ticQty = Math.max(1, ticQty + (+a)) }   // 上限在画面那边按钱算（夹住）
 export const starQ = () => starQty;
 export function starCtl(a) { const S = ctx.S(), have = S.stars || 0; if (a === 'reset') starQty = 1; else starQty = a === 'all' ? Math.max(1, have) : Math.max(1, Math.min(Math.max(1, have), starQty + (+a))) }
 export const STAR_GET = (k, n) => { const u = { coins: [STAR.coins, '末日币'], gear: [STAR.gear, '个发条'], toolbox: [STAR.toolbox, '个工具箱'], ref: [STAR.ref, '张刷新券'], crys: [CRYSTAL.perStar, '颗晶石'] }[k]; return u ? { per: u[0], unit: u[1], line: `花 ${n} 颗星星 → 得到 ${n} × ${u[0]} = ${n * u[0]} ${u[1]}`, short: `${n} 颗 → ${n * u[0]} ${u[1].replace(/^[个张颗]/, '')}`, got: `${n * u[0]} ${u[1]}` } : null };   /* 设计 85：short = 小屏一行（「5 颗 → 25000 末日币」） */
@@ -878,11 +882,17 @@ const PANELS = {
     if (g.tab === 'sup') {
       const freeOk = L.freeReady(S, dayFn());   // 设计 43 修：以前看 extraDots.mall，V3.11 删了菜单的商城入口以后没人设它了，一直是「今天领过了」
       it.push({ id: 'free', ic: icon('it', 'gear'), n: `×${GEAR.free}`, nm: '每日免费', sub: freeOk ? '<b class="good">领取</b>' : '今天领过了', cls: freeOk ? 'hot' : 'got', d: `<div class="deff">每天免费领 ${GEAR.free} 个发条，北京时间 0 点刷新。发条让一样建造少等 ${Math.round(GEAR.cut / 60)} 分钟。</div>${buyBtn('freeGear', null, freeOk, freeOk ? '领取' : '今天领过了')}` });
-      for (const n of [1, 5]) { const c = TD.scroll * n;
-        it.push({ id: 'scroll' + n, ic: icon('it', 'scroll'), n: `×${n}`, nm: `${n} 张尸潮券`, sub: coin(c), d: `<div class="deff">打尸潮要用。现在有 ${S.td.scrolls} 张。</div>${buyBtn('buyScroll', n, S.coins >= c, coin(c) + ' 买')}` }) }
+      /* 设计 109：尸潮券、召唤券各一格，详情里选买几张（−10 −5 −1 [n] +1 +5 +10、最多），去掉 5 张一包 */
+      if (g.sel !== ticFor) { ticQty = 1; ticFor = g.sel }
+      const ticD = (kind, unit, have, note, act, name) => { const max = Math.floor(S.coins / unit), q = Math.max(1, Math.min(ticQty, Math.max(1, max))); if (g.sel === kind) ticQty = q;
+        const dis = c => (max < 1 || !c) ? 'disabled' : '';
+        const b = d => `<button class="btn sm ghost" data-act="ticN" data-arg="${d}" ${dis(d < 0 ? q > 1 : q < max)}>${d > 0 ? '+' : ''}${d}</button>`;   /* 按钮 44px（手指点得到），一排放不下 7 个，分两排：−10 −5 −1 [n]　/　+1 +5 +10 最多 */
+        return `<div class="deff">${note}有 ${have} 张。</div><div class="dstep tq">${[-10, -5, -1].map(b).join('')}<b class="${max < 1 ? 'dim' : ''}">${max < 1 ? 0 : q}</b></div>
+          <div class="dstep tq">${[1, 5, 10].map(b).join('')}<button class="btn sm ghost tqall" data-act="ticN" data-arg="all" ${max > 1 ? '' : 'disabled'}>最多（${Math.max(max, 0)}）</button></div>
+          <div class="dstep sbtns">${buyBtn(act, q, max >= 1, max >= 1 ? `买 ${q} 张，花 ${coin(unit * q)}` : `末日币不够（1 张要 ${unit}）`)}</div>` };   /* 「花多少」写在买的按钮上、「最多能买几张」写在「最多」上，省一行，844 / 667 都不用往下拉 */
+      it.push({ id: 'scroll', ic: icon('it', 'scroll'), n: '', nm: '尸潮券', sub: coin(TD.scroll), d: ticD('scroll', TD.scroll, S.td.scrolls, '打尸潮用。', 'buyScroll') });
       /* 设计 108：召唤券（打副本用），超市 5 级以后卖；钓鱼区贵 20% */
-      if (S.lv.store >= FB.store && S.fb) for (const n of [1, 5]) { const c = tixCost(n, far);
-        it.push({ id: 'tix' + n, ic: icon('it', 'tix'), n: `×${n}`, nm: `${n} 张召唤券`, sub: coin(c), d: `<div class="deff">打副本用，挑战一次 1 张（不管第几关）。现在有 ${S.fb.tix || 0} 张。输了不退。${far ? '<br><span class="warn">这里贵 20%</span>' : ''}</div>${buyBtn('buyTix', n, S.coins >= c, coin(c) + ' 买')}` }) }
+      if (S.lv.store >= FB.store && S.fb) { const u = tixCost(1, far); it.push({ id: 'tix', ic: icon('it', 'tix'), n: '', nm: '召唤券', sub: coin(u), d: ticD('tix', u, S.fb.tix || 0, `打副本，每关 1 张。${far ? '<span class="warn">这里贵 20%。</span>' : ''}`, 'buyTix') }) }
       /* 设计 56：晶石（炼宝用），超市 5 级以后卖 */
       if (S.lv.store >= FB.store) for (const [i, [n, c]] of CRYSTAL.packs.entries()) it.push({ id: 'crys' + n, ic: `<span class="icon img"><img src="${A('img/fb/eq_crystal.png')}" alt=""></span>`, n: `×${n}`, nm: `${n} 颗晶石`, sub: coin(c), tag: n * 200 > c ? `省 ${n * 200 - c}` : '',
         d: `<div class="deff">炼宝（找铁匠给装备升星）用。现在有 ${S.fb ? S.fb.crys : 0} 颗。也能用星星换（1 星 = ${CRYSTAL.perStar} 颗）。</div>${buyBtn('buyCrys', i, S.coins >= c, coin(c) + ' 买')}` });

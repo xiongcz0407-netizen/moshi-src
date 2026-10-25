@@ -324,7 +324,7 @@ const actions = {
   _buyCrew: () => { if (L.buyCrew(S)) { UI.toast(`雇到了新的施工队，现在能同时建 ${L.crews(S)} 样`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   gear: j => { const ev = []; if (L.useGear(S, +j || 0, ev)) { UI.toast(`用了一个发条，建造 −${Math.round(GEAR.cut / 60)} 分钟`, 'good'); handleEvents(ev) } },
   build: k => { if (L.startBuild(S, k)) { UI.toast(`开始建造：${BUILD[k].name}`, 'good'); SV.saveNow() } },
-  buyScroll: n => { const k = +n || 1, c = TD.scroll * k; if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${k} 张尸潮券？`, () => actions._buyScroll(n)) },
+  buyScroll: n => { const k = +n || 1, c = TD.scroll * k; if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${k} 张尸潮券？`, () => actions._buyScroll(k)) },
   buyAnimal: a => { const [k, n] = a.split(':'); const got = L.buyAnimal(S, k, +n); if (got) { UI.toast(`买了 ${got} 只${RANCH[k].name}，放进${BUILD[k].name}了${L.working(S, 'feed').length ? '' : '（记得派员工做「饲养」）'}`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   mysGive: () => { const r = L.mysDeliver(S); if (!r) { UI.toast('仓库里的东西还不够', 'bad'); return }
     UI.closePanel(); UI.big('交货成功', `+${r.coins} 末日币${r.star ? '　额外奖励：星星 ×1' : ''}`, r.star ? 'gem' : 'built'); UI.msg(S, `神秘商人收走了货：+${r.coins} 末日币${r.star ? '，还送了 1 颗星星' : ''}`, 'good');
@@ -365,6 +365,7 @@ const actions = {
   starSwap: a => { const have = S.stars || 0; if (!(have >= 1)) { UI.toast('星星不够', 'bad'); return } const n = Math.max(1, Math.min(have, UI.starQ())), t = UI.STAR_GET(a, n); if (!t) return;
     UI.ask(`${t.line}？`, () => { if (a === 'crys' ? FL.starCrystal(S, n) : L.starSwap(S, a, n)) { UI.starCtl('reset'); UI.toast(`换到了 ${t.got}`, 'good'); SV.saveNow() } }) },
   starN: a => UI.starCtl(a),
+  ticN: a => UI.ticCtl(a),   /* 设计 109 */
   mallTab: t => UI.setMallTab(t),
   wsGo: a => { const [k, pick] = a.split(':'), r = L.wsStart(S, k, pick); if (r === true) { UI.toast(`开始做${GOODS[pick].name}`, 'good'); SV.saveNow() } else UI.toast(r, 'bad') },
   wsN: d => UI.setWsN(+d),
@@ -392,11 +393,11 @@ const actions = {
   equipGun: id => { if (L.equipGun(S, +id)) { UI.toast('装上了 M16', 'good'); SV.saveNow() } },
   unequipGun: id => { if (L.unequipGun(S, +id)) { UI.toast('枪放回仓库了', ''); SV.saveNow() } },
   gunUp: a => { const [id, k] = String(a).split(':'); if (TDR.active()) { UI.toast('尸潮打完再升级', 'bad'); return } if (L.gunUp(S, +id, k)) { UI.toast(`${HERO.names[k]}升级了`, 'good'); SV.saveNow() } },
-  _buyScroll: n => { if (L.buyScroll(S, +n || 1)) { UI.toast(`买了 ${+n || 1} 张尸潮券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
+  _buyScroll: n => { if (L.buyScroll(S, +n || 1)) { UI.ticCtl('reset'); UI.toast(`买了 ${+n || 1} 张尸潮券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   tdGo: lv => tdBegin(+lv),
   needScroll: () => toMerch('scroll'),   // 设计 56：尸潮券不够 → 提示 + 商人头顶闪箭头
   needTix: () => toMerch('tix'),   // 设计 108：召唤券不够
-  buyTix: n => { const k = +n || 1, c = FL.tixCost(k, UI.mallFar()); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${k} 张召唤券？`, () => { if (FL.buyTix(S, k, UI.mallFar())) { UI.toast(`买了 ${k} 张召唤券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') }) },
+  buyTix: n => { const k = +n || 1, c = FL.tixCost(k, UI.mallFar()); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${k} 张召唤券？`, () => { if (FL.buyTix(S, k, UI.mallFar())) { UI.ticCtl('reset'); UI.toast(`买了 ${k} 张召唤券`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') }) },
   buyLic: () => { if (L.buyLicense(S)) { UI.toast('买到垂钓证了！鱼竿也送你一根', 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
   buyBait: a => { const [k, n] = a.split(':'), c = L.baitCost(k, +n, UI.mallFar()); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${n} 个${FISHING.bait[k].name}？`, () => actions._buyBait(a)) },
   _buyBait: a => { const [k, n] = a.split(':'); if (L.buyBait(S, k, +n, UI.mallFar())) { UI.toast(`买了 ${n} 个${FISHING.bait[k].name}`, 'good'); FG.refresh(); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
@@ -809,7 +810,7 @@ const FBV = createFB({ get player() { return player }, P, camera, moveDir, animH
   panelOpen: () => UI.panelOpen(),
   finish: (n, win, t) => { let r = null; if (win) r = FL.fbWin(S, n, Math.random, t); else FL.fbLose(S); SV.saveNow(); return r },
   showGot: (res, cb) => { gotCb = cb; UI.openPanel('fbGot') },
-  again: n => fbAgain(n), onExit: () => fbLeave() });
+  again: n => fbAgain(n), tixHave: () => (S.fb && S.fb.tix) || 0, onExit: () => fbLeave() });
 /* 「获得」框收好了（穿上 / 收下 / 分解）：关框，接着做后面的（副本里出「再打一次」「回超市」） */
 function gotDone() { if (S.fb.pend) return; if (UI.curPanel() === 'fbGot') UI.closePanel(); if (gotCb) { const c = gotCb; gotCb = null; c() } }
 /* 设计 74：超市够级、走到传送门附近或打开副本面板时，后台先把副本读好（失败不提示，过 30 秒才再试；点「挑战」时照常读） */
@@ -832,7 +833,13 @@ function fbGo(n) {
   portal.flash();
 }
 function fbAgain(n) {
-  const w = FL.fbCanStart(S, n); if (w) { UI.toast(w, 'bad'); return }
+  const w = FL.fbCanStart(S, n);
+  /* 设计 109：召唤券用完了——钱够 1 张就问要不要买 1 张接着打；不够就提示，留在结算界面（不自动回超市） */
+  if (w && (S.fb.tix || 0) < FB.tix) { const c = FL.tixCost(1, false);
+    if (S.coins >= c) UI.ask(`召唤券用完了。花 <b>${c}</b> 末日币买 1 张，再打一次？`, () => { if (FL.buyTix(S, 1, false)) { SV.saveNow(); fbAgain(n) } else UI.toast('末日币不够', 'bad') });
+    else { const b = document.querySelector('#fbHud .fbend .fbbtns'); if (b) { const p = b.querySelector('.fbnote') || b.appendChild(document.createElement('div')); p.className = 'fbnote'; p.textContent = `召唤券用完了，末日币也不够（1 张要 ${c}）` } else UI.raw.toast(`召唤券用完了，末日币也不够（1 张要 ${c}）`, 'bad', 3500) }
+    return }
+  if (w) { UI.toast(w, 'bad'); return }
   /* 用户 10-25：人已经在副本里、东西都读好了，不要读取界面——屏幕黑一下（淡入 0.15 秒 → 重置场地 → 淡出 0.15 秒）就开打，不写字、不转圈、不硬等；真读失败照旧 fbFail */
   const ov = fbBlack(); ov.style.opacity = '1'; window.__fbAgainT0 = performance.now();
   setTimeout(async () => {
