@@ -1,7 +1,7 @@
 /* ================= 尸潮塔防：打的过程（只在玩的时候跑，不存档） =================
    丧尸从门外马路尽头刷出来，沿 TD_PATH 走进大门、走到超市门口（防线）；路障挡一下；塔和主角自动开火。
    赢 = 所有波打完、场上没有丧尸；输 = 防线血量扣完，或者主角倒下。
-   存档里的数（尸潮卷、次数、奖励）在 logic.js（tdStart / tdEnd）。 */
+   存档里的数（尸潮券、次数、奖励）在 logic.js（tdStart / tdEnd）。 */
 import * as THREE from 'three';
 import { perfOpt } from './perf.js';
 import { sharedMat, addBlob } from './chars.js';

@@ -46,12 +46,12 @@ export function newState() {
     rq: [], rp: 0, pity: 0,
     shelves: [{ type: 'shelf', tier: 1, g: 'food', n: 0 }, { type: 'shelf', tier: 1, g: 'water', n: 0 }],   // 货柜：种类、档次、放什么、放了几件
     layout: defaultLayout(), layoutV: 2, fix: defaultFix(false),   // fix：收银台、装饰摆在哪（layout.js）
-    td: { scrolls: 0, day: '', used: 0, best: 0, wins: {} },   // 尸潮卷几张、今天是哪天（北京时间）、今天打了几次、打赢的最高关、每关赢过几次
+    td: { scrolls: 0, day: '', used: 0, best: 0, wins: {} },   // 尸潮券几张、今天是哪天（北京时间）、今天打了几次、打赢的最高关、每关赢过几次
     towers: Array(TOWER_SPOTS_N).fill(null),                 // 塔位：null 或 {k, lv, spent}  // 货架摆在哪：[{c, r, rot}]，见 layout.js（「布置」里可以拖动）
     plots: [],               // 温室的格子：null（空）或 {c, left, total}
     trees: [],               // 果园的树位：null（空）或 {k, left, total}
     grown: {},
-    stars: 0, refTix: 0,     // 0.31 星星（新货币，设计/17）、神秘商人的刷新卷
+    stars: 0, refTix: 0,     // 0.31 星星（新货币，设计/17）、神秘商人的刷新券
     mys: { order: null, next: MYSTERY.first, free: true, seen: {} },   // 0.31 神秘商人：order 在院子里等着交的单；next 还有几秒来；free 这次来还能免费换一单；seen 仓库里出现过的商品
     herd: {},                // 0.28 牧场：每个棚里买了几只（棚升级只加能住几只，动物在院子商人那里买）
     pens: {},                // 0.28 牧场：每种动物的棚 {food（还够吃多少「只·秒」）, t（这一轮产了多久）, out（产出来还没收的）}
@@ -561,10 +561,10 @@ export function mysDeliver(S) {
   S.mys.order = null; S.mys.next = MYSTERY.gap; S.mys.free = true;
   return { coins, star };
 }
-/* 换一单：这次来第一次免费，之后用 1 张刷新卷；返回 'free' / 'ticket' / 原因 */
+/* 换一单：这次来第一次免费，之后用 1 张刷新券；返回 'free' / 'ticket' / 原因 */
 export function mysRefresh(S) {
   const M = S.mys; if (!M || !M.order) return '他不在';
-  const how = M.free ? 'free' : S.refTix > 0 ? 'ticket' : null; if (!how) return '没有刷新卷了';
+  const how = M.free ? 'free' : S.refTix > 0 ? 'ticket' : null; if (!how) return '没有刷新券了';
   const o = mysOrder(S, M.order.items.map(it => it.g)); if (!o) return '没有别的东西可换';
   if (how === 'free') M.free = false; else S.refTix--;
   M.order = o; return how;
@@ -907,8 +907,8 @@ export function tick(S, dt, online = true, ev = []) {
   return ev;
 }
 
-export const SCROLL_SHORT = '尸潮卷不够，去院子商人那里买';
-/* ================= 尸潮塔防（只管存档里的数：尸潮卷、次数、奖励、塔；打的过程在 td.js） ================= */
+export const SCROLL_SHORT = '尸潮券不够，去院子商人那里买';
+/* ================= 尸潮塔防（只管存档里的数：尸潮券、次数、奖励、塔；打的过程在 td.js） ================= */
 let shopPaused = false;
 export const setShopPaused = b => { shopPaused = !!b };          // 尸潮期间超市暂停营业：不来新顾客
 /* 每天的次数：day 是北京时间的日期 'YYYY-MM-DD'（由画面那边按服务器时间算好传进来） */
@@ -927,7 +927,7 @@ export function tdLockWhy(S, lv) {
 export const tdUnlocked = (S, lv) => !tdLockWhy(S, lv);
 export function tdCanStart(S, lv) {
   { const w = tdLockWhy(S, lv); if (w) return w }
-  if (!S.td.scrolls) return '尸潮卷不够，去院子商人那里买';   // 设计 56：尸潮卷只在院子商人那里买
+  if (!S.td.scrolls) return '尸潮券不够，去院子商人那里买';   // 设计 56：尸潮券只在院子商人那里买
   if (!tdLeft(S)) return '今天的 5 次用完了，明天 0 点（北京时间）再来';
   if (S.queue.length || S.shoppers.length) return null;      // 店里还有顾客也可以开打（顾客会先离开）
   return null;
@@ -943,7 +943,7 @@ export const tdStaffOdds = lv => STAFF.td.repeat[lv] || null;
 /* 一次打赢最多 1 个：先看传说，没中再看史诗 */
 export function tdStaffRoll(lv, r) { const o = tdStaffOdds(lv); if (!o) return null; return r < o[1] ? 'l' : r < o[1] + o[0] ? 'p' : null }
 export function tdEnd(S, lv, win, quit = false) {
-  const L = tdLevel(lv), first = win && !(S.td.wins[lv] > 0), k = win ? (first ? 1 : TD.repeat) : quit ? 0 : TD.lose;   // V1.01 用户：中途退出什么都不给（以前退出也给 1/4，比卷轴还值钱）
+  const L = tdLevel(lv), first = win && !(S.td.wins[lv] > 0), k = win ? (first ? 1 : TD.repeat) : quit ? 0 : TD.lose;   // V1.01 用户：中途退出什么都不给（以前退出也给 1/4，比券还值钱）
   const coins = Math.round(L.coins * k);
   delete S.td.run; S.coins += coins; S.st.earned += coins;
   if (win) { S.td.wins[lv] = (S.td.wins[lv] || 0) + 1; S.td.best = Math.max(S.td.best, lv) }

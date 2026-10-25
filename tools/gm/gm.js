@@ -75,8 +75,8 @@ function fields(S) {
   add('货币和道具', '星星', ...p(() => S, 'stars'));
   add('货币和道具', '发条', ...p(() => S, 'gear'));
   add('货币和道具', '肥料', ...p(() => S, 'fert'));
-  add('货币和道具', '刷新卷', ...p(() => S, 'refTix'));
-  add('货币和道具', '尸潮卷', ...p(() => S.td, 'scrolls'));
+  add('货币和道具', '刷新券', ...p(() => S, 'refTix'));
+  add('货币和道具', '尸潮券', ...p(() => S.td, 'scrolls'));
   for (const k of Object.keys(FISHING.bait)) add('货币和道具', FISHING.bait[k].name, ...p(() => (S.bait = S.bait || {}), k));
   for (const id of TREASURE_IDS) add('货币和道具', TREASURE[id].name, ...p(() => S.treas, id));
   for (const id of CROP_IDS) add('货币和道具', GOODS[id].name + '种子', ...p(() => S.seeds, id));

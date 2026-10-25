@@ -57,7 +57,7 @@ function refView(S, k, { tabs, res, help }) {
     return frame(k, { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
 }
 export const FB_PANELS = {
-  /* 副本面板：左边 10 关，右边 BOSS 技能、能掉的套装件 / 传说、推荐装备线、要几张尸潮卷 */
+  /* 副本面板：左边 10 关，右边 BOSS 技能、能掉的套装件 / 传说、推荐装备线、要几张尸潮券 */
   fb(S) {
     FL.fbFix(S);
     const cells = Array.from({ length: FB_MAX }, (_, i) => i + 1).map(n => { const B = BOSSES[n], lock = FL.fbLockWhy(S, n), won = S.fb.won[n] > 0;
@@ -71,7 +71,7 @@ export const FB_PANELS = {
       const rows = FL.dropTable(n).slice().sort((a, b) => ORD[a.q] - ORD[b.q]).map(r => `<div class="fbdq"><b style="color:${QUAL[r.q].tx}">${QUAL[r.q].name}</b><span class="fbdics">${r.keys.map(k => `<span class="fbdit">${smIc(k, n)}<small style="color:${QUAL[ITEMS[k].q].tx}">${FL.nameAt(k, n)}</small></span>`).join('')}</span></div>`).join('');
       const fdTxt = fd ? `<p class="fbfirst">第一次打赢必掉：${fd.what}（${fd.keys.length <= 3 ? fd.keys.map(k => FL.nameAt(k, n)).join(' / ') : `${fd.keys.length} 件里随机`}）</p>` : '';
       const btn = S.td.scrolls < need && !lock ? `<button class="btn grey" data-act="needScroll">挑战</button>` : `<button class="btn" data-act="fbGo" data-arg="${n}" ${why ? 'disabled' : ''}>挑战</button>`;
-      const foot = lock ? `<span class="fbfl lk">🔒 ${lock}</span>` : `<span class="fbfl need${S.td.scrolls >= need ? '' : ' lack'}">${scrollIc()}尸潮卷 ×${need}</span>`;   /* 82d：只写要几张（不写我有几张），居中 */
+      const foot = lock ? `<span class="fbfl lk">🔒 ${lock}</span>` : `<span class="fbfl need${S.td.scrolls >= need ? '' : ' lack'}">${scrollIc()}尸潮券 ×${need}</span>`;   /* 82d：只写要几张（不写我有几张），居中 */
       return `<div class="fbdw"><div class="fbds">
         <h5>${bossIc(n)} ${B.name}<small>第 ${n} 关</small></h5>
         ${B.skills ? `<div class="dsub">技能（都会先在地上出红色预警）</div>${B.skills.map(([a, b]) => `<div class="fbsk"><b>${a}</b><span>${b}</span></div>`).join('')}` : '<p class="note">这一关还没开放，先打第 1 关刷装备。</p>'}
@@ -83,8 +83,8 @@ export const FB_PANELS = {
       </div><div class="fbfoot">${foot}${btn}</div></div>` };
     return frame('fb', { cols: 2, rows: 5, cells, detail, dw: 250,
       res: resChip(scrollIc(), S.td.scrolls) + resChip(crysIc, S.fb.crys),
-      top: `<span>只能主角一个人打，3 分钟后 BOSS 狂暴</span><span>尸潮卷在院子商人那里买</span>`,
-      help: `<b>副本</b><p>超市 ${FB.store} 级开放。走进院子商人旁边的传送门，选一关挑战，打 BOSS 掉装备。第 n 关要 1 + n 张尸潮卷（第 1 关 2 张）。</p><p>右下角：大按钮按住才开枪（有小丧尸先打小丧尸）；集火、翻滚、震荡弹有冷却。地上出红色预警就躲开，填满就打下来。震荡弹能打断白色施法条的技能，红色的大招打断不了。</p><p>3 分钟后 BOSS 狂暴（伤害 ×2、出招更快）。倒下就输，没有掉落，尸潮卷不退。</p><p>第 2 关毒囊在北边崖下不会走动，要躲毒池和毒雾；看它的头就知道要放什么招（大招时眼睛变红）。</p><p>打赢：末日币、晶石、1 件装备。宝箱不开就回超市也照样给。</p>` });
+      top: `<span>只能主角一个人打，3 分钟后 BOSS 狂暴</span><span>尸潮券在院子商人那里买</span>`,
+      help: `<b>副本</b><p>超市 ${FB.store} 级开放。走进院子商人旁边的传送门，选一关挑战，打 BOSS 掉装备。第 n 关要 1 + n 张尸潮券（第 1 关 2 张）。</p><p>右下角：大按钮按住才开枪（有小丧尸先打小丧尸）；集火、翻滚、震荡弹有冷却。地上出红色预警就躲开，填满就打下来。震荡弹能打断白色施法条的技能，红色的大招打断不了。</p><p>3 分钟后 BOSS 狂暴（伤害 ×2、出招更快）。倒下就输，没有掉落，尸潮券不退。</p><p>第 2 关毒囊在北边崖下不会走动，要躲毒池和毒雾；看它的头就知道要放什么招（大招时眼睛变红）。</p><p>打赢：末日币、晶石、1 件装备。宝箱不开就回超市也照样给。</p>` });
   },
   /* 装备（设计36 第十二节；设计56 10-21：装备 / 背包 / 炼宝 / 技能 4 个页签，左右两栏各自滚动） */
   gear(S) {

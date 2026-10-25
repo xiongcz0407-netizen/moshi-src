@@ -79,7 +79,7 @@ export function fbLockWhy(S, n) {
   if (n > 1 && !(S.fb.won[n - 1] > 0)) return '先打赢前一关';
   return null;
 }
-export function fbCanStart(S, n) { const w = fbLockWhy(S, n); if (w) return w; if (S.td.scrolls < FB.scrolls(n)) return '尸潮卷不够，去院子商人那里买'; if (S.fb.pend) return '上次的装备还没收下'; return null }
+export function fbCanStart(S, n) { const w = fbLockWhy(S, n); if (w) return w; if (S.td.scrolls < FB.scrolls(n)) return '尸潮券不够，去院子商人那里买'; if (S.fb.pend) return '上次的装备还没收下'; return null }
 export function fbStart(S, n) { if (fbCanStart(S, n)) return false; S.td.scrolls -= FB.scrolls(n); S.fb.run = n; return true }
 export function fbLose(S) { S.fb.run = 0 }
 const newItem = (S, k, lv) => ({ id: S.fb.nid++, k, lv: ITEMS[k].lv || lv, st: 0, crys: 0, nw: 1 });   // nw：新得到、还没看过（背包里画红点）

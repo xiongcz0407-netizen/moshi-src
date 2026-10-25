@@ -68,7 +68,7 @@ let whDrop = null;
 let starQty = 1;
 export const starQ = () => starQty;
 export function starCtl(a) { const S = ctx.S(), have = S.stars || 0; if (a === 'reset') starQty = 1; else starQty = a === 'all' ? Math.max(1, have) : Math.max(1, Math.min(Math.max(1, have), starQty + (+a))) }
-export const STAR_GET = (k, n) => { const u = { coins: [STAR.coins, '末日币'], gear: [STAR.gear, '个发条'], toolbox: [STAR.toolbox, '个工具箱'], ref: [STAR.ref, '张刷新卷'], crys: [CRYSTAL.perStar, '颗晶石'] }[k]; return u ? { per: u[0], unit: u[1], line: `花 ${n} 颗星星 → 得到 ${n} × ${u[0]} = ${n * u[0]} ${u[1]}`, short: `${n} 颗 → ${n * u[0]} ${u[1].replace(/^[个张颗]/, '')}`, got: `${n * u[0]} ${u[1]}` } : null };   /* 设计 85：short = 小屏一行（「5 颗 → 25000 末日币」） */
+export const STAR_GET = (k, n) => { const u = { coins: [STAR.coins, '末日币'], gear: [STAR.gear, '个发条'], toolbox: [STAR.toolbox, '个工具箱'], ref: [STAR.ref, '张刷新券'], crys: [CRYSTAL.perStar, '颗晶石'] }[k]; return u ? { per: u[0], unit: u[1], line: `花 ${n} 颗星星 → 得到 ${n} × ${u[0]} = ${n * u[0]} ${u[1]}`, short: `${n} 颗 → ${n * u[0]} ${u[1].replace(/^[个张颗]/, '')}`, got: `${n * u[0]} ${u[1]}` } : null };   /* 设计 85：short = 小屏一行（「5 颗 → 25000 末日币」） */
 export function whDropCtl(k, a) {
   if (k === 'sel') whDrop = whDrop && whDrop.g === a ? null : { g: a, n: 1 };
   else if (k === 'n' && whDrop) { const S = ctx.S(), have = S.stock[whDrop.g] || 0; whDrop.n = a === 'all' ? have : Math.max(1, Math.min(have, whDrop.n + (+a))) }
@@ -609,7 +609,7 @@ export const setMallTab = t => { mallTab = t; gst('mall').tab = { shop: 'sup', a
 /* 设计 56：副本相关的面板在 fbui.js，开局时并进来 */
 export function addPanels(P, T) { Object.assign(PANELS, P); Object.assign(TITLES, T) }
 const PANELS = {
-  /* 尸潮：尸潮卷、今天的次数、选关开打；塔位（建塔、升级、卖） */
+  /* 尸潮：尸潮券、今天的次数、选关开打；塔位（建塔、升级、卖） */
   /* 尸潮（设计 29d）：10 关 5 × 2 格子，右边详情：几波、Boss、打赢奖励、员工机会、开打（设计 56：英雄本页签去掉了，副本从传送门进） */
   td(S) {
     const left = L.tdLeft(S), tdNeed = BUILD.store.levels[S.lv.store + 1] && BUILD.store.levels[S.lv.store + 1].td;
@@ -627,13 +627,13 @@ const PANELS = {
         <div class="dsub">打赢奖励${won ? '<span class="warn">（打赢过，奖励减半）</span>' : ''}</div>
         <div class="dcost"><span class="cic"><i class="ico-coin"></i>${Math.round(T.coins * m)}</span>${!won && tool ? `<span class="cic">${icon('tr', 'toolbox')}${tool}</span>` : ''}</div>
         ${staff}
-        <div class="drow"><span>尸潮卷</span><b class="${S.td.scrolls >= 1 ? '' : 'lack'}">我有 ${S.td.scrolls} 张 / 要 1 张</b></div>
+        <div class="drow"><span>尸潮券</span><b class="${S.td.scrolls >= 1 ? '' : 'lack'}">我有 ${S.td.scrolls} 张 / 要 1 张</b></div>
         ${why ? `<p class="note warn">${why}</p>` : ''}${why === L.SCROLL_SHORT ? `<button class="btn grey" data-act="needScroll">开打　<span class="cic">${scrollIc}1</span></button>` : `<button class="btn" data-act="tdGo" data-arg="${lv}" ${why ? 'disabled' : ''}>开打　<span class="cic">${scrollIc}1</span></button>`}` };
     return frame('td', { cols: 5, rows: 2, cells, detail, dw: 220,
       empty: '<p class="note">点一关看奖励、员工机会，再开打。</p><p class="note">塔在「建造」→「塔」里建、升级。</p>',
-      top: `<span>${tdNeed ? `超市升 ${S.lv.store + 1} 级要通关第 ${tdNeed} 关${L.tdCleared(S) >= tdNeed ? ' ✓' : `（现在 ${L.tdCleared(S)} 关）`}` : `通关到第 ${L.tdCleared(S)} 关`}</span><span>尸潮卷在院子商人那里买</span>`,
+      top: `<span>${tdNeed ? `超市升 ${S.lv.store + 1} 级要通关第 ${tdNeed} 关${L.tdCleared(S) >= tdNeed ? ' ✓' : `（现在 ${L.tdCleared(S)} 关）`}` : `通关到第 ${L.tdCleared(S)} 关`}</span><span>尸潮券在院子商人那里买</span>`,
       res: resChip(scrollIc, S.td.scrolls) + `<span class="rchip"><b>今天 ${left}/${TD.daily}</b></span>`,
-      help: `<b>尸潮</b><p>每关用 1 张尸潮卷，每天最多打 ${TD.daily} 次（北京时间 0 点重置，输了也算）。打的时候超市暂停营业；丧尸从东边大门进来，守住超市门口的防线。主角会自动开枪，被围住血会掉，躲进店里丧尸进不来、回血更快；站到路障旁边能修路障。</p><p>要按顺序打，后面几关还要超市等级。打赢过的关再打奖励减半。</p><p>员工：第一次打赢第 3 关必得史诗、第 5 关必得传说；之后打赢普通第 3 关以上也有机会得到，关卡越高机会越大。</p><p>副本（打 BOSS 掉装备）不在这里：走到院子商人那边的传送门。</p><p>超市升 4 级要通关第 5 关，升 5 级要通关第 9 关。塔在「建造」→「塔」里建、升级。</p>` });
+      help: `<b>尸潮</b><p>每关用 1 张尸潮券，每天最多打 ${TD.daily} 次（北京时间 0 点重置，输了也算）。打的时候超市暂停营业；丧尸从东边大门进来，守住超市门口的防线。主角会自动开枪，被围住血会掉，躲进店里丧尸进不来、回血更快；站到路障旁边能修路障。</p><p>要按顺序打，后面几关还要超市等级。打赢过的关再打奖励减半。</p><p>员工：第一次打赢第 3 关必得史诗、第 5 关必得传说；之后打赢普通第 3 关以上也有机会得到，关卡越高机会越大。</p><p>副本（打 BOSS 掉装备）不在这里：走到院子商人那边的传送门。</p><p>超市升 4 级要通关第 5 关，升 5 级要通关第 9 关。塔在「建造」→「塔」里建、升级。</p>` });
   },
   /* 背包（0.21 学星露谷）：上面一条是钱包（末日币、发条、饵料、鱼竿，不占格子）；下面是方格子，图标居中、数量在右下角，点一格在下面显示名字、可以丢 */
   bag(S) {
@@ -863,7 +863,7 @@ const PANELS = {
     return `<p class="mysq">「这些东西我全要了，价钱好说。」</p><div class="grid">${rows}</div>
       <p>奖励：<b class="gold"><i class="ico-coin"></i> ${L.mysValue(o)}</b> 末日币<small class="note">（货架售价的 ${MYSTERY.mult} 倍；有机会多送 1 颗星星）</small></p>
       <div class="btns"><button class="btn" data-act="mysGive" ${can ? '' : 'disabled'}>${can ? '交货' : '仓库里还不够'}</button>
-      <button class="btn ghost" data-act="mysRef" ${free || tix ? '' : 'disabled'}>换一单（${free ? '这次免费' : `刷新卷 ${tix} 张`}）</button>${!free && !tix ? '<button class="btn sm ghost" data-act="openStars">去星星兑换换刷新卷</button>' : ''}</div>
+      <button class="btn ghost" data-act="mysRef" ${free || tix ? '' : 'disabled'}>换一单（${free ? '这次免费' : `刷新券 ${tix} 张`}）</button>${!free && !tix ? '<button class="btn sm ghost" data-act="openStars">去星星兑换换刷新券</button>' : ''}</div>
       <p class="note">只从仓库拿，货柜上的不动。不交货他不走；交完货他离开，${Math.round(MYSTERY.gap / 60)} 分钟后再来。</p>`;
   },
   /* 商城（设计 29b）：页签 补给 / 设施 / 员工武器 / 动物 / 星星兑换，商品一格一样，右边详情 + 购买；星星兑换页资源条换成星星 */
@@ -878,7 +878,7 @@ const PANELS = {
       const freeOk = L.freeReady(S, dayFn());   // 设计 43 修：以前看 extraDots.mall，V3.11 删了菜单的商城入口以后没人设它了，一直是「今天领过了」
       it.push({ id: 'free', ic: icon('it', 'gear'), n: `×${GEAR.free}`, nm: '每日免费', sub: freeOk ? '<b class="good">领取</b>' : '今天领过了', cls: freeOk ? 'hot' : 'got', d: `<div class="deff">每天免费领 ${GEAR.free} 个发条，北京时间 0 点刷新。发条让一样建造少等 ${Math.round(GEAR.cut / 60)} 分钟。</div>${buyBtn('freeGear', null, freeOk, freeOk ? '领取' : '今天领过了')}` });
       for (const n of [1, 5]) { const c = TD.scroll * n;
-        it.push({ id: 'scroll' + n, ic: icon('it', 'scroll'), n: `×${n}`, nm: `${n} 张尸潮卷`, sub: coin(c), d: `<div class="deff">打尸潮要用。现在有 ${S.td.scrolls} 张。</div>${buyBtn('buyScroll', n, S.coins >= c, coin(c) + ' 买')}` }) }
+        it.push({ id: 'scroll' + n, ic: icon('it', 'scroll'), n: `×${n}`, nm: `${n} 张尸潮券`, sub: coin(c), d: `<div class="deff">打尸潮要用。现在有 ${S.td.scrolls} 张。</div>${buyBtn('buyScroll', n, S.coins >= c, coin(c) + ' 买')}` }) }
       /* 设计 56：晶石（炼宝用），超市 5 级以后卖 */
       if (S.lv.store >= FB.store) for (const [i, [n, c]] of CRYSTAL.packs.entries()) it.push({ id: 'crys' + n, ic: `<span class="icon img"><img src="${A('img/fb/eq_crystal.png')}" alt=""></span>`, n: `×${n}`, nm: `${n} 颗晶石`, sub: coin(c), tag: n * 200 > c ? `省 ${n * 200 - c}` : '',
         d: `<div class="deff">炼宝（找铁匠给装备升星）用。现在有 ${S.fb ? S.fb.crys : 0} 颗。也能用星星换（1 星 = ${CRYSTAL.perStar} 颗）。</div>${buyBtn('buyCrys', i, S.coins >= c, coin(c) + ' 买')}` });
@@ -909,7 +909,7 @@ const PANELS = {
       sw('coins', '<span class="icon img coinic"><i class="ico-coin"></i></span>', `×${STAR.coins}`, `${STAR.coins} 末日币`, `1 颗星星换 ${STAR.coins} 末日币。`, '末日币');
       sw('gear', icon('it', 'gear'), `×${STAR.gear}`, `${STAR.gear} 个发条`, '建造 −30 分钟。', '发条');
       sw('toolbox', icon('tr', 'toolbox'), `×${STAR.toolbox}`, `${STAR.toolbox} 个工具箱`, '升级要用。', '工具箱');
-      sw('ref', icon('it', 'ref'), `×${STAR.ref}`, `${STAR.ref} 张刷新卷`, `神秘商人换一单用（有 ${S.refTix || 0} 张）。`, '刷新卷');
+      sw('ref', icon('it', 'ref'), `×${STAR.ref}`, `${STAR.ref} 张刷新券`, `神秘商人换一单用（有 ${S.refTix || 0} 张）。`, '刷新券');
       if (S.lv.store >= FB.store) sw('crys', `<span class="icon img"><img src="${A('img/fb/eq_crystal.png')}" alt=""></span>`, `×${CRYSTAL.perStar}`, `${CRYSTAL.perStar} 颗晶石`, `炼宝用（有 ${S.fb ? S.fb.crys : 0} 颗）。`, '晶石');   // 设计 56；设计 85：格子上写短名（数量看角标），详情写全称
     }
     const cells = it.map(x => ({ id: x.id, cls: 'mcell ' + (x.cls || ''), html: `<div class="mic">${x.ic}${x.n ? `<em>${x.n}</em>` : ''}</div><b class="mnm">${x.nm}</b><span class="msub">${x.sub}</span>${x.tag ? `<span class="itag ok">${x.tag}</span>` : ''}` }));
@@ -918,7 +918,7 @@ const PANELS = {
       : resChip('<i class="ico-coin"></i>', Math.floor(S.coins)) + resChip(icon('it', 'gear'), S.gear || 0) + resChip(icon('it', 'scroll'), S.td.scrolls);
     return frame('mall', { tabs, cols: 4, rows: 2, cells, detail, dw: 214, res, none: g.tab === 'ani' ? '超市 3 级以后在「建造」→「牧场」里盖动物棚' : '没有东西卖',
       empty: g.tab === 'star' ? '<p class="note">每样 1 颗星星。神秘商人交货时有机会送星星。</p>' : g.tab === 'ani' ? `<p class="note">${yard ? '买了直接放进棚里。' : '动物在院子里的商人那里买。'}</p>` : '<p class="note">点一样看详情、购买。</p>',
-      help: `<b>院子商人</b><p>补给：每天免费领 ${GEAR.free} 个发条（北京时间 0 点刷新）；尸潮卷打尸潮用；有垂钓证以后这里卖饵料和鱼竿。</p><p>设施：施工队永久多一个，能同时多建一样东西；垂钓证买一次永久有效。</p><p>员工武器：M16 给员工装上（在员工面板里装），伤害、射速、射程分开升。</p><p>动物：先在「建造」→「牧场」盖棚，在院子里的商人那里买，买了直接放进棚里。</p><p>星星兑换：每样 1 颗星星，星星是神秘商人交货时送的。</p>${far ? '<p class="warn">钓鱼区的商人贵 20%。</p>' : ''}` });
+      help: `<b>院子商人</b><p>补给：每天免费领 ${GEAR.free} 个发条（北京时间 0 点刷新）；尸潮券打尸潮用；有垂钓证以后这里卖饵料和鱼竿。</p><p>设施：施工队永久多一个，能同时多建一样东西；垂钓证买一次永久有效。</p><p>员工武器：M16 给员工装上（在员工面板里装），伤害、射速、射程分开升。</p><p>动物：先在「建造」→「牧场」盖棚，在院子里的商人那里买，买了直接放进棚里。</p><p>星星兑换：每样 1 颗星星，星星是神秘商人交货时送的。</p>${far ? '<p class="warn">钓鱼区的商人贵 20%。</p>' : ''}` });
   },
   /* 消息框（旧的面板版，现在用下拉）：没读的标亮 */
   msg(S) {

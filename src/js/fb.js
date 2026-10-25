@@ -279,7 +279,7 @@ export function createFB(ctx) {
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
     });
     /* 设计 79：打完了（赢输都一样）点「撤退」直接回超市（打赢没开宝箱的，回超市弹「获得」框）；没打完才问「撤退算输」 */
-    el.querySelector('.fbq').onclick = () => { if (!active) return; if (!fight || fight.over) { exit(); return } ctx.UI.ask('撤退算输，尸潮卷不退。确定撤退吗？', () => { if (!fight || fight.over) return; fight.player.hp = 0; fight.player.dead = true; fight.over = fight.t || 0.01; fight.win = false; onEnd(false) }, '撤退', true) };   /* 设计 79：游戏里的确认框（弹出时战斗暂停） */
+    el.querySelector('.fbq').onclick = () => { if (!active) return; if (!fight || fight.over) { exit(); return } ctx.UI.ask('撤退算输，尸潮券不退。确定撤退吗？', () => { if (!fight || fight.over) return; fight.player.hp = 0; fight.player.dead = true; fight.over = fight.t || 0.01; fight.win = false; onEnd(false) }, '撤退', true) };   /* 设计 79：游戏里的确认框（弹出时战斗暂停） */
     el.querySelector('.fbend').addEventListener('click', e => { const b = e.target.closest('[data-fbe]'); if (!b) return; const a = b.dataset.fbe; if (a === 'again') ctx.again(n); else if (a === 'home') exit(); else if (a === 'open') openChest() });
     addEventListener('keydown', e => { if (!active || e.repeat) return; const k = { ' ': 'attack', q: 'focus', e: 'roll', r: 'stun', g: 'nade', j: 'attack', k: 'roll' }[e.key.toLowerCase()]; if (k) { press(k, true); e.preventDefault() } });
     addEventListener('keyup', e => { if (!active) return; if (e.key === ' ' || e.key.toLowerCase() === 'j') inp.fire = false });
@@ -415,8 +415,8 @@ export function createFB(ctx) {
   }
   function showEnd(win) {
     const e = hud.querySelector('.fbend'), sc = FB.scrolls(n);
-    e.innerHTML = win ? `<div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张尸潮卷）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`
-      : `<div class="fblose"><b>你倒下了</b><small>没有掉落，尸潮卷不退</small></div><div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张尸潮卷）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`;
+    e.innerHTML = win ? `<div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张尸潮券）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`
+      : `<div class="fblose"><b>你倒下了</b><small>没有掉落，尸潮券不退</small></div><div class="fbbtns"><button class="btn" data-fbe="again">再打一次（${sc} 张尸潮券）</button><button class="btn ghost" data-fbe="home">回超市</button></div>`;
     e.classList.remove('hidden');
   }
   /* 宝箱：BOSS 倒下 1 秒后从上面掉下来，周围一直有光（按品质染色），走近点「打开宝箱」 */
@@ -596,7 +596,7 @@ export function createFB(ctx) {
   }
   return {
     active: () => active, scene: () => scene, phase: () => phase, fight: () => fight,
-    async enter(lv, hero, look) {   /* 设计 74：读、建场地出错：副本状态清掉，错误记下来，再抛给 main.js（main.js 不扣卷、让主角走出门） */
+    async enter(lv, hero, look) {   /* 设计 74：读、建场地出错：副本状态清掉，错误记下来，再抛给 main.js（main.js 不扣券、让主角走出门） */
       let loaded = false;
       try { assets_ = await load(lv); loaded = true; return await enter(lv, hero, look) } catch (e) { active = false; phase = ''; if (hud) hud.classList.add('hidden'); if (loaded) fbErr(e); throw e } },
     frame, exit, preload: (lv = 1) => load(lv).catch(() => null),   /* 设计 74：后台先读，失败不提示（点挑战时再读） */
