@@ -346,7 +346,7 @@ const actions = {
   fbEquip: id => { const r = FL.equip(S, +id); if (r === true) { UI.toast('穿上了', 'good'); SV.saveNow(); gotDone() } else if (r) UI.toast(r, 'bad') },
   fbUnequip: sl => { if (FL.unequip(S, sl)) { SV.saveNow() } else UI.toast('背包满了', 'bad') },
   fbDis: id => { const it = FL.itemById(S, +id); if (!it) return; const D = ITEMS[it.k], go = () => { const n = FL.dismantle(S, +id); UI.toast(`分解了，得到 ${n} 颗晶石`, 'good'); UI.gst('gear').sel = null; SV.saveNow(); gotDone() };
-    if (D.q === 'n') go(); else UI.ask(`分解<b>${D.name}</b>（${it.st || 0} 星）？得到 ${FL.dismantleGain(it)} 颗晶石，分解了就没了。`, go) },
+    if (D.q === 'n') go(); else UI.ask(`分解<b>${FL.itemName(it)}</b>（${it.st || 0} 星）？得到 ${FL.dismantleGain(it)} 颗晶石，分解了就没了。`, go) },
   fbTake: () => { if (FL.pendTake(S)) { UI.toast('收下了，在「装备」里', 'good'); SV.saveNow(); gotDone() } else UI.toast('背包满了，穿上或者分解', 'bad') },
   fbToRef: () => toSmith('ref'),   /* 设计 107：炼宝改到铁匠那里 */
   toSmith: a => toSmith(a),
