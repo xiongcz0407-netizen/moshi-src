@@ -14,7 +14,7 @@ const _box = new THREE.Box3(), _sz = new THREE.Vector3(), _v = new THREE.Vector3
 export function buildScream(api) {
   const { scene, g, T, tex, part, dust, shock, glowTex, flatGeo, ADD, ctx, ARENA, COVERS } = api;
   const G = glowTex();
-  /* 3×2 的图：一格一张贴图（同一个文件读 6 次，浏览器有缓存）。fx_sound / fx_blink 是黑底，一律叠加混合 */
+  /* 3×2 的图：一格一张贴图（同一个文件读 6 次，浏览器有缓存）。114B：亮的格子叠加画；暗的（fx_sound 4 黑羽毛、fx_blink 0 烟团 / 1 黑影圈 / 2 羽毛旋涡）普通混合画 */
   const cells = url => [0, 1, 2, 3, 4, 5].map(i => { const t = tex(url); t.repeat.set(1 / 3, 1 / 2); t.offset.set((i % 3) / 3, i < 3 ? 0.5 : 0); return t });
   Object.assign(T, { floor: tex('img/fb4/floor.jpg', [3.5, 8]), sky: tex('img/fb4/skyline.jpg', [3, 1]), snd: cells('img/fb4/fx_sound.png'), blk: cells('img/fb4/fx_blink.png'),
     crow: cells('img/fb4/crow.png'), crowR: cells('img/fb4/crow_red.png'), dec: cells('img/fb4/decals.png') });
@@ -62,7 +62,7 @@ export function buildScream(api) {
   const tower = piece(node('tower_house'), { w: 5.4 }, SCREAM_CFG.tower.x, 0, RZ0 + 2.2);
   const redL = new THREE.PointLight(0xff3020, 3, 14, 1.6), redS = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.ball, color: 0xff3020, transparent: true, blending: ADD, depthWrite: false, fog: false }));
   { const top = tower ? tower.userData.h : 13; redL.position.set(SCREAM_CFG.tower.x, top + 0.2, RZ0 + 2.2); redS.position.copy(redL.position); redS.scale.setScalar(1.4); scene.add(redL, redS) }
-  const stair = piece(node('stair_house'), { w: 3.8 }, 0, 0, Z1 + 1.9); if (stair) occl.push(stair);
+  const stair = piece(node('stair_house'), { h: 4.4 }, 0, 0, Z1 + 1.9, Math.PI); if (stair) occl.push(stair);   // 114B：门朝 +Z，转过来朝北
 
   /* ---------- 4 根立杆喇叭（四角，喇叭口朝场内）：能打坏——冒电火花、喇叭头歪下来、不再响 ---------- */
   const spkVis = [];
@@ -91,7 +91,7 @@ export function buildScream(api) {
   { bm.updateMatrixWorld(true); _box.setFromObject(bm); _box.getSize(_sz); const s = SCREAM_K / Math.max(_sz.y, 1e-4), c = _box.getCenter(new THREE.Vector3()); bm.scale.multiplyScalar(s); bm.position.set(-c.x * s, -_box.min.y * s, -c.z * s); boss.add(bm) }
   const mats = [], U = { rage: { value: 0 } };
   bm.traverse(c => { if (!c.isMesh) return; const old = c.material; c.material = lam(old); old.dispose(); c.frustumCulled = false; c.castShadow = true; c.receiveShadow = false; c.material.emissive = new THREE.Color(0); mats.push(c.material);
-    c.material.onBeforeCompile = sh => { sh.uniforms.uRage = U.rage; sh.fragmentShader = 'uniform float uRage;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vec3(0.5, 0.03, 0.02) * uRage;') } });
+    c.material.onBeforeCompile = sh => { sh.uniforms.uRage = U.rage;   /* 夜里楼顶太暗：身上自己亮一点（贴图颜色 × 0.18），嗜血时再加一层暗红 */ sh.fragmentShader = 'uniform float uRage;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vec3(0.5, 0.03, 0.02) * uRage + diffuseColor.rgb * 0.18;') } });
   const mixer = new THREE.AnimationMixer(bm), acts = {};
   for (const clip of g.screamer.animations || []) { const a = mixer.clipAction(clip); if (!(SCREAM_ANIM[clip.name] || {}).loop) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true } acts[clip.name] = a }
   const bone = {}; bm.traverse(c => { if (c.isBone) bone[c.name] = c }); const HEAD = bone.head || bone.Head, NECK = bone.neck || bone.Neck, JAW = bone.jaw || bone.Jaw;
@@ -122,7 +122,7 @@ export function buildScream(api) {
   const crows = [];   // { s, x0,z0,y0, x1,z1,y1, t, life, ph, done(), red }
   function crowSprite(red, sz = 0.9) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: (red ? T.crowR : T.crow)[0], transparent: true, depthWrite: false, fog: false })); s.scale.set(sz, sz, 1); s.userData.sz = sz; scene.add(s); return s }
   function flyCrow(o) { const s = crowSprite(o.red, o.sz || 0.95); crows.push({ s, t: -(o.delay || 0), ph: Math.random() * 4, ...o }); }
-  function feathers(x, y, z, n = 1, sz = 1.4) { for (let i = 0; i < n; i++) part(T.snd[4], x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, { add: true, vx: (Math.random() - 0.5) * 2, vy: 0.5 + Math.random(), vz: (Math.random() - 0.5) * 2, g: 1.5, size: sz, grow: 1.3, life: 0.9, op: 0.9, spin: 2 }) }
+  function feathers(x, y, z, n = 1, sz = 1.4) { for (let i = 0; i < n; i++) part(T.snd[4], x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4, { vx: (Math.random() - 0.5) * 2, vy: 0.5 + Math.random(), vz: (Math.random() - 0.5) * 2, g: 1.5, size: sz, grow: 1.3, life: 0.9, op: 0.9, spin: 2 }) }
   const handPos = () => { const b = bone.R_Hand || bone.hand_r || bone.RightHand; if (b) return b.getWorldPosition(new THREE.Vector3()); return new THREE.Vector3(boss.position.x + Math.sin(boss.rotation.y) * 0.6, boss.position.y + SCREAM_K * 0.62, boss.position.z + Math.cos(boss.rotation.y) * 0.6) };
 
   /* ---------- 声波圆环（带缺口）：每帧按半径重做一圈环 ---------- */
@@ -136,13 +136,13 @@ export function buildScream(api) {
   let halfT = -1;
 
   function onEvent(e) {
-    if (e.e === 'blinkOut') { part(T.blk[0], e.x, (e.y || 0) + 1.6, e.z, { add: true, size: 3.4, grow: 1.4, life: 0.55, op: 0.95 }); feathers(e.x, (e.y || 0) + 2, e.z, 4); return true }
-    if (e.e === 'blinkMark') { const m = new THREE.Mesh(flatGeo, new THREE.MeshBasicMaterial({ map: T.blk[1], transparent: true, blending: ADD, depthWrite: false, opacity: 0, fog: false })); m.scale.setScalar(2.2); m.position.set(e.x, 0.03, e.z); m.renderOrder = 3; scene.add(m); shadows.push({ m, t: 0, dur: e.dur }); return true }
-    if (e.e === 'blinkIn') { part(T.blk[0], e.x, (e.y || 0) + 1.4, e.z, { add: true, size: 2.6, grow: 1.5, life: 0.45, op: 0.85 }); feathers(e.x, (e.y || 0) + 1.8, e.z, 3); return true }
+    if (e.e === 'blinkOut') { part(T.blk[0], e.x, (e.y || 0) + 1.6, e.z, { size: 3.4, grow: 1.4, life: 0.55, op: 0.95 }); feathers(e.x, (e.y || 0) + 2, e.z, 4); return true }
+    if (e.e === 'blinkMark') { const m = new THREE.Mesh(flatGeo, new THREE.MeshBasicMaterial({ map: T.blk[1], transparent: true, depthWrite: false, opacity: 0, fog: false })); m.scale.setScalar(2.2); m.position.set(e.x, 0.03, e.z); m.renderOrder = 3; scene.add(m); shadows.push({ m, t: 0, dur: e.dur }); return true }
+    if (e.e === 'blinkIn') { part(T.blk[0], e.x, (e.y || 0) + 1.4, e.z, { size: 2.6, grow: 1.5, life: 0.45, op: 0.85 }); feathers(e.x, (e.y || 0) + 1.8, e.z, 3); return true }
     if (e.e === 'crowShot') { const h = handPos(), L = e.len; flyCrow({ x0: h.x, y0: h.y, z0: h.z, x1: e.x + Math.sin(e.yaw) * L, y1: 1.1, z1: e.z + Math.cos(e.yaw) * L, life: SCREAM_CFG.boltFly * Math.max(0.6, L / 10), red: e.red, sz: 1.0, end: 'burst' });
-      part(T.blk[2], h.x, h.y, h.z, { add: true, size: 1.2, grow: 1.4, life: 0.3, op: 0.8 }); return true }
+      part(T.blk[2], h.x, h.y, h.z, { size: 1.2, grow: 1.4, life: 0.3, op: 0.8 }); return true }
     if (e.e === 'pushGo') { const w = e.w; for (let i = 0; i < 9; i++) { const a = w.yaw + (Math.random() - 0.5) * w.a, r = w.r * (0.7 + Math.random() * 0.35); flyCrow({ x0: w.x, y0: 1.6, z0: w.z, x1: w.x + Math.sin(a) * r, y1: 0.8 + Math.random() * 1.2, z1: w.z + Math.cos(a) * r, life: 0.28 + Math.random() * 0.12, red: e.red, sz: 0.8, delay: i * 0.015, end: 'fade' }) }
-      part(T.blk[2], w.x + Math.sin(w.yaw) * 0.8, 1.8, w.z + Math.cos(w.yaw) * 0.8, { add: true, size: 2.2, grow: 1.6, life: 0.35, op: 0.9 }); ctx.shake(0.25); return true }
+      part(T.blk[2], w.x + Math.sin(w.yaw) * 0.8, 1.8, w.z + Math.cos(w.yaw) * 0.8, { size: 2.2, grow: 1.6, life: 0.35, op: 0.9 }); ctx.shake(0.25); return true }
     if (e.e === 'flockGo') { const w = e.w, s = Math.sin(w.yaw), c = Math.cos(w.yaw);
       for (let i = 0; i < 16; i++) { const off = (Math.random() - 0.5) * w.w, ox = c * off, oz = -s * off, d0 = -2 - Math.random() * 2; flyCrow({ x0: w.x + s * d0 + ox, y0: 1 + Math.random() * 1.6, z0: w.z + c * d0 + oz, x1: w.x + s * (w.len + 2) + ox, y1: 1 + Math.random() * 1.6, z1: w.z + c * (w.len + 2) + oz, life: 0.55 + Math.random() * 0.2, red: e.red, sz: 0.85 + Math.random() * 0.3, delay: Math.random() * 0.25, end: 'fade' }) }
       ctx.shake(0.3); return true }
@@ -175,7 +175,7 @@ export function buildScream(api) {
     fogS.forEach(s => { const u = s.userData; s.material.opacity = red && !B.dead ? 0.35 + 0.15 * Math.sin(clock * 1.3 + u.ph) : 0; s.position.set(Math.sin(clock * 0.4 + u.ph) * 1.4, 0.9 + 0.3 * Math.sin(clock + u.ph), Math.cos(clock * 0.4 + u.ph) * 1.4); s.scale.setScalar(2.4) });
     if (halfT >= 0) { halfT += dt; if (halfT < 1.6 && Math.random() < dt * 10) feathers(B.x, (B.y || 0) + 2.6, B.z, 1) }
     /* 平时手心一团黑羽毛旋涡（扔鸦弹的时候更大） */
-    if (!B.dead && B.cast && B.cast.k === 'bolt' && Math.random() < dt * 12) { const h = handPos(); part(T.blk[2], h.x, h.y, h.z, { add: true, size: 0.9, grow: 1.2, life: 0.25, op: 0.7 }) }
+    if (!B.dead && B.cast && B.cast.k === 'bolt' && Math.random() < dt * 12) { const h = handPos(); part(T.blk[2], h.x, h.y, h.z, { size: 0.9, grow: 1.2, life: 0.25, op: 0.7 }) }
     if (B.dead && endT > SCREAM_ANIM.die.hit && !boss.userData.fell) { boss.userData.fell = 1; dust(B.x + Math.sin(B.yaw) * 1.6, B.z + Math.cos(B.yaw) * 1.6, 10, 1.2, 3, 1.4); feathers(B.x, 1.2, B.z, 8, 1.6); ctx.shake(0.4) }
   }
   /* ---------- 每帧：场地 ---------- */

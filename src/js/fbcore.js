@@ -31,7 +31,7 @@ export const STAGES = {
   /* 设计 114：第 4 关尖啸者 · 废弃广播电台楼顶。宽 14、长 32；南边楼梯间小屋（门朝北，主角从门里出来），北边带信号塔的小屋。
      BOSS 远程、到处闪现、不追人，不锁战斗区。4 个掩体（空调外机、弯管道、圆水箱、配电箱）分散在中段；4 根立杆喇叭在四角（不挡人、不挡子弹，能打坏） */
   4: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 0.9, hitY: 2.2,
-    covers: [{ k: 'ac', x: -4.0, z: 5.0, hx: 0.85, hz: 0.55 }, { k: 'pipe', x: 3.7, z: -1.8, hx: 1.25, hz: 0.35 }, { k: 'tank', x: -3.6, z: -5.2, hx: 0.95, hz: 0.95 }, { k: 'box', x: 3.9, z: 8.2, hx: 0.65, hz: 0.45 }],
+    covers: [{ k: 'ac', x: -4.0, z: 5.0, hx: 0.86, hz: 0.44 }, { k: 'pipe', x: 3.7, z: -1.8, hx: 0.84, hz: 0.47 }, { k: 'tank', x: -3.6, z: -5.2, hx: 0.68, hz: 0.91 }, { k: 'box', x: 3.9, z: 8.2, hx: 0.64, hz: 0.53 }],   /* 114B 的模型按 4.8 倍缩（空调 1.3 米高、水箱 1.9 米高），挡的框跟模型一样大 */
     speakers: [{ x: -6.3, z: -12.3 }, { x: 6.3, z: -12.3 }, { x: 6.3, z: 18.3 }, { x: -6.3, z: 18.3 }] },   /* 顺时针（从上往下看）：西北 → 东北 → 东南 → 西南 */
 };
 export let ARENA = null, COVERS = null;
@@ -108,8 +108,8 @@ export const SCREAM_CFG = {
   order: ['rings', 'flock', 'horn', 'shriek', 'rings', 'horn', 'bomb', 'flock'],
 };
 /* 尖啸者动作的时间（screamer.glb，114B 的 tools/scream_rig 导出；hit = 出手 / 推到最前 / 叫到最响那一刻）。名字照设计114 第 2 节 */
-export const SCREAM_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.2, loop: 1, speed: 0.3 }, throw: { T: 0.9, hit: 0.5 }, push: { T: 0.8, hit: 0.45 }, spread: { T: 1.4, hit: 1.0 },
-  scream: { T: 1.6, hit: 1.2 }, horn: { T: 1.4, hit: 1.2 }, vanish: { T: 0.25 }, appear: { T: 0.3 }, rage: { T: 1.8 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.0, hit: 1.4 } };
+export const SCREAM_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.2, loop: 1, speed: 0.119 }, throw: { T: 0.9, hit: 0.5 }, push: { T: 0.8, hit: 0.45 }, spread: { T: 1.4, hit: 1.0 },
+  scream: { T: 1.6, hit: 1.2 }, horn: { T: 1.4, hit: 1.2 }, vanish: { T: 0.25 }, appear: { T: 0.3 }, rage: { T: 1.8 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.0, hit: 1.55 } };   /* walk.speed：114B 给的 0.134 模型单位 / 秒 × 缩放（3.4 / 1.13）÷ SCREAM_K */
 export const SCREAM_NAME = { bolt: '鸦弹', push: '鸦群喷射', rings: '声波三环', horn: '喇叭音爆', flock: '乌鸦群', shriek: '刺耳尖叫（全场）', bomb: '广播轰炸（大招）' };
 const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angD = (a, b) => { let d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)) };
