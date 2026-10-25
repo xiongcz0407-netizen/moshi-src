@@ -37,7 +37,7 @@ import { loadM16, makeM16, M16_TIP } from './m16.js';
 import { drawAvatar, loadAvatar } from './avatar.js';
 import { loadProps, loadLateProps, propJobCount, prop, fishPropsReady } from './props.js';
 import { showTitle, briefOf } from './title.js';
-import { GEAR, FERT, STAFF, STAFF_JOBS, SCAV, JUNK, JUNK_IDS, GOOD_IDS, TREASURE_IDS, GOODS, TREASURE, BUILD, BUILD_ORDER, BAG_SIZES, ZOMBIE, PLAYER, AUTOSAVE, OFFLINE_CAP, SHOP, STORE as STORE_LV, FIXTURE, TIER_NAME, TD, TOWERS, FISH, FISH_RAR, FISHING, HERO, GUARD_GUN, tdName, RANCH, RANCH_IDS, PEN_CAP, STAR, FEED, WS_IDS, WS, MACH, DISHES } from './config.js';
+import { FREE, GEAR, FERT, STAFF, STAFF_JOBS, SCAV, JUNK, JUNK_IDS, GOOD_IDS, TREASURE_IDS, GOODS, TREASURE, BUILD, BUILD_ORDER, BAG_SIZES, ZOMBIE, PLAYER, AUTOSAVE, OFFLINE_CAP, SHOP, STORE as STORE_LV, FIXTURE, TIER_NAME, TD, TOWERS, FISH, FISH_RAR, FISHING, HERO, GUARD_GUN, tdName, RANCH, RANCH_IDS, PEN_CAP, STAR, FEED, WS_IDS, WS, MACH, DISHES } from './config.js';
 import { APP_V } from './version.js';
 import { PERF, perfOpt, perfFrame, setPerfOn, perfStats, PERF_LOAD, PERF_X } from './perf.js';
 import { makeShadowCache, farTick, noCast, layerGround } from './groundfx.js';
@@ -308,7 +308,7 @@ const actions = {
   sell: id => { if (L.sellTreasure(S, id)) UI.toast(`卖出 ${TREASURE[id].name} +${TREASURE[id].sell}`, 'good') },
   buyItem: a => { const [k, n] = a.split(':'), c = L.itemCost(k, +n); if (S.coins < c) { UI.toast('末日币不够', 'bad'); return } UI.ask(`花 <b>${c}</b> 末日币买 ${n} ${k === 'gear' ? '个发条' : '袋肥料'}？`, () => actions._buyItem(a)) },
   _buyItem: a => { const [k, n] = a.split(':'); if (L.buyItem(S, k, +n)) { UI.toast(`买了 ${n} ${k === 'gear' ? '个发条' : '袋肥料'}`, 'good'); SV.saveNow() } else UI.toast('末日币不够', 'bad') },
-  freeGear: () => { if (L.freeGear(S, bjDay())) { UI.toast(`领到 ${GEAR.free} 个发条`, 'good'); SV.saveNow(); UI.refreshPanel(true); UI.updateHud(S) } },   // 设计 43：领完马上刷新（商店那一格、红点、商人头顶一起变）
+  freeGear: () => { if (L.freeGear(S, bjDay())) { UI.toast(`领到 ${FREE.star} 颗星星`, 'good'); SV.saveNow(); UI.refreshPanel(true); UI.updateHud(S) } },   // 设计 43：领完马上刷新（商店那一格、红点、商人头顶一起变）
   plotPlan: i => { L.cyclePlotPlan(S, +i); SV.saveNow() },
   perfWin: () => { setPerfOn(!PERF.on) },
   openGear: () => { UI.gst('gear').tab = 'eq'; UI.gst('gear').sel = null; UI.openPanel('gear') },   /* 设计 76：菜单「装备」：打开角色页，停在装备页签 */
@@ -785,7 +785,7 @@ $('#layBtn').onclick = () => enterLayout();
 
 /* ---------- 尸潮塔防 ---------- */
 const bjDay = () => new Date(SV.srvNow() + 8 * 3600e3).toISOString().slice(0, 10);       // 北京时间的日期（每天 0 点重置次数）
-UI.setDayFn(bjDay);   // 设计 43：商店里免费发条按北京时间的日期判断
+UI.setDayFn(bjDay);   // 设计 43：商店里每日免费（设计 112：星星）按北京时间的日期判断
 let tdGun = null;
 const TDR = createTD({ scene, camera, W, L, UI, P, get player() { return player }, S: () => S, animH, hero: () => L.heroStats(S), eco: () => eco,
   mkZombie: i => mkHuman('zombie', i, { skin: 0x8fae7a, shirt: 0x5a5f6a, pants: 0x3a3a3a, hair: 0x2a2a2a, zombie: true }),
@@ -1866,10 +1866,10 @@ function loop(now) {
   syncPile();
   scavTruckLab.set(inScav ? `<div class="box">货车　回超市${S.bag.length >= cap ? '<br><small class="warn">背包满了，回去卸货</small>' : ''}</div>` : '');
   dockLab.set('');
-  /* 设计 40：菜单里没有商城了，买东西找院子商人。今天的免费发条没领：商人头顶写「免费发条可以领」（原来商城入口上的红点挪到这里）；
+  /* 设计 40：菜单里没有商城了，买东西找院子商人。今天的免费星星（设计 112，原来是发条）没领：商人头顶写「免费星星可以领」（原来商城入口上的红点挪到这里）；
      别处点了「多雇」「买 M16」这类按钮：头顶闪一个箭头 3 秒 */
   { const free = home && L.freeReady(S, bjDay()), fl = home && performance.now() < merchFlash;
-    merchLab.set(free || fl ? `${fl ? '<div class="marrow"><i></i></div>' : ''}${free ? '<div class="box ok mfree2">免费发条可以领<i class="rdot"></i></div>' : ''}` : '') }
+    merchLab.set(free || fl ? `${fl ? '<div class="marrow"><i></i></div>' : ''}${free ? '<div class="box ok mfree2">免费星星可以领<i class="rdot"></i></div>' : ''}` : '') }
   if (inFish) { fBoatLab.set(S.bag.length >= cap ? '<div class="box warn">背包满了，坐船回去卖</div>' : ''); fMerchLab.set('');
     FZONES.forEach((Z, i) => fSpotLabs[i].set(FG.busy() ? '' : `<div class="box">${FISHING.zones[Z.zone]}</div>`)) }
   playerLab.set(S.bag.length >= cap && away() ? `<div class="box" style="color:#e5604f">背包 ${cap} 格满了</div>` : '');

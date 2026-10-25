@@ -6,7 +6,7 @@
 import { fbNew, fbFix } from './fblogic.js';
 import { FB } from './fbcfg.js';
 import { JUNK, JUNK_IDS, GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, RECYCLER, SHELF_CAP, BAG_SIZES, STACK,
-  BUILD, MYSTERY, STAR, WS, WS_IDS, MACH, LUCK, DISHES, recipeOf, isKit, RANCH, RANCH_IDS, PEN_CAP, FEED, FISHPOND, GUARD_GUN, SHOP, GEAR, SPAWN, STREET_SPAWN, ZOMBIE, OFFLINE_CAP, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, FARM, WAREHOUSE, FIXTURE, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_SPOTS_N, STAFF, STAFF_JOBS, STAFF_FISH, HERO, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING } from './config.js';
+  BUILD, MYSTERY, STAR, WS, WS_IDS, MACH, LUCK, DISHES, recipeOf, isKit, RANCH, RANCH_IDS, PEN_CAP, FEED, FISHPOND, GUARD_GUN, SHOP, GEAR, FREE, SPAWN, STREET_SPAWN, ZOMBIE, OFFLINE_CAP, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, FARM, WAREHOUSE, FIXTURE, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_SPOTS_N, STAFF, STAFF_JOBS, STAFF_FISH, HERO, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING } from './config.js';
 import { defaultLayout, fixLayout, layoutProblem, setExpanded, migrateOldDefault, defaultFix, frontCell, DOOR_CELL } from './layout.js';
 
 export const SAVE_V = 7;   // 7：设计 60 去掉经验点   // 6：设计 59 去掉主角血量升级（返还）   // 3：设计 31～33（48 种商品、12 台机器）；4：35b 第 2 台木工台换成甜品机；5：37 修新机器等级缺字段
@@ -366,9 +366,9 @@ export const gearCost = n => itemCost('gear', n);
 export function buyItem(S, k, n = 1) { if (!MALL[k] || k === 'gear') return false;   /* 0.31 用户：发条不再用末日币买，只能用星星换 */ const c = itemCost(k, n); if (S.coins < c) return false; S.coins -= c; S[k] = (S[k] || 0) + n; return true }
 export const buyGear = (S, n = 1) => buyItem(S, 'gear', n);
 /* 商城每天免费领：day 是北京时间的日期 */
-/* 设计 43：今天的免费发条还没领（商人头顶、商店那一格、补给页签红点都看这个；day 用北京时间的日期） */
+/* 设计 43 / 112：今天的免费星星还没领（商人头顶、商店那一格、补给页签红点都看这个；day 用北京时间的日期） */
 export const freeReady = (S, day) => !!day && S.mallDay !== day;
-export function freeGear(S, day) { if (S.mallDay === day) return false; S.mallDay = day; S.gear += GEAR.free; return true }
+export function freeGear(S, day) { if (S.mallDay === day) return false; S.mallDay = day; S.stars = (S.stars || 0) + FREE.star; return true }   // 设计 112：送星星（名字沿用 freeGear，存档字段 mallDay 不变）
 export function useGear(S, idx = 0, ev = []) { const b = S.builds[idx]; if (!S.gear || !b) return false; S.gear--; b.left -= GEAR.cut;
   if (b.left <= 0) finishBuild(S, b, ev); return true }
 /* 施工队：一开始 1 个，商城能再买 CREW.cost.length 个（永久） */
