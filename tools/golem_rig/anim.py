@@ -243,20 +243,22 @@ def stagger(t):
 ACT['stagger'] = dict(T=1.3, loop=False, f=stagger)
 
 
-# 半血裂开：捂住石化那一侧，身子一抽，石拳往下一坠，抖
+# 半血裂开（设计 102b 重做）：身子往后一抽、头扭向石化那一侧，石拳往下一坠，抖两下站稳。
+# 以前左手横过胸口去捂、身子前倾近 70°，权重扯得身体揉成一团；现在每个关节都只动一点（总前倾不超过站姿 +10°），左手不过中线
 def crack(t):
     k = [(0.00, {}, 'smooth'),
-         (0.30, P(root=(0.02, 0, -0.04), Hips=(10, 5, 0), Spine=(10, 5, -6), Chest=(14, 6, -8), Neck=(-6, 0, -10), Head=(10, 0, -8),
-                  R_Arm=(12, 18, 0), R_ForeArm=(-6, 0, 0), L_Arm=(-70, 0, -48), L_ForeArm=(-60, 0, 0)), 'out'),
-         (0.70, P(root=(0.026, 0, -0.07), Hips=(16, 6, 0), Spine=(14, 6, -8), Chest=(18, 8, -10), R_Arm=(24, 22, 0)), 'in'),
-         (1.40, P(root=(0.01, 0, -0.04), Hips=(8, 2, 0), Spine=(6, 0, 0), Chest=(-6, 0, 0), Neck=(10, 0, 0), Head=(16, 0, 0),
-                  R_Arm=(-30, 30, 0), R_ForeArm=(-40, 0, 0), L_Arm=(-30, -40, 0), L_ForeArm=(-50, 0, 0)), 'smooth'),
+         (0.30, P(root=(0.0, 0.01, -0.02), Hips=(-4, 0, -3), Spine=(-4, -2, -5), Chest=(-6, -3, -7), Neck=(4, 0, -6), Head=(6, -4, -10),
+                  R_Arm=(8, 8, 0), R_ForeArm=(4, 0, 0), L_Arm=(-16, -16, 0), L_ForeArm=(-18, 0, 0)), 'out'),
+         (0.70, P(root=(0.0, -0.005, -0.04), Hips=(6, 0, -2), Spine=(5, -2, -4), Chest=(6, -3, -6), Neck=(0, 0, -4), Head=(4, -3, -8),
+                  R_Arm=(14, 12, 0), R_ForeArm=(6, 0, 0), L_Arm=(-10, -20, 0), L_ForeArm=(-14, 0, 0)), 'in'),
+         (1.40, P(root=(0.0, 0, -0.02), Hips=(2, 0, 0), Spine=(0, 0, 0), Chest=(-4, 0, 0), Neck=(6, 0, 0), Head=(8, 0, 0),
+                  R_Arm=(-6, 8, 0), R_ForeArm=(-8, 0, 0), L_Arm=(-12, -22, 0), L_ForeArm=(-16, 0, 0)), 'smooth'),
          (2.10, {}, 'smooth')]
     p = keyed(rel(k), t)
     if 0.3 < t < 1.6:
         a = math.sin(math.pi * (t - 0.3) / 1.3)
-        p['Chest'] = add(p['Chest'], (2 * a * math.sin(t * 57), 2 * a * math.sin(t * 43), 0))
-        p['Head'] = add(p['Head'], (3 * a * math.sin(t * 67), 0, 3 * a * math.sin(t * 49)))
+        p['Chest'] = add(p['Chest'], (1.5 * a * math.sin(t * 57), 1.5 * a * math.sin(t * 43), 0))
+        p['Head'] = add(p['Head'], (2 * a * math.sin(t * 67), 0, 2 * a * math.sin(t * 49)))
     return p, FEET()
 ACT['crack'] = dict(T=2.1, loop=False, f=crack, hit=0.7)
 

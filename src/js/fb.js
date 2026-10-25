@@ -282,9 +282,17 @@ export function createFB(ctx) {
   }
 
   /* ---------- 进副本 ---------- */
+  /* 设计 102b：等这一关用到的贴图读完（最多等 ms 毫秒；读失败的不等，lazyTex 自己会再试） */
+  async function texWait(ms) {
+    const want = new Set(), add = t => { if (t && t.isTexture && !t.image) want.add(t) };
+    scene.traverse(o => { for (const m of [].concat(o.material || [])) for (const k of ['map', 'emissiveMap', 'alphaMap', 'normalMap']) add(m[k]); if (o.material && o.material.uniforms) for (const u of Object.values(o.material.uniforms)) add(u && u.value) });
+    const walk = (v, d = 0) => { if (!v || d > 3) return; if (v.isTexture) add(v); else if (Array.isArray(v) || (typeof v === 'object' && !v.isObject3D && !v.isMaterial)) for (const x of Object.values(v)) walk(x, d + 1) }; walk(T);
+    const t0 = performance.now(); while ([...want].some(t => !t.image) && performance.now() - t0 < ms) await new Promise(r => setTimeout(r, 80));
+  }
   async function enter(lv, hero, look) {
     n = lv; const g = await load(n); setStage(n);
     if (SCN[n]) ({ scene, boss, mixer, acts, T, stg, occl } = SCN[n]); else build(g);
+    await texWait(15000);   /* 设计 102b：场景里的贴图（地面、石壁、铁轨……）都读到了才开场，没读完时一直显示读取界面（以前先进场景，图没到的地方是黑的） */
     mkHud(); hud.classList.remove('hidden'); hud.querySelector('.fbend').classList.add('hidden'); hud.querySelector('.fbend').innerHTML = '';
     $h('.fbb .bnm b').textContent = BOSSES[n].name; $h('.fbb .bnm small').textContent = `第 ${n} 关`; $h('.fbb .bav img').src = A('img/fb' + (n === 1 ? '' : n) + '/boss_' + n + '.png');
     $h('.fname').textContent = (look && look.name) || '我'; ctx.drawAvatar($h('.fav'));

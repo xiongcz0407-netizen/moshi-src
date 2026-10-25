@@ -127,14 +127,16 @@ export function buildRock(api) {
     look.w = clamp(look.w + (tgt ? dt : -dt) / 0.35, 0, 1);
     boss.updateMatrixWorld(true); const h = bone.Head.getWorldPosition(_v), by = boss.rotation.y;
     let wy = look.yaw, wp = look.pitch;
-    if (tgt) { let a = Math.atan2(tgt.x - h.x, tgt.z - h.z) - by; a = Math.atan2(Math.sin(a), Math.cos(a)); wy = clamp(a, -75 * D, 75 * D); wp = clamp(Math.atan2(h.y - tgt.y, hyp(tgt.x - h.x, tgt.z - h.z)) - 12 * D, -20 * D, 30 * D) }
+    if (tgt) { let a = Math.atan2(tgt.x - h.x, tgt.z - h.z) - by; a = Math.atan2(Math.sin(a), Math.cos(a)); wy = clamp(a, -75 * D, 75 * D); const dd = hyp(tgt.x - h.x, tgt.z - h.z); wp = clamp(Math.atan2(h.y - tgt.y, dd) - 12 * D, -20 * D, 30 * D);
+      /* 设计 102b：离主角 6 米内，越近脖子、头越往上抬（驼背 + 俯视镜头，近了只看得到头顶）：2.5 米内抬到 -38°，让脸朝上露出来 */
+      let nk = clamp((6 - dd) / 3.5, 0, 1); nk = nk * nk * (3 - 2 * nk); wp = wp * (1 - nk) - 38 * D * nk; look.up = nk }
     const W = 4.0, Z = 0.5;
     look.vy += (W * W * (wy - look.yaw) - 2 * Z * W * look.vy) * dt; look.yaw += look.vy * dt;
     look.vp += (W * W * (wp - look.pitch) - 2 * Z * W * look.vp) * dt; look.pitch += look.vp * dt;
     const k = look.w * look.w * (3 - 2 * look.w); if (k <= 0.001) return;
     const yaw = look.yaw * k, pit = look.pitch * k;
     _a.set(0, 1, 0); rotWorld(bone.Chest, _a, yaw * 0.25); rotWorld(bone.Neck, _a, yaw * 0.3); rotWorld(bone.Head, _a, yaw * 0.45);
-    const wyaw = by + yaw; _a.set(Math.cos(wyaw), 0, -Math.sin(wyaw)); rotWorld(bone.Neck, _a, pit * 0.35); rotWorld(bone.Head, _a, pit * 0.65);
+    const wyaw = by + yaw; _a.set(Math.cos(wyaw), 0, -Math.sin(wyaw)); if (pit < 0) rotWorld(bone.Chest, _a, pit * 0.3); rotWorld(bone.Neck, _a, pit * 0.45); rotWorld(bone.Head, _a, pit * 0.65);   // 设计 102b：往上抬时胸口也挺一点
   }
 
   /* ---------- 特效小工具 ---------- */
@@ -172,19 +174,35 @@ export function buildRock(api) {
     if (e.e === 'ballGone') { const v = balls.get(e.b.id); if (v) { scene.remove(v.o); balls.delete(e.b.id) } return true }
     if (e.e === 'pillars') { for (const c of e.cells) { part(T.fx.spikecrack, c.x, 0.05, c.z, { size: e.s * 1.4, life: 0.6, op: 0.9 }); dust(c.x, c.z, 3, 0.9, 2, 0.4) } ctx.shake(0.45); return true }
     if (e.e === 'pillarWave') return true;
-    if (e.e === 'rift') { const grp = new THREE.Group(); scene.add(grp);
-      for (const s of e.r.segs) { const L = hyp(s.x1 - s.x0, s.z1 - s.z0), n = Math.max(1, Math.round(L / 2.2));
-        for (let i = 0; i < n; i++) { const u = (i + 0.5) / n, x = s.x0 + (s.x1 - s.x0) * u, z = s.z0 + (s.z1 - s.z0) * u, ry = Math.atan2(s.x1 - s.x0, s.z1 - s.z0);
-          const d = new THREE.Mesh(flatGeo, new THREE.MeshLambertMaterial({ map: T.mk.crack, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -8 }));   // 地上裂开的黑缝
-          d.scale.set(e.r.w * 2.2, 1, L / n * 1.3); d.position.set(x, 0.02, z); d.rotation.y = ry; d.renderOrder = 2; grp.add(d);
-          const m = new THREE.Mesh(flatGeo, new THREE.MeshBasicMaterial({ map: T.fx.lava, transparent: true, blending: ADD, depthWrite: false, toneMapped: false, fog: false, color: 0xffa060 }));   // 缝里的橘光（会呼吸）
-          m.scale.set(e.r.w * 1.3, 1, L / n * 1.15); m.position.set(x, 0.035, z); m.rotation.y = ry; m.renderOrder = 3; m.userData.glow = 1; grp.add(m) } }
+    if (e.e === 'rift') { const grp = new THREE.Group(); scene.add(grp);   /* 设计 102b：一整条连着的裂缝（代码画的裂缝带，沿线锯齿、首尾相接），不再是一块块印子 */
+      const segs = e.r.segs, w = e.r.w;
+      segs.forEach((sg, i) => { const fork = i > 0;   // 第 0 段是主干（从巨人脚下到分叉点），后面两段是 Y 字的两叉
+        const tp = u => fork ? 1 - 0.75 * u : 0.55 + 0.45 * u;   // 主干越往前越宽，两叉越往外越细
+        grp.add(riftStrip(sg, w * 1.9, tp, 0x000000, 0.3, 0, 1, 4));   // 外圈：地面压暗
+        grp.add(riftStrip(sg, w * 0.95, tp, 0x1c120c, 0.95, 0.22, 0, 5));   // 黑缝（锯齿边）
+        const g = riftStrip(sg, w * 0.42, tp, 0xffa050, 1, 0.12, 0.6, 6, true); g.userData.glow = 1; grp.add(g) });   // 缝里的橘光（会呼吸）
       rifts.set(e.r.id, { grp, t: 0, life: e.r.life }); ctx.shake(0.55); return true }
-    if (e.e === 'riftGone') { const v = rifts.get(e.id); if (v) { scene.remove(v.grp); rifts.delete(e.id) } return true }
+    if (e.e === 'riftGone') { const v = rifts.get(e.id); if (v) { scene.remove(v.grp); v.grp.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose() } }); rifts.delete(e.id) } return true }
     if (e.e === 'rainStart') { glowBoost = 1; return true }
     if (e.e === 'half') { ctx.UI.toast('落石巨人半血：石化那一侧裂开，走得更快了', 'bad', 2600); halfT = 0; return true }
     if (e.e === 'cast' && e.k === 'ava') return false;
     return false;
+  }
+  /* 设计 102b：沿一段线画一条裂缝带。宽 W，tp(u) 宽度比例，jag 边缘锯齿，soft 横向羽化（0 硬边） */
+  let rseed = 1; const rr = () => ((rseed = (rseed * 16807) % 2147483647) / 2147483647);
+  const riftTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 4; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 64, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.35, 'rgba(255,255,255,1)'); gr.addColorStop(0.65, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 4); return new THREE.CanvasTexture(c) })();
+  function riftStrip(sg, W, tp, col, op, jag, soft, ro, add = false) {
+    rseed = Math.floor((sg.x0 * 131 + sg.z0 * 71 + 1000) * 97) % 2147483646 + 1;
+    const dx = sg.x1 - sg.x0, dz = sg.z1 - sg.z0, L = Math.hypot(dx, dz) || 1, N = Math.max(6, Math.round(L / 0.35)), px = dz / L, pz = -dx / L, pos = [], uv = [], idx = [];
+    const off = []; for (let i = 0; i <= N; i++) off.push(i === 0 || i === N ? 0 : (rr() - 0.5) * 0.5);   // 中线左右折一点（两头不折，接得上）
+    for (let i = 0; i <= N; i++) { const u = i / N, hw = W / 2 * tp(u), cx = sg.x0 + dx * u + px * off[i], cz = sg.z0 + dz * u + pz * off[i];
+      const a = hw * (1 + (rr() - 0.5) * 2 * jag), b = hw * (1 + (rr() - 0.5) * 2 * jag);
+      pos.push(cx - px * a, 0, cz - pz * a, cx + px * b, 0, cz + pz * b); uv.push(0, u, 1, u);
+      if (i < N) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2) } }
+    const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ge.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); ge.setIndex(idx);
+    const m = new THREE.Mesh(ge, new THREE.MeshBasicMaterial({ color: col, map: soft > 0 ? riftTex : null, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, fog: !add, toneMapped: !add, blending: add ? ADD : THREE.NormalBlending, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -2 - ro }));
+    m.position.y = 0.015 + ro * 0.004; m.renderOrder = ro; m.userData.op = op; return m;
   }
   let glowBoost = 0, halfT = -1;
 
@@ -219,7 +237,7 @@ export function buildRock(api) {
       v.tr -= dt; if (v.tr <= 0) { v.tr = 0.12; part(T.fx.trail, b.x, 0.7, b.z - 1.2, { size: 2.6, grow: 1.4, life: 0.5, op: 0.6 }); dust(b.x, b.z - 0.8, 2, 0.9, 1.5, 0.6) }
       if (Math.floor(b.z / 4) !== Math.floor((b.z - 13 * dt) / 4)) mark(T.mk.drag, b.x, b.z - 2, 2.2, 3, 0) }
     /* 地裂：裂缝橘光呼吸，最后 1 秒淡掉 */
-    for (const [, v] of rifts) { v.t += dt; const left = v.life - v.t, op = (0.75 + 0.25 * Math.sin(clock * 5)) * Math.min(1, left); v.grp.children.forEach(m => { m.material.opacity = m.userData.glow ? op : Math.min(1, left) }) }
+    for (const [, v] of rifts) { v.t += dt; const left = v.life - v.t, op = (0.75 + 0.25 * Math.sin(clock * 5)) * Math.min(1, left); v.grp.children.forEach(m => { m.material.opacity = m.userData.glow ? op : (m.userData.op ?? 1) * Math.min(1, left) }) }
     /* 落石（山崩起手、落石雨）：从天上掉下来，正好在预警填满时落地 */
     for (const w of fight.warns) if ((w.k === 'rain' || w.k === 'wall') && !w.fell && w.t >= w.dur - 0.55) { w.fell = true;
       if (w.k === 'rain') dropRock(w.x, w.z, 0.55, w.keep ? 5 : 3.6);
