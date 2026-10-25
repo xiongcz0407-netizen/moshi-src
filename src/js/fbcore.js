@@ -69,7 +69,7 @@ export const ROCK_CFG = {
   cell: 3, pillarRows: 5, pillarK: 1.0, pillarStay: 1.0, wave2: 0.8,
   riftW: 1.2, riftLife: 6, riftDps: 0.3, riftFork: 3.5, riftA: 0.55,
   avaCast: 2.0, wallW: 2.2, rainT: 6, rainWaves: 7, rainN: 3, quake: 70, rubbleDps: 10,   /* 设计 106：落石雨每波 3 个圈；地动、碎石雨（必吃伤害，fbsim 定） */
-  rainR: 1.4, rainWarn: 0.6, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
+  rainR: 1.4, rainWarn: 0.62, rainK: 0.6, rainKeep: 3, rockLife: 10, armor: 0.5,
   maxCovers: 6, calm: 1.8, calmRage: 1.4, first: 3, gap: 4.2, gapRage: 3.5,
   /* 设计 103：出招更密、大招更多。10 招一轮，山崩每 5 招一次；半血以后 8 招一轮，山崩每 4 招一次 */
   order: ['grab', 'rift', 'roll', 'ava', 'pillars', 'grab', 'roll', 'rift', 'ava', 'pillars'], orderHalf: ['grab', 'rift', 'roll', 'ava', 'pillars', 'roll', 'rift', 'ava'],
@@ -194,7 +194,7 @@ export function createFight(n, hero, opt = {}) {
     return a;
   }
   function hitEnemy(tg, dmg, crit, kind) {
-    if (tg === Bo) { if (Bo.dead) return; if (Bo.armorT > 0) dmg *= ROCK_CFG.armor; Bo.hp -= dmg; st.stats.dmg += dmg; if (hero.bleed) { Bo.bleed = 3; Bo.bleedDps = Math.max(Bo.bleedDps, dmg * 0.1) } if (hero.slow) Bo.slowHit = 1.5;
+    if (tg === Bo) { if (Bo.dead) return; if (st.rage) { if (!(st.immT > 0)) { st.immT = 1; E('immune') } return }   /* 设计 106b：灭杀一开始 BOSS 无敌，不掉血（「免疫」字 1 秒最多一次） */ if (Bo.armorT > 0) dmg *= ROCK_CFG.armor; Bo.hp -= dmg; st.stats.dmg += dmg; if (hero.bleed) { Bo.bleed = 3; Bo.bleedDps = Math.max(Bo.bleedDps, dmg * 0.1) } if (hero.slow) Bo.slowHit = 1.5;
       E('hit', { who: 'boss', a: Math.round(dmg), crit, kind }); if (Bo.hp <= 0) { Bo.hp = 0; bossDie() } }
     else { if (tg.dead) return; tg.hp -= dmg; E('hit', { who: 'mob', m: tg, a: Math.round(dmg), crit }); if (tg.hp <= 0) { tg.dead = true; tg.deadT = 0; st.stats.mobsKilled++; E('mobDie', { m: tg }) } }
     if (hero.leech) { P.hp = Math.min(P.max, P.hp + dmg * hero.leech) }
@@ -282,7 +282,7 @@ export function createFight(n, hero, opt = {}) {
     if (!st.rage) { if (st.t < FB.time) return false;
       st.rage = true; if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
       st.doom = { n: 0, t: 0, ph: 'cast' }; E('rage'); doomCast(); return true }
-    const D = st.doom; D.t += dt; if (Bo.cast) Bo.cast.t = D.ph === 'cast' ? D.t : Bo.cast.t;
+    const D = st.doom; D.t += dt; if (st.immT > 0) st.immT -= dt; if (Bo.cast) Bo.cast.t = D.ph === 'cast' ? D.t : Bo.cast.t;
     if (D.ph === 'cast' && D.t >= FB.doom.cast) { D.n++; D.ph = 'wait'; D.t = 0; Bo.cast = null; Bo.act = 'doomWait'; E('doomHit', { n: D.n });
       if (!P.dead && !st.over && !P.god) { const a = D.n >= 2 ? P.hp : Math.min(P.hp, Math.round(P.max * FB.doom.k)); P.hp -= a; P.hurtT = 0; st.stats.taken += a; E('pdmg', { a, src: 'doom' }); if (D.n >= 2 || P.hp <= 0) { P.hp = 0; P.dead = true; end(false) } } }
     else if (D.ph === 'wait' && D.t >= FB.doom.gap - FB.doom.cast) { D.ph = 'cast'; D.t = 0; doomCast() }

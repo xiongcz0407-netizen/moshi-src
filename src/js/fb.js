@@ -241,7 +241,15 @@ export function createFB(ctx) {
     if (k >= 2) tint(0x8a0000, 1.4);
   }
   /* 设计 106：第 3 关山崩起手「地动」——全场尘土、屏幕大震 */
-  function quakeFx() { ctx.shake(1.0); scatter(22, (x, z) => dust(x, z, 3, 1.5, 2.5)); tint(0xb09070, 0.45) }
+  /* 设计 106b：地动尘土铺满全场（自己管的大尘团，不占粒子上限；中间淡一点） */
+  const qfx = [];
+  function quakeFx() { ctx.shake(1.0); tint(0xb09070, 0.45);
+    for (let x = ARENA.x0 + 1; x <= ARENA.x1 - 1; x += 2.6) for (let z = ARENA.z0 + 1.5; z <= ARENA.z1 - 1; z += 3.2) {
+      const edge = Math.min(1, Math.abs(x) / (ARENA.x1 * 0.7)), s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dust, color: 0xd8c6a2, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+      s.position.set(x + (Math.random() - 0.5) * 1.5, 0.7 + Math.random() * 0.8, z + (Math.random() - 0.5) * 1.8); s.material.rotation = Math.random() * 6.28; scene.add(s);
+      qfx.push({ s, t: -Math.random() * 0.1, op: 0.45 + 0.4 * edge, sz: 4.2 + Math.random() * 1.8 }) } }
+  function qfxFrame(dt) { for (let i = qfx.length - 1; i >= 0; i--) { const q = qfx[i]; q.t += dt; const u = Math.max(0, q.t) / 1.8; if (u >= 1) { scene.remove(q.s); q.s.material.dispose(); qfx.splice(i, 1); continue }
+    q.s.material.opacity = q.op * (u < 0.04 ? u / 0.04 : 1 - (u - 0.04) / 0.96); q.s.scale.setScalar(q.sz * (1 + 0.6 * u)) } }
   function mkHud() {
     if (hud) return hud;
     const el = document.createElement('div'); el.id = 'fbHud'; el.className = 'hidden';
@@ -314,7 +322,7 @@ export function createFB(ctx) {
     /* 设计 89：上一次的东西可能挂在别的关的场景里（这时 scene 已经换成这一关的了），用 removeFromParent 从它自己的场景里拿掉 */
     for (const [, o] of warnObjs) { o.removeFromParent(); disposeTree(o) } warnObjs.clear();
     for (const [, v] of mobVis) { v.m.removeFromParent(); if (v.bar) v.bar.removeFromParent(); if (v.stun) v.stun.removeFromParent() } mobVis.clear();
-    for (const p of parts) p.s.removeFromParent(); parts.length = 0; for (const m of marks) m.m.removeFromParent(); marks.length = 0;
+    for (const q of qfx) { q.s.removeFromParent(); q.s.material.dispose() } qfx.length = 0; for (const p of parts) p.s.removeFromParent(); parts.length = 0; for (const m of marks) m.m.removeFromParent(); marks.length = 0;
     for (const g of nades) g.m.removeFromParent(); nades.length = 0; for (const b of tracers) { b.on = false; b.m.visible = false; scene.add(b.m) }
     if (chest) { chest.g.removeFromParent(); chest = null }
     if (stg) stg.reset(); else { boss.position.set(fight.boss.x, 0, fight.boss.z); boss.rotation.y = 0; boss.visible = true; for (const m of boss.userData.mats) m.emissive.setHex(0);
@@ -475,9 +483,11 @@ export function createFB(ctx) {
       else if (e.e === 'rage') { rageT = 0.01; $h('.fbrage').classList.remove('hidden'); ctx.UI.toast(`3 分钟到了，${BOSSES[n].name}要放「灭杀」，吃两次必倒`, 'bad', 3000) }   /* 设计 106 */
       else if (e.e === 'doomHit') doomFx(e.n);
       else if (e.e === 'quake') quakeFx();
+      else if (e.e === 'immune') ctx.UI.floatText(new THREE.Vector3(B.x, 5.6, tox() ? ARENA.z0 : B.z), '免疫', '');   /* 设计 106b：灭杀期间打 BOSS 不掉血 */
       else if (e.e === 'win' || e.e === 'lose') onEnd(e.e === 'win');
       else if (e.e === 'cast' && e.ult) ctx.UI.floatText(new THREE.Vector3(B.x, tox() ? 6.3 : 6.4, tox() ? ARENA.z0 - 0.5 : B.z), e.name, 'bad');
     }
+    qfxFrame(dt);
     if (tintT > 0) { tintT -= dt; const el = hud.querySelector('.fbtint'); if (el) el.style.opacity = 0.55 * Math.max(0, tintT / tintD) }
     /* 飘伤害数字：同一个目标 0.25 秒合一次（一秒十几发，一发一个字太多了） */
     for (const [k, o] of dmgAcc) { o.t += dt; if (o.t >= 0.25) { const pos = k === 'b' ? (tox() ? new THREE.Vector3(B.x + (Math.random() - 0.5) * 2, 4.6, ARENA.z0 - 0.6) : new THREE.Vector3(B.x + (Math.random() - 0.5), 5.4, B.z)) : new THREE.Vector3(o.m.x, 2.1, o.m.z); ctx.UI.floatText(pos, (o.crit ? '暴击 ' : '') + o.a, o.crit ? 'x10' : 'x3'); dmgAcc.delete(k) } }

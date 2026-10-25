@@ -14,7 +14,7 @@ export default async (pg, shot) => {
     await ev(() => { const F = __g.FBV.fight(); F.boss.x = 0; F.boss.z = -5; F.forceCast('ava') }); await pump(1.95, true, pos);
     await ev(() => { const P = __g.FBV.fight().player; P.god = false; P.max0 = P.max; P.max = P.hp = 6000 });   /* 截图用：血加厚，碎石雨期间站着不动也不会被落石砸死（看得到碎石雨在掉血） */
     for (let i = 0; i < 6; i++) { await pump(1 / 30, false, pos); const q = await ev(() => __g.FBV.fight().ev.some(e => e.e === 'quake')); if (q) break }
-    await pump(0.12, false, pos); console.log('地动：主角血', await ev(() => { const P = __g.FBV.fight().player; return `${Math.round(P.hp)} / ${P.max}` })); await shot(`106_落石巨人_地动_全场尘土_${T}`);
+    await pump(0.3, false, pos); console.log('地动：主角血', await ev(() => { const P = __g.FBV.fight().player; return `${Math.round(P.hp)} / ${P.max}` })); await shot(`106_落石巨人_地动_全场尘土_${T}`);
     await pump(2.5, false, pos); console.log('碎石雨 2.5 秒：主角血', await ev(() => { const P = __g.FBV.fight().player; return `${Math.round(P.hp)} / ${P.max}` })); await shot(`106_落石巨人_碎石雨中_${T}`);
     await pump(4, true, pos); await ev(() => { const P = __g.FBV.fight().player; P.max = P.hp = P.max0 }) }
   await ev(() => { const F = __g.FBV.fight(); F.t = 179.6; F.player.hp = F.player.max });
