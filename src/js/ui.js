@@ -316,16 +316,16 @@ function declutter(now, dt) {
 }
 
 
-/* ================= 设计 76：角色页 5 个页签「主角 | 装备 | 背包 | 炼宝 | 技能」 =================
+/* ================= 设计 76：角色页页签「主角 | 装备 | 背包 | 技能」（设计 107：炼宝搬到铁匠那里，角色页不再有）=================
    主角 = 角色面板（hero），后 4 个 = 装备面板（gear）的页签；点页签在两个面板之间切（看着是一个面板，标题都叫「角色」）。
    页签 id 以 @ 开头 = 换到别的面板：'@hero'、'@gear:bag'。超市不到 5 级：后 4 个灰着写「超市 5 级开放」（ROLE_OPT.lock = 'grey'），或者不显示（'hide'） */
 export const ROLE_OPT = { lock: 'grey' };
-export const GEAR_TABS = S => [{ id: 'eq', name: '装备' }, { id: 'bag', name: `背包 ${S.fb.bag.length}/${FB.bag}`, dot: S.fb.bag.some(x => x.nw) }, { id: 'ref', name: '炼宝' }, { id: 'sk', name: '技能' }];
+export const GEAR_TABS = S => [{ id: 'eq', name: '装备' }, { id: 'bag', name: `背包 ${S.fb.bag.length}/${FB.bag}`, dot: S.fb.bag.some(x => x.nw) }, { id: 'sk', name: '技能' }];
 export function roleTabs(S, inGear) {
   const open = S.lv.store >= FB.store, hero = { id: inGear ? '@hero' : 'hero', name: '主角' };
   if (open) return [hero, ...GEAR_TABS(S).map(t => ({ ...t, id: inGear ? t.id : '@gear:' + t.id }))];
   if (ROLE_OPT.lock === 'hide') return [hero];
-  return [hero, ...['装备', '背包', '炼宝', '技能'].map((n, i) => ({ id: '!lock' + i, name: n, dis: true }))];
+  return [hero, ...['装备', '背包', '技能'].map((n, i) => ({ id: '!lock' + i, name: n, dis: true }))];
 }
 /* ================= 设计 29：通用面板框架 =================
    标题栏（图标 + 名字 + 资源条 + ? + 关闭）/ 分页 / 格子区（固定大小，左右翻页，不上下滚）/ 右边详情区。
@@ -881,7 +881,7 @@ const PANELS = {
         it.push({ id: 'scroll' + n, ic: icon('it', 'scroll'), n: `×${n}`, nm: `${n} 张尸潮卷`, sub: coin(c), d: `<div class="deff">打尸潮要用。现在有 ${S.td.scrolls} 张。</div>${buyBtn('buyScroll', n, S.coins >= c, coin(c) + ' 买')}` }) }
       /* 设计 56：晶石（炼宝用），超市 5 级以后卖 */
       if (S.lv.store >= FB.store) for (const [i, [n, c]] of CRYSTAL.packs.entries()) it.push({ id: 'crys' + n, ic: `<span class="icon img"><img src="${A('img/fb/eq_crystal.png')}" alt=""></span>`, n: `×${n}`, nm: `${n} 颗晶石`, sub: coin(c), tag: n * 200 > c ? `省 ${n * 200 - c}` : '',
-        d: `<div class="deff">炼宝（装备升星）用。现在有 ${S.fb ? S.fb.crys : 0} 颗。也能用星星换（1 星 = ${CRYSTAL.perStar} 颗）。</div>${buyBtn('buyCrys', i, S.coins >= c, coin(c) + ' 买')}` });
+        d: `<div class="deff">炼宝（找铁匠给装备升星）用。现在有 ${S.fb ? S.fb.crys : 0} 颗。也能用星星换（1 星 = ${CRYSTAL.perStar} 颗）。</div>${buyBtn('buyCrys', i, S.coins >= c, coin(c) + ' 买')}` });
       if (L.fishOpen(S) && S.fishLic) {
         for (const k of ['worm', 'corn']) for (const [n] of FISHING.baitPacks) { const c = L.baitCost(k, n, far), full = Math.round(FISHING.bait[k].price * n * (far ? FISHING.farMult : 1));
           it.push({ id: k + n, ic: icon('it', k), n: `×${n}`, nm: `${n} 个${FISHING.bait[k].name}`, sub: coin(c), tag: full > c ? `省 ${full - c}` : '', d: `<div class="deff">每抛一竿用 1 个（${k === 'worm' ? '近岸、桥下' : '深水、桥下'}用）。现在有 ${S.bait[k] || 0} 个。${far ? '<br><span class="warn">这里贵 20%</span>' : ''}</div>${buyBtn('buyBait', `${k}:${n}`, S.coins >= c, coin(c) + ' 买')}` }) }

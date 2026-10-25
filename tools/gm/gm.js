@@ -2,7 +2,7 @@
    只放在用户电脑上（末世超市/GM/gm.html），不发布。令牌在用户电脑上打包时填进去，不经过云端。
    读云端所有玩家 → 选存档位 → 读出当前数值 → 改 → 保存（先备份一份，再写回去）。 */
 import { BOSSES, QUAL, SLOTS, SLOT_NAME, ITEMS, SKILLS, SKILL_IDS, SKILL_MAX, FB } from '../../src/js/fbcfg.js';
-import { dropTable, firstDrop, LOG_MAX } from '../../src/js/fblogic.js';
+import { dropTable, firstDrop, LOG_MAX, itemName, nameAt, fbFix } from '../../src/js/fblogic.js';
 import { GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, CROP_IDS, FISH, FISH_IDS, BUILD, BUILD_ORDER, RANCH_IDS, FIXTURE, SHOP, FISHING } from '../../src/js/config.js';
 
 const GH = window.GM_CFG;
@@ -62,6 +62,7 @@ async function loadSave(ui, slot) {
   const x = users[ui], path = `saves/${x.u.id}_${slot}.json`;
   msg('读取存档…'); const j = await getJson(path); if (!j) { msg('这个存档文件不存在。', 'bad'); return }
   const S = JSON.parse(j.text);
+  if (S.fb && S.td) fbFix(S);   /* 设计 105：老存档的传说 key、套装 Lv 先按游戏的规则换好再显示（保存时一起写回去，跟游戏读档一样） */
   cur = { x, slot, path, sha: j.sha, S, orig: JSON.parse(j.text) };
   render(); msg(`读到了：${esc(x.u.name)} 的存档位 ${slot + 1}。改好以后点最下面的「保存」。`);
 }
@@ -123,10 +124,11 @@ function showChanges() { const n = readForm().length + diffCount(gearDiff()); $(
 const openLv = () => BOSSES.map((b, n) => b && b.open ? n : 0).filter(Boolean);
 const QORD = ['s', 'l', 'e', 'n'];
 const maxSt = k => QUAL[ITEMS[k].q].stars;
-const iname = it => `${ITEMS[it.k] ? ITEMS[it.k].name : it.k} ${it.st || 0}★`;
+const iname = it => `${ITEMS[it.k] ? itemName(it) : it.k} ${it.st || 0}★`;   /* 设计 105：名字按 Lv 查表 */
+const lvOf = it => { const D = ITEMS[it.k]; return D && D.set ? D.lv : it.lv || 1 };
 const qspan = (k, t) => { const D = ITEMS[k], q = D ? QUAL[D.q] : null; return `<b style="color:${q ? q.tx : '#333'}">${esc(t || (D ? D.name : k))}</b>` };
 const lvName = n => BOSSES[n] && BOSSES[n].name ? BOSSES[n].name : `第 ${n} 关`;
-const fromTxt = k => { const D = ITEMS[k]; return D.q === 's' || D.q === 'l' ? lvName(D.lv) : '各关都掉' };
+const fromTxt = k => { const D = ITEMS[k]; return D.q === 's' ? lvName(D.at) + '（按 Lv' + D.lv + '）' : '各关都掉' };   /* 设计 105：传说也是各关都掉 */
 const clone = o => JSON.parse(JSON.stringify(o));
 function gearInit(S) {
   if (!S.fb) return null;
@@ -137,7 +139,7 @@ function gearInit(S) {
   return G;
 }
 const bagMax = () => FB.bag;
-const haveK = (G, S) => new Set([...G.bag, ...SLOTS.map(s => G.eq[s]), S.fb.pend].filter(Boolean).map(x => x.k));
+const haveK = (G, S) => new Set([...G.bag, ...SLOTS.map(s => G.eq[s]), S.fb.pend].filter(Boolean).map(x => x.k + '|' + lvOf(x)));   /* 设计 105：同一个 key 不同关是不同的装备 */
 function addItem(G, k, lv, st) { const it = { id: G.nid++, k, lv: ITEMS[k].lv || lv, st, crys: 0, nw: 1 }; G.bag.push(it); return it }
 
 /* 跟原存档比：加了 / 删了 / 卸下 / 改星 */
@@ -146,13 +148,13 @@ function gearDiff() {
   const S = cur.S, where = (eq, bag) => { const m = new Map(); for (const s of SLOTS) if (eq[s]) m.set(eq[s].id, { it: eq[s], at: s }); for (const it of bag) m.set(it.id, { it, at: 'bag' }); return m };
   const A = where(S.fb.eq || {}, S.fb.bag || []), B = where(cur.G.eq, cur.G.bag), out = [];
   const add = new Map();
-  for (const [id, b] of B) if (!A.has(id)) { const key = b.it.k + '|' + (b.it.st || 0); add.set(key, (add.get(key) || 0) + 1) }
-  for (const [key, c] of add) { const [k, st] = key.split('|'); out.push({ t: 'add', txt: `加 ${ITEMS[k].name} ${st}★${c > 1 ? ' ×' + c : ''}`, n: c }) }
+  for (const [id, b] of B) if (!A.has(id)) { const key = b.it.k + '|' + (b.it.st || 0) + '|' + lvOf(b.it); add.set(key, (add.get(key) || 0) + 1) }
+  for (const [key, c] of add) { const [k, st, lv] = key.split('|'); out.push({ t: 'add', txt: `加 ${nameAt(k, +lv)} Lv${lv} ${st}★${c > 1 ? ' ×' + c : ''}`, n: c }) }
   for (const [id, a] of A) {
     const b = B.get(id);
     if (!b) { out.push({ t: 'del', txt: `删 ${iname(a.it)}${a.at !== 'bag' ? '（身上）' : ''}`, n: 1 }); continue }
-    if (a.at !== b.at) out.push({ t: 'mv', txt: `卸下 ${ITEMS[a.it.k].name}`, n: 1 });
-    if ((a.it.st || 0) !== (b.it.st || 0)) out.push({ t: 'st', txt: `${ITEMS[a.it.k].name} ${a.it.st || 0}★→${b.it.st || 0}★`, n: 1 });
+    if (a.at !== b.at) out.push({ t: 'mv', txt: `卸下 ${itemName(a.it)}`, n: 1 });
+    if ((a.it.st || 0) !== (b.it.st || 0)) out.push({ t: 'st', txt: `${itemName(a.it)} ${a.it.st || 0}★→${b.it.st || 0}★`, n: 1 });
   }
   return out;
 }
@@ -170,9 +172,9 @@ function gearHtml() {
   const stIn = (it, where) => `<input type="number" class="st" data-gst="${where}:${it.id}" min="0" max="${maxSt(it.k)}" value="${it.st || 0}"><em>0～${maxSt(it.k)}★</em>`;
   const full = G.bag.length >= bagMax();
   const eqRows = SLOTS.map(s => { const it = G.eq[s];
-    return `<tr><td>${SLOT_NAME[s]}</td>${it ? `<td>${qspan(it.k)} <small>${QUAL[ITEMS[it.k].q].name}　第 ${it.lv} 关的</small></td><td><label>${stIn(it, 'eq')}</label></td><td><button data-gun="${s}" ${full ? 'disabled title="背包满了"' : ''}>卸到背包</button></td>` : '<td colspan="3"><small>空着</small></td>'}</tr>` }).join('');
-  const bagRows = G.bag.map((it, i) => `<tr><td>${i + 1}</td><td>${qspan(it.k)} <small>${SLOT_NAME[ITEMS[it.k].slot]}　${QUAL[ITEMS[it.k].q].name}　第 ${it.lv} 关的${it.nw ? '　新' : ''}</small></td><td><label>${stIn(it, 'bag')}</label></td><td><button data-gdel="${it.id}">删除</button></td></tr>`).join('');
-  const opts = QORD.map(q => `<optgroup label="${QUAL[q].name}">${Object.keys(ITEMS).filter(k => ITEMS[k].q === q).map(k => `<option value="${k}">${esc(ITEMS[k].name)}　${SLOT_NAME[ITEMS[k].slot]}　${fromTxt(k)}</option>`).join('')}</optgroup>`).join('');
+    return `<tr><td>${SLOT_NAME[s]}</td>${it ? `<td>${qspan(it.k, itemName(it))} <small>${QUAL[ITEMS[it.k].q].name}　Lv${lvOf(it)}</small></td><td><label>${stIn(it, 'eq')}</label></td><td><button data-gun="${s}" ${full ? 'disabled title="背包满了"' : ''}>卸到背包</button></td>` : '<td colspan="3"><small>空着</small></td>'}</tr>` }).join('');
+  const bagRows = G.bag.map((it, i) => `<tr><td>${i + 1}</td><td>${qspan(it.k, itemName(it))} <small>${SLOT_NAME[ITEMS[it.k].slot]}　${QUAL[ITEMS[it.k].q].name}　Lv${lvOf(it)}${it.nw ? '　新' : ''}</small></td><td><label>${stIn(it, 'bag')}</label></td><td><button data-gdel="${it.id}">删除</button></td></tr>`).join('');
+  const opts = QORD.map(q => `<optgroup label="${QUAL[q].name}">${Object.keys(ITEMS).filter(k => ITEMS[k].q === q).map(k => `<option value="${k}">${esc(ITEMS[k].set ? ITEMS[k].name : ITEMS[k].name + ' 等')}　${SLOT_NAME[ITEMS[k].slot]}　${fromTxt(k)}</option>`).join('')}</optgroup>`).join('');
   const lvOpts = (sel) => openLv().map(n => `<option value="${n}" ${n === sel ? 'selected' : ''}>第 ${n} 关 ${lvName(n)}</option>`).join('');
   const pend = S.fb.pend ? `<p class="note">还有一件刚掉、玩家没收下的：${qspan(S.fb.pend.k, iname(S.fb.pend))}（在「获得」框里，GM 不动它）。</p>` : '';
   return `<fieldset id="gear"><legend>副本装备</legend>
@@ -183,18 +185,18 @@ function gearHtml() {
     <div class="addrow"><select id="gk">${opts}</select>
       <label>星级 <input type="number" id="gst" min="0" value="0"><em id="gstmax"></em></label>
       <label>数量 <input type="number" id="gn" min="1" max="${bagMax()}" value="1"></label>
-      <label title="史诗、普通的数值按第几关算；套装、传说固定">算第几关的 <select id="glv">${lvOpts(1)}</select></label>
+      <label title="史诗、普通、传说按第几关算 Lv 和名字；套装固定（拾荒者 Lv5、猎杀者 Lv10）">算第几关的（Lv） <select id="glv">${lvOpts(1)}</select></label>
       <button data-gadd>加到背包</button></div>
     <div class="addrow"><select id="gfill">${lvOpts(openLv().slice(-1)[0])}</select> <button data-gfill>这一关缺的都给</button>
       <small class="note">这一关能掉、身上和背包里都没有的传说、史诗各加 1 件（0★）；套装要在上面单独选。</small></div>
     <p id="gmsg" class="msg"></p>
   </fieldset>`;
 }
-const LOG_TXT = { win: '打赢掉落', take: '收下', wear: '穿上', dis: '分解', gm: 'GM' };
+const LOG_TXT = { win: '打赢掉落', take: '收下', wear: '穿上', dis: '分解', gm: 'GM', swap: '传说转换', adj: '传说调整' };
 function logHtml() {
   const L = cur.S.fb && Array.isArray(cur.S.fb.log) ? cur.S.fb.log.slice().reverse() : null;
   if (!L) return '';
-  const row = e => { const what = e.k && ITEMS[e.k] ? qspan(e.k, ITEMS[e.k].name + (e.a === 'dis' ? ` ${e.st || 0}★` : '')) : esc(e.txt || '');
+  const row = e => { const what = e.a === 'swap' && ITEMS[e.from] && ITEMS[e.to] ? `${qspan(e.from, nameAt(e.from, e.lv))} → ${qspan(e.to, nameAt(e.to, e.lv))}（Lv${e.lv}）` : e.a === 'adj' ? esc(e.txt || '') : e.k && ITEMS[e.k] ? qspan(e.k, nameAt(e.k, e.lv || e.n || 1) + (e.lv || e.n ? ` Lv${ITEMS[e.k].set ? ITEMS[e.k].lv : e.lv || e.n}` : '') + (e.a === 'dis' ? ` ${e.st || 0}★` : '')) : esc(e.txt || '');
     const how = e.a === 'win' ? `第 ${e.n} 关 ${lvName(e.n)}　${e.how === 'first' ? '<b>第一次保底</b>' : '随机'}` : e.a === 'gm' ? '管理员改的' : '';
     return `<tr><td>${fmtT(e.t)}</td><td>${LOG_TXT[e.a] || esc(e.a)}</td><td>${what}</td><td><small>${how}</small></td></tr>` };
   return `<fieldset><legend>掉落记录（最新的在上面，最多 ${LOG_MAX} 条）</legend>${L.length ? `<div class="logbox"><table class="gt"><tr><th>时间</th><th>事</th><th>装备</th><th>说明</th></tr>${L.map(row).join('')}</table></div>` : '<p class="note">还没有记录（这个版本以后打赢副本、收下、分解才会记）。</p>'}</fieldset>`;
@@ -208,17 +210,17 @@ function gearAdd() {
   const room = bagMax() - G.bag.length;
   if (n > room) { gearRefresh(`背包放不下：还能放 ${room} 件，要加 ${n} 件。没加。`, 'bad'); return }
   for (let i = 0; i < n; i++) addItem(G, k, lv, st);
-  gearRefresh(`加到背包：${ITEMS[k].name} ${st}★${n > 1 ? ' ×' + n : ''}（还没保存）`, 'good');
+  gearRefresh(`加到背包：${nameAt(k, lv)} Lv${ITEMS[k].lv || lv} ${st}★${n > 1 ? ' ×' + n : ''}（还没保存）`, 'good');
 }
 function gearFill() {
   const G = cur.G, n = +$('#gfill').value, tb = dropTable(n), have = haveK(G, cur.S);
   const fd = firstDrop(n), keys = [...new Set([...tb.filter(x => x.q === 'l' || x.q === 'e').flatMap(x => x.keys), ...(fd ? fd.keys : [])])].filter(k => ITEMS[k].q === 'l' || ITEMS[k].q === 'e');
-  const miss = keys.filter(k => !have.has(k)).sort((a, b) => QORD.indexOf(ITEMS[a].q) - QORD.indexOf(ITEMS[b].q));
+  const miss = keys.filter(k => !have.has(k + '|' + (ITEMS[k].lv || n))).sort((a, b) => QORD.indexOf(ITEMS[a].q) - QORD.indexOf(ITEMS[b].q));
   if (!miss.length) { gearRefresh(`第 ${n} 关能掉的传说、史诗，身上和背包里都有了。`); return }
   const room = bagMax() - G.bag.length;
-  if (miss.length > room) { gearRefresh(`缺 ${miss.length} 件（${miss.map(k => ITEMS[k].name).join('、')}），背包只能放 ${room} 件。没加，先删几件或者单独加。`, 'bad'); return }
+  if (miss.length > room) { gearRefresh(`缺 ${miss.length} 件（${miss.map(k => nameAt(k, n)).join('、')}），背包只能放 ${room} 件。没加，先删几件或者单独加。`, 'bad'); return }
   for (const k of miss) addItem(G, k, n, 0);
-  gearRefresh(`加了 ${miss.length} 件：${miss.map(k => qspan(k)).join('、')}（还没保存）`, 'good');
+  gearRefresh(`加了 ${miss.length} 件：${miss.map(k => qspan(k, nameAt(k, n))).join('、')}（还没保存）`, 'good');
 }
 
 /* ---------- 保存 ---------- */
@@ -228,7 +230,7 @@ async function save() {
   if (onlineState(cur.S).k === 'on') { msg('玩家正在玩，先让他完全关掉游戏，再点「重新读取」改。', 'bad'); return }
   /* 存之前再读一次：玩家这期间存过档的话，不能拿旧数据盖掉 */
   const j = await getJson(cur.path); if (!j) { msg('存档文件不见了。', 'bad'); return }
-  if (j.sha !== cur.sha) { const S2 = JSON.parse(j.text); cur.sha = j.sha; cur.S = S2; cur.orig = JSON.parse(j.text); render(); msg(`读取以后玩家又存过档（${onlineState(S2).t}）。已经重新读出最新的，请再改一次。`, 'bad'); return }
+  if (j.sha !== cur.sha) { const S2 = JSON.parse(j.text); if (S2.fb && S2.td) fbFix(S2); cur.sha = j.sha; cur.S = S2; cur.orig = JSON.parse(j.text); render(); msg(`读取以后玩家又存过档（${onlineState(S2).t}）。已经重新读出最新的，请再改一次。`, 'bad'); return }
   const st = onlineState(cur.S);
   if (st.k === 'on') { render(); msg('玩家正在玩，先让他完全关掉游戏，再点「重新读取」改。', 'bad'); return }
   const list = [...ch.map(c => `${c.f.label}：${c.old} → ${c.v}`), ...gd.map(g => '装备：' + g.txt)].join('\n');

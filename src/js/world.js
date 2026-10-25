@@ -76,6 +76,8 @@ export const ALARM_POS = new THREE.Vector3(-11.4, 0, 6.2);
 export const POND = { x0: -64, x1: -52.5, z0: 12.6, z1: 24.85 };      // 设计 43：湖在牧场南边（整片往东 5.5、往南 5 米，形状不变）
 export const DOCK_POS = new THREE.Vector3(-57, 0, 13.8);
 export const MERCH_POS = new THREE.Vector3(-8.6, 0, -15.2);
+/* 设计 107：铁匠摊（超市 5 级才出现）：传送门西边、北边围栏前的空地（离回收机、商人都远）；SMITH_POS 是铁匠站的位置，摊子在他身前 */
+export const SMITH_POS = new THREE.Vector3(-16.6, 0, -22.2);
 export const PORTAL_POS = new THREE.Vector3(-11.4, 0, -22.3);          // 设计 56：传送门在商人空地北边，门朝南（对着大门过来的石板路）           // 设计 43：院子商人在东北角空地（大门北边）
 /* 物资刷新点（避开障碍） */
 /* 院子门口马路上的物资刷新点（只有铁罐、塑料瓶；其他的去拾荒区捡） */

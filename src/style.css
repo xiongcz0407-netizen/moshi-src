@@ -1313,3 +1313,31 @@ body.kbon .cin{margin-top:4px}
 .rfw .fbds .drow b{font-weight:700;color:var(--ink)}.rfw .fbds .drow .good{color:#2f9e2f;font-weight:800}
 .rfw .fbds>*{flex-shrink:0}   /* 设计 88b：属性区是 flex 一列，行会被压扁（行距看着贴在一起）；不压，多了就滚 */
 @media (max-width:720px){ #pbody .rfw .fbds .drow{line-height:1.35;margin-bottom:1px} .rfhd .eqic.big{width:42px;height:42px} .rfw .refstars{margin:0} }   /* 设计 88b：667 宽 4 行属性不用滚 */
+/* ===== 设计 105：Lv 牌子、金色 ⇡、同星对比、套装整行绿 ===== */
+.eqic .eqlv{position:absolute;z-index:3;left:0;bottom:0;font-size:7px;line-height:9px;font-weight:800;color:#fff;background:rgba(20,16,12,.82);border-radius:3px;padding:0 2px;font-style:normal;pointer-events:none;letter-spacing:-.2px}
+.eqic.big .eqlv{font-size:10px;line-height:12px;left:2px;bottom:2px}
+.eqic.sm .eqlv,.fbdq .eqic.sm b.eqlv{font-size:7px;line-height:8px;width:auto;padding:0 1px;left:0;bottom:0;flex:none}
+.equp.gold{background:#d48a00;color:#fff;font-size:15px;text-shadow:0 0 1px #fff,0 0 1px #fff}
+.pbox .gold,.pf-detail .gold{color:#b07800;font-weight:700}
+.pf-detail .samest{font-size:12px;line-height:1.4;margin:2px 0 4px;display:flex;flex-wrap:wrap;gap:0 6px}.pf-detail .samest small{flex:0 0 100%;color:var(--ink2)}
+.pf-detail .samest .good{color:var(--good);font-weight:700}.pf-detail .samest .bad{color:var(--bad);font-weight:700}
+.pf-detail .setrow.on,.pf-detail .setrow.on span,.pf-detail .setrow.on b{color:var(--good);font-weight:700}
+.pf-detail .setrow.off,.pf-detail .setrow.off span,.pf-detail .setrow.off b{color:var(--dim);font-weight:400}
+.setn.on{color:var(--good);font-weight:700}
+.pf-detail .setprog{margin:2px 0 6px}.pf-detail .setprog .setnm{font-size:12px;font-weight:700;color:var(--ink2)}
+@media (max-width:720px){ .fbdit small{max-width:6.2em;overflow:hidden;text-overflow:ellipsis} }   /* 667 宽名字放不下才省略（105b：6 个字以内都放得下），点图标看全名 */
+.eqic:not(.big):not(.sm) em{right:0;font-size:8.5px}.eqic:not(.big):not(.sm) em.mx{font-size:9px}   /* 设计 105：左下角 Lv 牌子跟右下角星数不挤在一起 */
+/* ===== 设计 105b：铁匠面板「传说转换」 ===== */
+.pf-detail .swtgs{display:flex;flex-wrap:wrap;gap:4px 8px;margin:2px 0 4px}
+.pf-detail .swtg{font-size:12px;font-weight:700;color:#d0660a;background:rgba(255,155,47,.12);border:1px solid rgba(255,155,47,.45);border-radius:5px;padding:1px 6px}.pf-detail .swtg small{font-weight:400;color:var(--ink2);margin-left:4px;font-size:10px}
+.pf-detail .swapres{flex:none;position:relative;margin:0 0 6px;padding:6px 8px;border-radius:8px;border:2px solid #ff9b2f;background:linear-gradient(180deg,#fff1cf,#f6d9a0);box-shadow:0 0 10px rgba(255,155,47,.55);overflow:hidden}
+.pf-detail .swapres .swl{font-size:11px;color:var(--ink2)}.pf-detail .swapres .swt{font-size:13px;font-weight:700}.pf-detail .swapres .swt .old{color:var(--dim);text-decoration:line-through}.pf-detail .swapres .swt span{color:#d0660a;margin:0 3px}
+.pf-detail .swapres .swfx{font-size:12px;color:#d0660a}
+.pf-detail .swapres.play::after{content:'';position:absolute;inset:-40%;background:radial-gradient(circle,rgba(255,236,170,.95),rgba(255,180,60,0) 60%);animation:swGlow 1.6s ease-out forwards;pointer-events:none}
+@keyframes swGlow{0%{opacity:1;transform:scale(.3)}60%{opacity:.8}100%{opacity:0;transform:scale(1.4)}}
+.pf-cell.eqcell.swno{opacity:.5;filter:grayscale(.7)}.itag.swst{position:absolute;right:2px;top:2px;font-size:9px;white-space:nowrap;background:#8f8678;color:#fff;border-radius:4px;padding:0 3px}
+.rfw .rfwarn{flex:none;margin:0;padding:2px 8px;font-size:12px;font-weight:700;color:#b04a10;background:#fbe2b8;border-top:1px dashed #c99257;text-align:center}
+/* 设计 107b：传说转换的 5 个名字放在特效上面，一行排开（窄屏两行），不被底部价格栏挡住 */
+.pf-detail .swnote2{margin:2px 0 0;font-size:11.5px;line-height:1.3}
+.pf-detail .swtgs{flex:none;gap:3px 4px;margin:2px 0 4px}.pf-detail .swtg{font-size:11.5px;padding:0 5px;white-space:nowrap;cursor:pointer}
+@media (max-width:720px){ .pf-detail .swtg{font-size:11px;padding:0 4px} .pf-detail .swnote2{font-size:11px} }
