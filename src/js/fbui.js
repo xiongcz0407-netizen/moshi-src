@@ -1,7 +1,7 @@
 /* ================= 设计 56：副本相关的面板（副本选关、装备（装备 / 炼宝 / 技能）、打完的「获得」框） ================= */
 import { frame, gst, resChip, icon, roleTabs } from './ui.js';
 import { A } from './assets.js';
-import { FB, BOSSES, FB_MAX, QUAL, SLOTS, SLOT_NAME, STAT, ITEMS, SETS, SKILLS, SKILL_IDS, SKILL_MAX, skillCost, CRYSTAL } from './fbcfg.js';
+import { FB, BOSSES, FB_MAX, QUAL, SLOTS, SLOT_NAME, STAT, ITEMS, SETS, SKILLS, SKILL_IDS, SKILL_MAX, skillCost, CRYSTAL, LEG_SWAP } from './fbcfg.js';
 import * as FL from './fblogic.js';
 import { busy as refBusy, hold as refHold } from './refinefx.js';   /* 设计 80：敲打动画放着时「炼宝」灰掉 */
 
@@ -28,8 +28,33 @@ const fmtS = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2
 const bossIc = n => n <= 3 && BOSSES[n].open ? `<img class="bossic" src="${A(n === 1 ? 'img/fb/boss_1.png' : `img/fb${n}/boss_${n}.png`)}" alt="">` : `<span class="bossic q">?</span>`;   /* 设计 81：第 2 关毒囊的头像 */
 let refFx = null;   // 炼宝结果动画 { ok, at }
 export const setRefFx = r => { refFx = r ? { ...r, at: performance.now() } : null };
+/* 设计 105b：传说转换的结果（{ id, from, to, lv, st }）；放完光效（1.6 秒）之前「转换」按钮灰着，不能连点 */
+let swapFx = null;
+export const setSwapFx = r => { swapFx = r ? { ...r, at: performance.now() } : null };
+export const swapBusy = () => !!swapFx && performance.now() - swapFx.at < 1600;
 
-export const FB_TITLES = { fb: '副本', gear: '角色', fbGot: '获得' };   /* 设计 76：装备并进角色页 */
+export const FB_TITLES = { fb: '副本', gear: '角色', fbGot: '获得', smith: '铁匠' };   /* 设计 76：装备并进角色页 */
+/* 设计 105b：炼宝页（角色页「炼宝」页签和铁匠面板共用）：格子、详情、敲打动画、底部固定栏 */
+function refView(S, k, { tabs, res, help }) {
+    const H = refHold(), show = it => H && it && H.id === it.id ? { ...it, st: H.st, pity: H.pity } : it;   /* 设计 80：敲打动画放着时照炼之前画 */
+    const all = [...SLOTS.map(s => S.fb.eq[s]).filter(Boolean), ...S.fb.bag].map(show).sort((a, b) => gearKey(b) - gearKey(a));   /* 设计 105：品质 → Lv → 星 */
+    const cells = all.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>${Object.values(S.fb.eq).some(e => e && e.id === it.id) ? '<span class="itag ok">穿着</span>' : ''}` }));
+    const detail = id => { const it = show(FL.itemById(S, +id)); if (!it) return ''; const D = ITEMS[it.k], max = QUAL[D.q].stars, inf = FL.refineInfo(it);
+      const stars = Array.from({ length: 12 }, (_, i) => `<i class="${i < (it.st || 0) ? 'on' : i < max ? '' : 'no'}${refFx && refFx.id === it.id && performance.now() - refFx.at < 1500 && i === (refFx.ok ? it.st - 1 : it.st) ? (refFx.ok ? ' pop' : ' bad') : ''}">★</i>`).join('');
+      const nx = inf.max ? null : { ...it, st: inf.to };
+      /* 设计 88：属性一直显示（没满星：现在 → 下一星；满星：现在的值）；只有属性这一块上下滚，顶上（图标、星星）和底下的炼宝栏不动 */
+      const a = FL.itemStats(it), b = nx && FL.itemStats(nx), pc = k => STAT[k].pct ? '%' : '';
+      const list = [...Object.keys(a.main).map(k => [k, a.main[k], b && b.main[k]]), ...a.aff.map(([k, v], i) => [k, v, b && b.aff[i][1]])];
+      const attrs = list.map(([k, x, y]) => `<div class="drow"><span>${STAT[k].name}</span><b>${x}${pc(k)}${b && y !== x ? ` → <span class="good">${y}${pc(k)}</span>` : ''}</b></div>`).join('');
+      const ok = !inf.max && S.fb.crys >= inf.cost && !refBusy();
+      const foot = inf.max ? `<div class="fbfoot rffoot"><span class="fbfl lk">已满星</span><button class="btn" disabled>炼宝</button></div>`
+        : `<div class="fbfoot rffoot"><span class="fbfl"><b>升到 ${inf.to} 星　${inf.luck ? '<span class="warn">看运气</span> ' : ''}成功率 ${Math.round(inf.rate * 100)}%${inf.pity ? `（保底 +${Math.round(inf.pity * 100)}%）` : ''}</b><span class="${S.fb.crys >= inf.cost ? '' : 'lack'}">${crysIc}${inf.cost}（有 ${S.fb.crys}）</span></span>
+          <button class="btn" data-act="fbRefine" data-arg="${it.id}" ${ok ? '' : 'disabled'}>炼宝</button></div>`;
+      return `<div class="fbdw rfw"><div class="rftop"><div class="rfhd">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${iname(it)}</b><small>${QUAL[D.q].name} · Lv${lvOf(it)} · 最高 ${max} 星</small></div></div><div class="refstars">${stars}</div></div>
+        <div class="fbds">${attrs}${inf.max ? `<p class="note">最高 ${max} 星，满了。</p>` : ''}
+        ${refFx && refFx.id === it.id && performance.now() - refFx.at < 2500 ? `<p class="note ${refFx.ok ? 'good' : 'warn'}">${refFx.ok ? `成功！升到 ${it.st} 星` : '失败了，星星没掉'}</p>` : ''}</div>${foot}</div>` };
+    return frame(k, { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
+}
 export const FB_PANELS = {
   /* 副本面板：左边 10 关，右边 BOSS 技能、能掉的套装件 / 传说、推荐装备线、要几张尸潮卷 */
   fb(S) {
@@ -98,26 +123,7 @@ export const FB_PANELS = {
       if (g.sel == null) g.sel = 'focus';
       return frame('gear', { tabs, cols: 3, rows: 1, cells, detail, dw: 280, res, help });
     }
-    if (g.tab === 'ref') {
-      const H = refHold(), show = it => H && it && H.id === it.id ? { ...it, st: H.st, pity: H.pity } : it;   /* 设计 80：敲打动画放着时照炼之前画 */
-      const all = [...SLOTS.map(s => S.fb.eq[s]).filter(Boolean), ...S.fb.bag].map(show).sort((a, b) => gearKey(b) - gearKey(a));   /* 设计 105：品质 → Lv → 星 */
-      const cells = all.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>${Object.values(S.fb.eq).some(e => e && e.id === it.id) ? '<span class="itag ok">穿着</span>' : ''}` }));
-      const detail = id => { const it = show(FL.itemById(S, +id)); if (!it) return ''; const D = ITEMS[it.k], max = QUAL[D.q].stars, inf = FL.refineInfo(it);
-        const stars = Array.from({ length: 12 }, (_, i) => `<i class="${i < (it.st || 0) ? 'on' : i < max ? '' : 'no'}${refFx && refFx.id === it.id && performance.now() - refFx.at < 1500 && i === (refFx.ok ? it.st - 1 : it.st) ? (refFx.ok ? ' pop' : ' bad') : ''}">★</i>`).join('');
-        const nx = inf.max ? null : { ...it, st: inf.to };
-        /* 设计 88：属性一直显示（没满星：现在 → 下一星；满星：现在的值）；只有属性这一块上下滚，顶上（图标、星星）和底下的炼宝栏不动 */
-        const a = FL.itemStats(it), b = nx && FL.itemStats(nx), pc = k => STAT[k].pct ? '%' : '';
-        const list = [...Object.keys(a.main).map(k => [k, a.main[k], b && b.main[k]]), ...a.aff.map(([k, v], i) => [k, v, b && b.aff[i][1]])];
-        const attrs = list.map(([k, x, y]) => `<div class="drow"><span>${STAT[k].name}</span><b>${x}${pc(k)}${b && y !== x ? ` → <span class="good">${y}${pc(k)}</span>` : ''}</b></div>`).join('');
-        const ok = !inf.max && S.fb.crys >= inf.cost && !refBusy();
-        const foot = inf.max ? `<div class="fbfoot rffoot"><span class="fbfl lk">已满星</span><button class="btn" disabled>炼宝</button></div>`
-          : `<div class="fbfoot rffoot"><span class="fbfl"><b>升到 ${inf.to} 星　${inf.luck ? '<span class="warn">看运气</span> ' : ''}成功率 ${Math.round(inf.rate * 100)}%${inf.pity ? `（保底 +${Math.round(inf.pity * 100)}%）` : ''}</b><span class="${S.fb.crys >= inf.cost ? '' : 'lack'}">${crysIc}${inf.cost}（有 ${S.fb.crys}）</span></span>
-            <button class="btn" data-act="fbRefine" data-arg="${it.id}" ${ok ? '' : 'disabled'}>炼宝</button></div>`;
-        return `<div class="fbdw rfw"><div class="rftop"><div class="rfhd">${eqIcon(it, true)}<div><b style="color:${QUAL[D.q].tx}">${iname(it)}</b><small>${QUAL[D.q].name} · Lv${lvOf(it)} · 最高 ${max} 星</small></div></div><div class="refstars">${stars}</div></div>
-          <div class="fbds">${attrs}${inf.max ? `<p class="note">最高 ${max} 星，满了。</p>` : ''}
-          ${refFx && refFx.id === it.id && performance.now() - refFx.at < 2500 ? `<p class="note ${refFx.ok ? 'good' : 'warn'}">${refFx.ok ? `成功！升到 ${it.st} 星` : '失败了，星星没掉'}</p>` : ''}</div>${foot}</div>` };
-      return frame('gear', { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
-    }
+    if (g.tab === 'ref') return refView(S, 'gear', { tabs, res, help });   /* 设计 105b：跟铁匠面板共用 */
     if (g.tab === 'bag') {
       const f = g.f || 'all', sort = g.sort || 'q';
       let list = S.fb.bag.filter(it => f === 'all' || ITEMS[it.k].slot === f);
@@ -145,6 +151,30 @@ export const FB_PANELS = {
     const summary = `<h5>总属性</h5>${tot}<div class="dsub">套装</div>${sets}${legs ? `<div class="dsub">传说特效</div>${legs}` : ''}`;
     if (g.sel != null && !String(g.sel).startsWith('eq:')) g.sel = null;
     return frame('gear', { tabs, noGrid: true, left, detail, dw: 300, res, help, empty: summary });
+  },
+  /* 设计 105b：铁匠面板（炼宝 | 传说转换）。设计 107 里铁匠 NPC 走近就打开它 */
+  smith(S) {
+    FL.fbFix(S);
+    const tabs = [{ id: 'ref', name: '炼宝' }, { id: 'swap', name: '传说转换' }], g = gst('smith'); if (!tabs.find(t => t.id === g.tab)) g.tab = 'ref';
+    const res = resChip(crysIc, S.fb.crys) + resChip('<i class="ico-coin"></i>', Math.floor(S.coins));
+    const help = `<b>铁匠</b><p>炼宝给装备升星；传说转换把背包里的传说花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说，星级保留。</p><p>炼宝：用晶石升星，每星所有数值 +10%。普通最高 6 星、史诗 9 星、套装和传说 12 星。失败不掉星；4～8 星每失败一次下次 +5%（保底），9 星以上看运气。</p><p>传说转换：结果随机（另外 5 种机会一样，不会换回自己），不能选；Lv、星级、炼进去的晶石都保留。身上穿着的传说要先卸下。</p>`;
+    if (g.tab === 'ref') return refView(S, 'smith', { tabs, res, help });
+    const legs = S.fb.bag.filter(it => ITEMS[it.k].q === 'l').sort((a, b) => gearKey(b) - gearKey(a));
+    const cells = legs.map(it => ({ id: String(it.id), cls: 'eqcell', html: `${eqIcon(it)}<small>${iname(it)}</small>` }));
+    const detail = id => {
+      const it = S.fb.bag.find(x => x.id === +id); if (!it) return ''; const D = ITEMS[it.k], lv = lvOf(it), busy = swapBusy();
+      const fx = swapFx && swapFx.id === it.id && performance.now() - swapFx.at < 60000 ? swapFx : null;
+      const res = fx ? `<div class="swapres${busy ? ' play' : ''}"><div class="swl">传说转换</div><div class="swt"><b class="old">${FL.nameAt(fx.from, fx.lv)}</b> Lv${fx.lv} ★${fx.st} <span>→</span> <b style="color:${QUAL.l.tx}">${FL.nameAt(fx.to, fx.lv)}</b> Lv${fx.lv} ★${fx.st}</div><div class="swfx">${ITEMS[fx.to].fx}</div></div>` : '';
+      const tg = FL.swapTargets(it).map(k => `<span class="swtg">${FL.nameAt(k, lv)}<small>${SLOT_NAME[ITEMS[k].slot]}</small></span>`).join('');
+      const can = S.coins >= LEG_SWAP && !busy;
+      return `<div class="fbdw"><div class="fbds">${res}
+        <h5>${eqIcon(it)} ${iname(it)}<small>${qName(D.q)} · ${SLOT_NAME[D.slot]} · Lv${lv} · ${it.st || 0}★</small></h5>
+        <div class="drow"><span>传说特效</span><b class="nw" style="color:${QUAL.l.tx}">${D.fx}</b></div>
+        <p class="note">随机换成同一关（Lv${lv}）的另外 5 种传说之一（机会一样），<b>星级、Lv 保留</b>：</p>
+        <div class="swtgs">${tg}</div></div>
+        <div class="fbfoot"><span class="fbfl need${S.coins >= LEG_SWAP ? '' : ' lack'}"><i class="ico-coin"></i>${LEG_SWAP}</span><button class="btn" data-act="fbLegSwap" data-arg="${it.id}" ${can ? '' : 'disabled'}>转换</button></div></div>` };
+    return frame('smith', { tabs, cols: 5, rows: 3, cells, detail, dw: 260, res, help,
+      none: '背包里没有传说装备。副本里打到的传说可以在这里换成同一关的其他传说。', empty: `<p class="note">点一件背包里的传说：花 ${LEG_SWAP} 末日币随机换成同一关的另一种传说。</p>` });
   },
   /* 「获得」框（设计53 第三节） */
   fbGot(S) {

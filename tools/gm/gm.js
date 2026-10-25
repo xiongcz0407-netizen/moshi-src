@@ -192,11 +192,11 @@ function gearHtml() {
     <p id="gmsg" class="msg"></p>
   </fieldset>`;
 }
-const LOG_TXT = { win: '打赢掉落', take: '收下', wear: '穿上', dis: '分解', gm: 'GM' };
+const LOG_TXT = { win: '打赢掉落', take: '收下', wear: '穿上', dis: '分解', gm: 'GM', swap: '传说转换', adj: '传说调整' };
 function logHtml() {
   const L = cur.S.fb && Array.isArray(cur.S.fb.log) ? cur.S.fb.log.slice().reverse() : null;
   if (!L) return '';
-  const row = e => { const what = e.k && ITEMS[e.k] ? qspan(e.k, nameAt(e.k, e.lv || e.n || 1) + (e.lv || e.n ? ` Lv${ITEMS[e.k].set ? ITEMS[e.k].lv : e.lv || e.n}` : '') + (e.a === 'dis' ? ` ${e.st || 0}★` : '')) : esc(e.txt || '');
+  const row = e => { const what = e.a === 'swap' && ITEMS[e.from] && ITEMS[e.to] ? `${qspan(e.from, nameAt(e.from, e.lv))} → ${qspan(e.to, nameAt(e.to, e.lv))}（Lv${e.lv}）` : e.a === 'adj' ? esc(e.txt || '') : e.k && ITEMS[e.k] ? qspan(e.k, nameAt(e.k, e.lv || e.n || 1) + (e.lv || e.n ? ` Lv${ITEMS[e.k].set ? ITEMS[e.k].lv : e.lv || e.n}` : '') + (e.a === 'dis' ? ` ${e.st || 0}★` : '')) : esc(e.txt || '');
     const how = e.a === 'win' ? `第 ${e.n} 关 ${lvName(e.n)}　${e.how === 'first' ? '<b>第一次保底</b>' : '随机'}` : e.a === 'gm' ? '管理员改的' : '';
     return `<tr><td>${fmtT(e.t)}</td><td>${LOG_TXT[e.a] || esc(e.a)}</td><td>${what}</td><td><small>${how}</small></td></tr>` };
   return `<fieldset><legend>掉落记录（最新的在上面，最多 ${LOG_MAX} 条）</legend>${L.length ? `<div class="logbox"><table class="gt"><tr><th>时间</th><th>事</th><th>装备</th><th>说明</th></tr>${L.map(row).join('')}</table></div>` : '<p class="note">还没有记录（这个版本以后打赢副本、收下、分解才会记）。</p>'}</fieldset>`;

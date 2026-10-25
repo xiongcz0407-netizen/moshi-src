@@ -1,5 +1,5 @@
 /* ================= 设计 56：副本的存档逻辑（装备、炼宝、技能、晶石、挑战和奖励）。打的过程在 fbcore.js ================= */
-import { FB, BOSSES, QUAL, SLOTS, STAT, AFF, MAIN, ITEMS, SETS, setOf, legOf, DROP, LV_NAMES, LEG_OLD, LEG_KEYS, REFINE, CRYSTAL, SKILLS, SKILL_IDS, SKILL_MAX, skillCost } from './fbcfg.js';
+import { FB, BOSSES, QUAL, SLOTS, STAT, AFF, MAIN, ITEMS, SETS, setOf, legOf, DROP, LV_NAMES, LEG_OLD, LEG_KEYS, LEG_GONE, LEG_SWAP, REFINE, CRYSTAL, SKILLS, SKILL_IDS, SKILL_MAX, skillCost } from './fbcfg.js';
 
 export const fbNew = () => ({ won: {}, bag: [], eq: { w: null, h: null, a: null, g: null, b: null, m: null }, crys: 0, sk: { focus: 1, roll: 1, stun: 1 }, nid: 1, run: 0, pend: null, best: {}, log: [] });
 export function fbFix(S) {
@@ -7,9 +7,13 @@ export function fbFix(S) {
   for (const id of Object.keys(S.td.wins || {})) if (+id > 100) delete S.td.wins[id];   // 设计 56：英雄尸潮去掉了，旧存档的英雄关进度不留
   if (!Array.isArray(S.fb.log)) S.fb.log = [];
   /* 设计 105：老存档迁移——传说 l1～l10、l_m 换成新 key（lv 保留）；套装件的 lv 改成这套的（拾荒者 5、猎杀者 10） */
-  const fix = it => { if (!it) return; if (LEG_OLD[it.k]) it.k = LEG_OLD[it.k]; const D = ITEMS[it.k]; if (D && D.set) it.lv = D.lv; if (!(it.lv >= 1)) it.lv = 1 };
+  const fix = it => { if (!it) return; if (!(it.lv >= 1)) it.lv = 1;
+    if (LEG_OLD[it.k] && LEG_OLD[it.k] !== it.k) { const to = LEG_OLD[it.k];   /* 设计 105b：不用了的传说换成同部位的，掉落记录写一条 */
+      if (LEG_GONE[it.k]) fbLog(S, { a: 'adj', from: LEG_GONE[it.k], to, lv: it.lv, id: it.id, txt: `传说调整：${LEG_GONE[it.k]} 换成 ${nameAt(to, it.lv)}` });
+      it.k = to }
+    const D = ITEMS[it.k]; if (D && D.set) it.lv = D.lv };
   S.fb.bag.forEach(fix); for (const sl of SLOTS) fix(S.fb.eq[sl]); fix(S.fb.pend);
-  for (const e of S.fb.log) if (e && LEG_OLD[e.k]) e.k = LEG_OLD[e.k];
+  for (const e of S.fb.log) if (e && e.k && LEG_OLD[e.k]) e.k = LEG_OLD[e.k];
   return S.fb;
 }
 /* 设计 105：显示用的名字。史诗、普通、传说按 it.lv（第几关）查 LV_NAMES，每关都不一样；套装用原名。名字现算，存档不存 */
@@ -52,7 +56,7 @@ export function gearStats(S) {
   if (sets.s1 >= 2) t.hpPct += 15; if (sets.s2 >= 2) t.boss += 15;
   if (sets.s1 >= 4) { t.all += SETS.s1.four4; t.dr += 10 } if (sets.s2 >= 4) { t.cdmg += 50; t.all += SETS.s2.four4 }
   if (sets.s1 >= 5) t.all += SETS.s1.five5; if (sets.s2 >= 5) t.all += SETS.s2.five5;   // 设计 59：5 件套「全部伤害 +10%」
-  if (legs.includes('l_w1')) t.leech += 2;   // 设计 101：獠牙（设计 105 起 key 是 l_w1）自带吸血 2%
+  if (legs.includes('l_w')) t.leech += 2;   // 设计 101：獠牙（设计 105b 起 key 是 l_w）自带吸血 2%
   for (const [k, d] of Object.entries(STAT)) if (d.cap) t[k] = Math.min(d.cap, t[k]);
   t.sets = sets; t.legs = legs; return t;
 }
@@ -61,11 +65,10 @@ export function gearAfter(S, it) { const eq = { ...S.fb.eq, [ITEMS[it.k].slot]: 
 /* 打副本用的主角数值：主角升级（heroStats）+ 装备 + 技能等级 */
 export function fbHero(S, hs) {
   const g = gearStats(S);
-  return { hp: Math.round((FB.baseHp + g.hp) * (1 + g.hpPct / 100)), dmg: hs.dmg * (1 + g.dmg / 100) * (1 + g.all / 100), all: g.all / 100, rate: hs.rate / (1 + g.rate / 100), range: hs.range + (g.legs.includes('l_h1') ? 2 : 0),
+  return { hp: Math.round((FB.baseHp + g.hp) * (1 + g.hpPct / 100)), dmg: hs.dmg * (1 + g.dmg / 100) * (1 + g.all / 100), all: g.all / 100, rate: hs.rate / (1 + g.rate / 100), range: hs.range + (g.legs.includes('l_h') ? 2 : 0),
     crit: g.crit / 100, cdmg: 1.5 + g.cdmg / 100, dr: g.dr / 100, spd: 1 + g.spd / 100 + (g.sets.s1 >= 4 ? 0.15 : 0), leech: g.leech / 100, slow: g.slow / 100, pierce: g.pierce,
-    nadeDmg: (hs.nadeDmg || 45) * (1 + g.ndmg / 100) * (1 + g.all / 100), nadeR: hs.nadeR || 2.6, nadeCd: (hs.nadeCd || 10) * (1 - g.ncd / 100), heart: g.legs.includes('l_m1'),
-    boss: 1 + g.boss / 100, cdr: g.cdr / 100, bleed: g.legs.includes('l_w1'), s1four: g.sets.s1 >= 4, s2four: g.sets.s2 >= 4, bossCrit: g.legs.includes('l_h1') ? 0.1 : 0,
-    focusHeal: g.legs.includes('l_m2') ? 0.005 : 0,   /* 设计 105：新传说护符 l_m2「集火每命中一发回 0.5% 生命」，fbcore 里由开发1 接 */
+    nadeDmg: (hs.nadeDmg || 45) * (1 + g.ndmg / 100) * (1 + g.all / 100), nadeR: hs.nadeR || 2.6, nadeCd: (hs.nadeCd || 10) * (1 - g.ncd / 100), heart: g.legs.includes('l_m'),
+    boss: 1 + g.boss / 100, cdr: g.cdr / 100, bleed: g.legs.includes('l_w'), s1four: g.sets.s1 >= 4, s2four: g.sets.s2 >= 4, bossCrit: g.legs.includes('l_h') ? 0.1 : 0,
     sk: { ...S.fb.sk } };
 }
 /* ---------- 挑战 ---------- */
@@ -85,13 +88,13 @@ const pick = (a, r) => a[Math.floor(r * a.length) % a.length];
 export function firstDrop(n) {
   if (n === 1) return { q: 'e', what: '史诗武器', keys: ['e_w1', 'e_w2'] };
   if (n === 5) return { q: 'e', what: '一件史诗', keys: Object.keys(ITEMS).filter(x => ITEMS[x].q === 'e') };
-  if (n === 10) return { q: 'l', what: '一件传说（随机部位）', keys: LEG_KEYS };   // 设计 105
+  if (n === 10) return { q: 'l', what: '一件传说（随机部位）', keys: LEG_KEYS };   // 设计 105b：6 种随机
   return null;
 }
 /* 设计 82：每次打赢能掉什么（按品质，从好到差）：[{ q, p（概率）, keys }] */
 export function dropTable(n) {
   const d = DROP(n), of = q => Object.keys(ITEMS).filter(x => ITEMS[x].q === q);
-  return [{ q: 'l', p: d[3], keys: LEG_KEYS },   /* 设计 105：传说 12 种每关都能掉 */ { q: 's', p: d[2], keys: [setOf(n)] }, { q: 'e', p: d[1], keys: of('e') }, { q: 'n', p: d[0], keys: of('n') }];
+  return [{ q: 'l', p: d[3], keys: LEG_KEYS },   /* 设计 105b：传说 6 种每关都能掉 */ { q: 's', p: d[2], keys: [setOf(n)] }, { q: 'e', p: d[1], keys: of('e') }, { q: 'n', p: d[0], keys: of('n') }];
 }
 /* 打赢：末日币、晶石、1 件装备（第一次打赢第 1 关必掉史诗武器）。装备先放 pend，在「获得」框里穿上 / 收下 / 分解 */
 export function fbWin(S, n, rng = Math.random, secs = 0) {
@@ -130,6 +133,15 @@ export function dismantle(S, id) {
   if (S.fb.pend && S.fb.pend.id === id) { it = S.fb.pend; S.fb.pend = null }
   else { const i = S.fb.bag.findIndex(x => x.id === id); if (i < 0) return 0; it = S.fb.bag.splice(i, 1)[0] }
   const n = dismantleGain(it); S.fb.crys += n; fbLog(S, { a: 'dis', k: it.k, lv: it.lv, id: it.id, st: it.st || 0 }); return n;
+}
+/* ---------- 设计 105b：传说转换（铁匠）：背包里的传说花 2000 末日币，随机换成同一关的另外 5 种之一（各 1/5，不会换回自己），Lv、星、id 不变 ---------- */
+export const swapTargets = it => LEG_KEYS.filter(k => k !== it.k);
+export function legSwapWhy(S, it) { if (!it || !S.fb.bag.includes(it)) return '只能转换背包里的传说'; if (!ITEMS[it.k] || ITEMS[it.k].q !== 'l') return '只有传说能转换'; if (S.coins < LEG_SWAP) return '末日币不够'; return null }
+export function legSwap(S, id, rng = Math.random) {
+  const it = S.fb.bag.find(x => x.id === id), why = legSwapWhy(S, it); if (why) return { ok: false, why };
+  const from = it.k, to = pick(swapTargets(it), rng());
+  S.coins -= LEG_SWAP; it.k = to; fbLog(S, { a: 'swap', from, to, k: to, lv: it.lv, id: it.id, st: it.st || 0 });
+  return { ok: true, from, to, it };
 }
 /* ---------- 炼宝 ---------- */
 export function refineInfo(it) {

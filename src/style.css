@@ -1325,5 +1325,13 @@ body.kbon .cin{margin-top:4px}
 .pf-detail .setrow.off,.pf-detail .setrow.off span,.pf-detail .setrow.off b{color:var(--dim);font-weight:400}
 .setn.on{color:var(--good);font-weight:700}
 .pf-detail .setprog{margin:2px 0 6px}.pf-detail .setprog .setnm{font-size:12px;font-weight:700;color:var(--ink2)}
-@media (max-width:720px){ .fbdit small{max-width:4.6em;overflow:hidden;text-overflow:ellipsis} }   /* 667 宽名字放不下就省略，点图标看全名 */
+@media (max-width:720px){ .fbdit small{max-width:6.2em;overflow:hidden;text-overflow:ellipsis} }   /* 667 宽名字放不下才省略（105b：6 个字以内都放得下），点图标看全名 */
 .eqic:not(.big):not(.sm) em{right:0;font-size:8.5px}.eqic:not(.big):not(.sm) em.mx{font-size:9px}   /* 设计 105：左下角 Lv 牌子跟右下角星数不挤在一起 */
+/* ===== 设计 105b：铁匠面板「传说转换」 ===== */
+.pf-detail .swtgs{display:flex;flex-wrap:wrap;gap:4px 8px;margin:2px 0 4px}
+.pf-detail .swtg{font-size:12px;font-weight:700;color:#d0660a;background:rgba(255,155,47,.12);border:1px solid rgba(255,155,47,.45);border-radius:5px;padding:1px 6px}.pf-detail .swtg small{font-weight:400;color:var(--ink2);margin-left:4px;font-size:10px}
+.pf-detail .swapres{position:relative;margin:0 0 6px;padding:6px 8px;border-radius:8px;border:2px solid #ff9b2f;background:linear-gradient(180deg,#fff1cf,#f6d9a0);box-shadow:0 0 10px rgba(255,155,47,.55);overflow:hidden}
+.pf-detail .swapres .swl{font-size:11px;color:var(--ink2)}.pf-detail .swapres .swt{font-size:13px;font-weight:700}.pf-detail .swapres .swt .old{color:var(--dim);text-decoration:line-through}.pf-detail .swapres .swt span{color:#d0660a;margin:0 3px}
+.pf-detail .swapres .swfx{font-size:12px;color:#d0660a}
+.pf-detail .swapres.play::after{content:'';position:absolute;inset:-40%;background:radial-gradient(circle,rgba(255,236,170,.95),rgba(255,180,60,0) 60%);animation:swGlow 1.6s ease-out forwards;pointer-events:none}
+@keyframes swGlow{0%{opacity:1;transform:scale(.3)}60%{opacity:.8}100%{opacity:0;transform:scale(1.4)}}
