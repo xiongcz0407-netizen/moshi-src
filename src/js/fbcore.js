@@ -36,7 +36,8 @@ const CFG = {
   chargeLen: 15, chargeW: 2.6, chargeSpd: 11, slamR: 5.6, summonR: 1.4, burstK: 0.6,
   mobHp: 0.02, mobSpd: 2.3, mobHit: 0.04, mobR: 0.45,
   skillGap: 8.5, firstSkill: 5, summonCd: 30, order: ['charge', 'slam', 'summon', 'slam', 'charge', 'summon'],
-  regenDelay: 3, regen: 0.02, bulletSpd: 42, burst: 3, burstGap: 0.07,
+  regenDelay: 5, regen: 0.01,   /* 设计 101：5 秒没挨打才回血、每秒 1%（原来 3 秒、2%） */
+  bulletSpd: 42, burst: 3, burstGap: 0.07,
 };
 export { CFG as FB_CFG };
 /* 设计 81：毒囊的数（招式表见设计81 第 5 节）。普通技能 = BOSSES[2].dmg（205），大招 = ult（340） */

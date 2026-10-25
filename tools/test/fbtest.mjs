@@ -42,7 +42,7 @@ for (let i = 0; i < 20; i++) FL.skillUp(S, 'focus'); ok(S.fb.sk.focus === 10, '�
 const k0 = S.fb.crys; FL.buyCrystal(S, 1); ok(S.fb.crys - k0 === 10, '买 10 颗晶石'); FL.starCrystal(S, 1); ok(S.fb.crys - k0 === 25 && S.stars === 2, '1 星换 15 晶石');
 /* 数值：设计55 对表 */
 const st = FL.itemStats({ k: 's1_h', lv: 1, st: 0 }); ok(st.main.hp === 90 && st.aff[0][1] === 55 && st.aff[1][1] === 3.3, `拾荒者·头盔 生命 ${st.main.hp}，固定 ${st.aff.map(a => a[1]).join(' / ')}（表：90，55 / 3.3）`);
-const l1 = FL.itemStats({ k: 'l1', lv: 1, st: 0 }); ok(l1.main.dmg === 12 && l1.aff.map(a => a[1]).join() === '7.5,18.8,1.9', `獠牙 ${JSON.stringify(l1)}`);
+const l1 = FL.itemStats({ k: 'l1', lv: 1, st: 0 }); /* 设计 101：吸血词条 1.5 → 0.6，獠牙 1.9 → 0.8 */ ok(l1.main.dmg === 12 && l1.aff.map(a => a[1]).join() === '7.5,18.8,0.8', `獠牙 ${JSON.stringify(l1)}`);
 const s2 = FL.itemStats({ k: 's2_w', lv: 6, st: 0 }); ok(s2.main.dmg === 19.3 && s2.aff[0][1] === 28.9 && s2.aff[1][1] === 11.6, `猎杀者·武器 ${JSON.stringify(s2)}（表 19.3 / 28.9 / 11.6）`);
 /* 设计 59 */
 import { heroStats } from '../../src/js/logic.js';
@@ -50,7 +50,7 @@ import { heroStats } from '../../src/js/logic.js';
   ok(JSON.stringify(a) === JSON.stringify(b) && a.hp === 380, `尸潮数值不看装备，超市 3 级血量 ${a.hp}`) }
 { const T = mk(); FL.fbFix(T); const h = FL.fbHero(T, { dmg: 46, rate: 0.2, range: 11, nadeDmg: 237, nadeR: 3.8, nadeCd: 6.4 }); ok(h.hp === 580 && h.dr === 0, `副本基础生命 ${h.hp}、减伤 ${h.dr}`) }
 { const st = FL.itemStats({ k: 'n_m', lv: 1, st: 0 }), e1 = FL.itemStats({ k: 'e_m1', lv: 1, st: 0 }), l = FL.itemStats({ k: 'l_m', lv: 10, st: 0 });
-  ok(st.main.hp === 50 && st.main.dr === 2 && e1.main.hp === 70 && e1.aff[0][1] === 50 && e1.aff[1][1] === 1.5, '平安符 生命 50 减伤 2；铁片护符 70/3 + 生命 50、吸血 1.5');
+  ok(st.main.hp === 50 && st.main.dr === 2 && e1.main.hp === 70 && e1.aff[0][1] === 50 && e1.aff[1][1] === 0.6, '平安符 生命 50 减伤 2；铁片护符 70/3 + 生命 50、吸血 0.6（设计 101）');
   ok(l.main.hp === Math.round(90 * 2.35 * 10) / 10, `不眠之心 主属性 ${JSON.stringify(l.main)}，固定 ${JSON.stringify(l.aff)}`) }
 { let m = 0, h = 0; for (let i = 0; i < 2000; i++) { const T = mk(); FL.fbFix(T); T.fb.won[10] = 1; const r = FL.fbWin(T, 10, (() => { let k = 0; return () => k++ ? Math.random() : 0.99 })()); if (r.item.k === 'l_m') m++; else if (r.item.k === 'l10') h++ } ok(Math.abs(m / 2000 - 0.5) < 0.05 && m + h === 2000, `第 10 关传说：不眠之心 ${m}、幻影步 ${h}`) }
 { const c = {}; for (let i = 0; i < 3000; i++) { const T = mk(); FL.fbFix(T); T.fb.won[1] = 1; const r = FL.fbWin(T, 1, (() => { let k = 0; return () => k++ ? Math.random() : 0.1 })()); c[ITEMS[r.item.k].slot] = (c[ITEMS[r.item.k].slot] || 0) + 1 } ok(Object.keys(c).length === 6 && c.m > 400, `普通随机部位 6 个：${JSON.stringify(c)}`) }

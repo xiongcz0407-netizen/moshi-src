@@ -40,7 +40,8 @@ export const STAT = {
   boss: { name: '对 BOSS 伤害', pct: 1 }, cdr: { name: '技能冷却', pct: 1, cap: 40 }, hpPct: { name: '生命', pct: 1 }, all: { name: '全部伤害', pct: 1 },
 };
 /* 固定属性基础值（1 关、0 星、×1.0） */
-export const AFF = { dmg: 6, rate: 4, crit: 3, cdmg: 15, hp: 50, dr: 3, spd: 3, leech: 1.5, slow: 8, pierce: 1, ndmg: 15, ncd: 8, boss: 6, cdr: 6 };
+/* 设计 101：吸血 1.5 → 0.6（打 4 折，站着不躲回得比挨打快） */
+export const AFF = { dmg: 6, rate: 4, crit: 3, cdmg: 15, hp: 50, dr: 3, spd: 3, leech: 0.6, slow: 8, pierce: 1, ndmg: 15, ncd: 8, boss: 6, cdr: 6 };
 /* 主属性基础值 */
 export const MAIN = {
   w: { n: { dmg: 8, rate: 4 }, e: { dmg: 10, rate: 5 }, s: { dmg: 11, rate: 5 }, l: { dmg: 12, rate: 6 } },
@@ -65,7 +66,7 @@ export const ITEMS = {
   s2_w: I('猎杀者·武器', 'w', 's', ['cdmg', 'boss'], { set: 's2', lv: 6 }), s2_h: I('猎杀者·头盔', 'h', 's', ['crit', 'boss'], { set: 's2', lv: 7 }),
   s2_a: I('猎杀者·护甲', 'a', 's', ['hp', 'cdmg'], { set: 's2', lv: 8 }), s2_g: I('猎杀者·手套', 'g', 's', ['rate', 'cdr'], { set: 's2', lv: 9 }),
   s2_b: I('猎杀者·鞋子', 'b', 's', ['spd', 'crit'], { set: 's2', lv: 10 }),
-  l1: I('獠牙', 'w', 'l', ['dmg', 'cdmg', 'leech'], { lv: 1, fx: '吸血 5%，打中流血 3 秒' }),
+  l1: I('獠牙', 'w', 'l', ['dmg', 'cdmg', 'leech'], { lv: 1, fx: '吸血 2%，打中流血 3 秒' }),
   l2: I('爆裂手套', 'g', 'l', ['ndmg', 'ncd', 'crit'], { lv: 2, fx: '手雷落地后分裂成 3 个小手雷' }),
   l3: I('不灭之铠', 'a', 'l', ['hp', 'dr', 'leech'], { lv: 3, fx: '受到致命伤害时剩 1 血，无敌 2 秒（一场一次）' }),
   l4: I('鹰眼头盔', 'h', 'l', ['crit', 'cdmg', 'boss'], { lv: 4, fx: '射程 +2 米；打 BOSS 暴击率 +10%' }),
