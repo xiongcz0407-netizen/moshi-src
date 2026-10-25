@@ -467,9 +467,11 @@ export function createFight(n, hero, opt = {}) {
     b.cast = c; b.act = 'cast'; b.interruptible = k === 'pillars' || k === 'rift';
     if (k !== 'grab' || c.phase === 'toss') E('cast', { k, dur: c.dur, ult: k === 'ava', name: ROCK_NAME[k] });
   }
+  /* 设计 106c：画面上被按钮 / 头像挡住的地方（画面那边给 st.blocked；fbsim 用近似镜头算；没给就当都看得到） */
+  const scrBlocked = (x, z, r) => !!(st.blocked && st.blocked(x, z, r));
   function startToss(c) {   /* 扔：脚下大圆 2.5 米、1.5 秒；半血以后一次扔 2 个（第 2 个落在主角旁边 3.5 米） */
     const b = Bo; c.phase = 'toss'; c.hideBar = false; c.t = 0; c.dur = wdur(warnT); b.interruptible = false; b.yaw = Math.atan2(P.x - b.x, P.z - b.z);
-    const pts = [{ x: P.x, z: P.z }]; if (st.half) { const a = rnd() * 6.28; pts.push({ x: P.x + Math.sin(a) * 3.5, z: P.z + Math.cos(a) * 3.5 }) }
+    const pts = [{ x: P.x, z: P.z }]; if (st.half) { const a0 = rnd() * 6.28; let q = null; for (let i = 0; i < 12; i++) { const a = a0 + i * 0.52, x = clamp(P.x + Math.sin(a) * 3.5, ARENA.x0 + 0.8, ARENA.x1 - 0.8), z = clamp(P.z + Math.cos(a) * 3.5, ARENA.z0 + 0.8, ARENA.z1 - 0.8); q = q || { x, z }; if (!scrBlocked(x, z, RK.tossR)) { q = { x, z }; break } } pts.push(q) }   /* 设计 106c：第 2 个圈避开按钮区、头像区 */
     for (const p of pts) c.ws.push(rwarn({ type: 'circle', x: clamp(p.x, ARENA.x0 + 0.8, ARENA.x1 - 0.8), z: clamp(p.z, ARENA.z0 + 0.8, ARENA.z1 - 0.8), r: RK.tossR, ult: false, cv: c.held || null }, 'toss', c.dur));
     setAnim('toss', ROCK_ANIM.toss.hit / Math.max(0.4, c.dur - RK.tossFly)); E('cast', { k: 'grab', dur: c.dur, ult: false, name: ROCK_NAME.grab, held: c.held ? c.held.k : null });
   }
@@ -503,7 +505,7 @@ export function createFight(n, hero, opt = {}) {
     /* 山崩之后的落石雨：一波一波，每波 2 个圈（一个在主角脚下附近），0.6 秒预警；有 3 块留下当掩体 */
     const R = st.rain; if (R) { R.t += dt;
       while (R.wave < RK.rainWaves && R.t >= R.wave * (RK.rainT - RK.rainWarn) / RK.rainWaves) { const keepW = R.wave % 2 === 1;
-        for (let j = 0; j < RK.rainN; j++) { let x = 0, z = 0; for (let tr = 0; tr < 20; tr++) { const a = rnd() * 6.28, rr = j === 0 ? rnd() * 1.5 : j === 1 ? 2.5 + rnd() * 5 : 1.5 + rnd() * 3.5; x = clamp(P.x + Math.sin(a) * rr, ARENA.x0 + 1, ARENA.x1 - 1); z = clamp(P.z + Math.cos(a) * rr, ARENA.z0 + 1, ARENA.z1 - 1); if (!inCover(x, z, 1)) break }
+        for (let j = 0; j < RK.rainN; j++) { let x = 0, z = 0; for (let tr = 0; tr < 20; tr++) { const a = rnd() * 6.28, rr = j === 0 ? rnd() * 1.5 : j === 1 ? 2.5 + rnd() * 5 : 1.5 + rnd() * 3.5; x = clamp(P.x + Math.sin(a) * rr, ARENA.x0 + 1, ARENA.x1 - 1); z = clamp(P.z + Math.cos(a) * rr, ARENA.z0 + 1, ARENA.z1 - 1); if (!inCover(x, z, 1) && (j === 0 || !scrBlocked(x, z, RK.rainR))) break }   /* 设计 106c：瞄脚下的那个照落，别的随机圈避开按钮区、头像区 */
           rwarn({ type: 'circle', x, z, r: RK.rainR, keep: keepW && j === 1 && R.kept < RK.rainKeep }, 'rain', wdur(RK.rainWarn)); if (keepW && j === 1) R.kept++ }
         R.wave++ }
       /* 设计 106：碎石雨——落石雨期间全场每秒掉血（躲不掉，算挨打，期间不自动回血） */

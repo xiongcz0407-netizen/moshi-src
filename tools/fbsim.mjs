@@ -16,13 +16,21 @@ if (process.env.GEARSET === 'e3x2') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 1, st:
    SKILL=avg → 「走位一般」：预警出现 0.35 秒以后才看得到（才开始躲）；默认 good = 原来的机器人 */
 if (process.env.GEARSET === 'atk') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h2', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a1', lv: 2, st: 4 }; S.fb.eq.g = { id: 4, k: 'e_g1', lv: 2, st: 4 } }
 if (process.env.GEARSET === 'def') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h2', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a2', lv: 2, st: 4 }; S.fb.eq.m = { id: 4, k: 'e_m1', lv: 2, st: 4 } }
-const AVG = process.env.SKILL === 'avg', REACT = 0.35, seenAt = new WeakMap();
+/* 设计 106c：近似游戏镜头（844×390，视角 34°，跟着主角），算地上一个点会不会被右下角按钮（左 582、上 190 起）、左上角头像框（右 229、下 77 以内）挡住 */
+import * as THREE from 'three';
+const SCW = 844, SCH = 390, simCam = new THREE.PerspectiveCamera(34, SCW / SCH, 1, 120), _sv = new THREE.Vector3(), CAMOFF = new THREE.Vector3(0, 14, 14.5).multiplyScalar(1.15);
+function simBlocked(st, x, z, r) { const P = st.player, B = st.boss, far = B.dead ? 0 : Math.max(0, Math.hypot(B.x - P.x, B.z - P.z) - (st.hero.range + st.bossR)), k = 4.2 - (4.2 - 1.6) * Math.min(1, far / 8);
+  const tx = P.x * 0.35, tz = Math.max(ARENA.z0 + 1.5, Math.min(ARENA.z1 - 4.6, P.z - k)); simCam.position.set(tx, 0, tz).add(CAMOFF); simCam.lookAt(tx, 0, tz); simCam.updateMatrixWorld();
+  for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { _sv.set(x + dx, 0, z + dz).project(simCam); const sx = (_sv.x + 1) / 2 * SCW, sy = (1 - _sv.y) / 2 * SCH;
+    if ((sx >= 576 && sy >= 184) || (sx <= 235 && sy <= 83)) return true }
+  return false }
+const BLK = { n: 0, b: 0 }; const AVG = process.env.SKILL === 'avg', REACT = 0.35, seenAt = new WeakMap();
 if (process.env.GEARSET === 'e4x4') { S.fb.eq.w = { id: 1, k: 'e_w1', lv: 2, st: 4 }; S.fb.eq.h = { id: 2, k: 'e_h1', lv: 2, st: 4 }; S.fb.eq.a = { id: 3, k: 'e_a1', lv: 2, st: 4 }; S.fb.eq.g = { id: 4, k: 'e_g1', lv: 2, st: 4 } }
 const hero = { ...fbHero(S, hs), speed: 5 };
 const GAP3 = {}, GAP3m = {}; const GAP = { norm: [], rage: [], min: { norm: { g: 1e9 }, rage: { g: 1e9 } }, spit: new Set(), end: null, wasBusy: false };   // 设计 92
 let SL = null; const DBG = []; const FACE = { n: 0, near: 0 }; const res = [], SRC = {}, HIT = {}, POOLF = [], ANYF = [], POOLN = [], FT = { n: 0, boss: 0, mob: 0, none: 0, blk: 0, sh: 0, stuck: 0, flip: 0 };
 for (let r = 0; r < N; r++) {
-  const st = createFight(STG, hero, { rng }); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false; GAP.tot = 0; GAP.cs = {}; GAP.lastK = null;
+  const st = createFight(STG, hero, { rng }); if (STG === 3 && !process.env.NOBLK) st.blocked = (x, z, r) => simBlocked(st, x, z, r); const P = st.player, B = st.boss; GAP.end = null; GAP.wasBusy = false; GAP.tot = 0; GAP.cs = {}; GAP.lastK = null;
   let sure = 0; let fireOn = true, fireT = 0, stunWait = -1, dt = 1 / 30;
   while (!st.over && st.t < 400 && (st.clk ?? st.t) < 460) {
     fireT -= dt; if (fireT <= 0) { fireOn = rng() < 0.8; fireT = 0.4 + rng() * 0.8 }
@@ -40,7 +48,7 @@ for (let r = 0; r < N; r++) {
     { let near = null, nd = 3.2; for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const q = Math.hypot(m.x - P.x, m.z - P.z); if (q < nd) { nd = q; near = m } }
       if (near) { let ex = P.x - near.x, ez = P.z - near.z; const l = Math.hypot(ex, ez) || 1; ex /= l; ez /= l; if (P.x + ex * 1.5 < ARENA.x0 + 0.6 || P.x + ex * 1.5 > ARENA.x1 - 0.6) { ex = 0; ez = ez >= 0 ? 1 : -1 } if (P.z + ez * 1.5 > ARENA.z1 - 0.6 || P.z + ez * 1.5 < ARENA.z0 + 0.6) { ez = 0; ex = P.x > 0 ? -1 : 1 } mx = ex; mz = ez } }
     let skill = null, danger = null;
-    for (const w of st.warns) if (!seenAt.has(w)) seenAt.set(w, st.t);
+    for (const w of st.warns) if (!seenAt.has(w)) { seenAt.set(w, st.t); if (STG === 3 && (w.k === 'rain' || w.k === 'toss') && w.type === 'circle') { BLK.n++; if (simBlocked(st, w.x, w.z, w.r)) BLK.b++ } }
     const VIS = [...st.warns.filter(w => !AVG || st.t - seenAt.get(w) >= REACT - 1e-6), ...(st.hazards || [])];   /* 设计 106：走位一般只看得到出现 0.35 秒以上的预警 */
     for (const w of VIS) if (inWarn(w, P.x, P.z, 0.7)) { danger = w; break }
     if (danger) { const w = danger; let best = null;
@@ -93,6 +101,7 @@ if (STG === 3) { const q = a => [...a].sort((x, y) => x - y)[Math.floor(a.length
   const big = res.map(r => Object.entries(r.casts).filter(([k]) => k !== 'throw' && k !== 'sweep').reduce((x, [, v]) => x + v, 0)); console.log(`设计 103：每局大技能 平均 ${avg(big).toFixed(1)} 次（最少 ${Math.min(...big)}，最多 ${Math.max(...big)}）；剩血 最低 ${(Math.min(...wins.map(r => r.hp)) * 100).toFixed(0)}%`) }
 { const w180 = res.filter(r => r.win && r.t <= 180).length, dd = res.filter(r => !r.win && r.doom > 0), sr = res.map(r => r.sure).sort((x, y) => x - y);
   console.log(`设计 106（${AVG ? '走位一般' : '走位好'}，${process.env.GEARSET || '没装备'}）：3 分钟内打完 ${w180}/${N}；被灭杀 ${dd.length} 局（最晚倒下在第 ${dd.length ? Math.max(...dd.map(r => r.t)).toFixed(1) : '-'} 秒）；必吃伤害（地动 + 碎石雨）占最大生命 平均 ${(avg(sr) * 100).toFixed(0)}%、最多 ${((sr[sr.length - 1] || 0) * 100).toFixed(0)}%；剩血中位 ${(([...wins.map(r => r.hp)].sort((x, y) => x - y)[Math.floor(wins.length / 2)] || 0) * 100).toFixed(0)}%`) }
+if (BLK.n) console.log(`设计 106c：落石 / 扔石头的圈 ${BLK.n} 个，出现时被按钮、头像挡住的 ${(BLK.b / BLK.n * 100).toFixed(1)}%（瞄脚下的那个照落，算在里面）`);
 if (FACE.n) console.log(`设计 102：离巨人 6 米以内（看得到整张脸）的时间 ${(FACE.near / FACE.n * 100).toFixed(0)}%`);
 console.log('每局挨打次数（来源）', Object.entries(HIT).map(([k, v]) => `${k} ${v.toFixed(1)} 次`).join('，'));
 console.log('每局挨打伤害（来源）', Object.entries(SRC).map(([k, v]) => `${k} ${v.toFixed(0)}`).join('，'), ' 死的时间', avg(res.filter(r => !r.win).map(r => r.t)).toFixed(0), ' BOSS 剩血', avg(res.map(r=>r.bhp)).toFixed(0));
