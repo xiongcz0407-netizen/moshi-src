@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { loadGLB, lazyTex, A } from './assets.js';
 import { prop } from './props.js';
 import { addFlat } from './flatshadow.js';
-import { createFight, COVERS, ARENA, BUTCHER_ANIM, BOSS_SCALE, push as pushOut, setStage } from './fbcore.js';
+import { createFight, COVERS, ARENA, BUTCHER_ANIM, BOSS_SCALE, push as pushOut, setStage, FB_CFG } from './fbcore.js';
 import { buildTox, TOX_ASSETS } from './fbtox.js';   /* 设计 81：第 2 关毒囊 */
 import { FB, BOSSES, QUAL, ITEMS, SKILLS } from './fbcfg.js';
 import { glowTex, glowMat, glowSprite } from './portal.js';
@@ -253,7 +253,7 @@ export function createFB(ctx) {
     const left = FB.time - fight.t, tt = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : '狂暴';
     const tb = $h('.fbt b'); if (tb.textContent !== tt) tb.textContent = tt; $h('.fbt').classList.toggle('red', left < 30);
     /* 增益 / 减益小图标 */
-    const bf = []; if (P.inv > 0 && P.inv <= 3) bf.push(['无敌', P.inv]);   /* 设计 61：只有翻滚（0.4 秒）、不灭之铠（2 秒）的无敌；测试用的长时间无敌不显示 */ if (P.regen10 > 0) bf.push(['回血', P.regen10]); if (P.hurtT > 3 && P.hp < P.max) bf.push(['回血', 0]); if (fight.rage) bf.push(['BOSS 狂暴', 0]);
+    const bf = []; if (P.inv > 0 && P.inv <= 3) bf.push(['无敌', P.inv]);   /* 设计 61：只有翻滚（0.4 秒）、不灭之铠（2 秒）的无敌；测试用的长时间无敌不显示 */ if (P.regen10 > 0) bf.push(['回血', P.regen10]); if (P.hurtT > FB_CFG.regenDelay && P.hp < P.max) bf.push(['回血', 0]);   /* 设计 101：跟 fbcore 的自动回血一样（5 秒） */ if (fight.rage) bf.push(['BOSS 狂暴', 0]);
     const bh = bf.map(([n, s]) => `<span>${n}${s > 0 ? ' ' + s.toFixed(1) : ''}</span>`).join(''); if ($h('.fbuffs').innerHTML !== bh) $h('.fbuffs').innerHTML = bh;
     for (const kk of ['focus', 'roll', 'stun', 'nade']) {
       const b = $h(`.fbk.${kk}`), cd = P.cd[kk], full = fight.cdOf(kk), ready = kk === 'roll' ? P.charges > 0 : cd <= 0;
