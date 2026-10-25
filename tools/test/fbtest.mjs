@@ -70,3 +70,28 @@ import { heroStats } from '../../src/js/logic.js';
     const b = st.boss; b.x = st.player.x; b.z = st.player.z - 4; let hp0 = b.hp;
     for (let i = 0; i < 30 * 10 && !st.over; i++) st.step(dt, { fire: true, skill: i % 30 === 0 ? 'focus' : i % 45 === 0 ? 'nade' : null });
     ok(st.rage && b.hp === hp0 && !b.dead && st.over && !st.win, `设计 106b：第 ${n} 关灭杀开始后开枪、集火、手雷，BOSS 血 ${hp0} → ${b.hp}（不变），结果：${st.win ? '赢' : '输'}`) } }
+/* 设计 110：落石巨人的控制——眩晕、禁锢、全场滚石只有掩体影子里安全、禁锢后的快速横扫、掩体至少 2 个 */
+{ const M = await import('../../src/js/fbcore.js'), { createFight } = M;   /* M.COVERS 每场重新建，要用 M.COVERS（活的），不能解构 */ const { fbHero } = await import('../../src/js/fblogic.js');
+  const H = { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }, dt = 1 / 30;
+  const mk3 = () => { const T = mk(); FL.fbFix(T); const st = createFight(3, { ...fbHero(T, H), hp: 1e6, speed: 5 }, { rng: () => 0.5 }); st.player.max = st.player.hp = 1e6; st.locked = true; st.t = 10; const b = st.boss; b.act = 'chase'; b.skillT = 99; b.basicCd = 99; b.x = 0; b.z = -11; return st };
+  const hold = st => { st.boss.skillT = 99; st.boss.basicCd = 99 };
+  { const st = mk3(), P = st.player; P.stunT = 1; const x0 = P.x, z0 = P.z, ch = P.charges; let fired = false;
+    for (let i = 0; i < 24; i++) { hold(st); st.step(dt, { mx: 1, mz: 0, fire: true, skill: i === 3 ? 'roll' : null }); if (P.firing) fired = true }
+    ok(Math.abs(P.x - x0) < 1e-6 && Math.abs(P.z - z0) < 1e-6 && !fired && P.charges === ch && !P.roll, '设计 110：眩晕期间不能走、不能开枪、不能翻滚') }
+  { const st = mk3(), P = st.player; P.z = 4; P.x = 0.2; const pil = () => st.warns.push({ type: 'cells', cells: [{ x: P.x, z: P.z }], s: 3, x: P.x, z: P.z, id: 9000 + st.warns.length, k: 'pillars', t: 0, dur: 0.05 });
+    const run = s => { const out = { hit: 0 }; for (let i = 0; i < Math.round(s * 30); i++) { hold(st); st.step(dt, {}); for (const e of st.ev) if (e.e === 'pdmg' && e.src === 'pillar') out.hit++ } return out };
+    pil(); const a = run(1.2); const s1 = st.stats.stun; pil(); const b = run(0.6); const s2 = st.stats.stun; run(1.0); pil(); const c = run(0.5); const s3 = st.stats.stun;
+    ok(a.hit === 1 && s1 === 1 && b.hit === 1 && s2 === 1 && c.hit === 1 && s3 === 2, `设计 110：石柱打中眩晕（${s1}）；眩晕完 0.2 秒再被打中：扣血、不眩晕（${s2}）；过了 1.5 秒再被打中：又眩晕（${s3}）`) }
+  { const st = mk3(), P = st.player; P.rootT = 1; const x0 = P.x; for (let i = 0; i < 6; i++) { hold(st); st.step(dt, { mx: 1, mz: 0 }) } const still = Math.abs(P.x - x0) < 1e-6;
+    hold(st); st.step(dt, { mx: 1, mz: 0, skill: 'roll' }); ok(still && P.roll && !(P.rootT > 0), '设计 110：禁锢期间不能走，翻滚能解除') }
+  const rollAt = (inShadow, rollAfter) => { const st = mk3(), P = st.player, cs = M.COVERS.filter(c => !c.temp), c = cs[0];
+    if (inShadow) { P.x = c.x; P.z = c.z + c.hz + 1.2 } else { P.x = 0.1; P.z = 15; if (M.COVERS.some(q => !q.temp && Math.abs(q.x - P.x) < q.hx + 0.4 && P.z > q.z && P.z < q.z + q.hz + 3.5)) P.x = -6 }
+    st.forceCast('roll'); let rootAt = null, combo = 0, rolled = false;
+    for (let i = 0; i < 30 * 6; i++) { st.boss.skillT = 99; st.boss.basicCd = 99; let sk = null; if (rootAt !== null && rollAfter != null && !rolled && st.t - rootAt >= rollAfter) { sk = 'roll'; rolled = true }
+      st.step(dt, sk ? { skill: sk, mx: 0, mz: 1 } : {}); for (const e of st.ev) { if (e.e === 'proot') rootAt = st.t; if (e.e === 'pdmg' && e.src === 'combo') combo++ } }
+    return { root: st.stats.root || 0, combo } };
+  { const r = rollAt(true, null); ok(r.root === 0, '设计 110：站在掩体南边的影子里，全场滚石不吃、不禁锢') }
+  { const r = rollAt(false, null); ok(r.root === 1 && r.combo === 1, `设计 110：不在影子里：吃滚石并禁锢（${r.root} 次），不翻滚被接着的快速横扫打中（${r.combo} 次）`) }
+  { const r = rollAt(false, 0.1); ok(r.root === 1 && r.combo === 0, `设计 110：被禁锢 0.1 秒后翻滚：横扫打不中（${r.combo} 次）`) }
+  { const st = mk3(); for (const c of M.COVERS.filter(c => !c.temp)) M.COVERS.splice(M.COVERS.indexOf(c), 1); st.forceCast("roll"); ok(M.COVERS.filter(c => !c.temp).length >= 2, `设计 110：场上掩体扔光了，放全场滚石前补到 ${M.COVERS.filter(c => !c.temp).length} 个（≥ 2）`) }
+}
