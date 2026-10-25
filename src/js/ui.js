@@ -1,4 +1,5 @@
 /* ================= 界面：顶部状态、面板、提示、场景标签 ================= */
+import { tixCost } from './fblogic.js';   /* 设计 108 */
 import * as THREE from 'three';
 import { FB, CRYSTAL } from './fbcfg.js';
 import { isKit, FISHPOND, JUNK, GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, BUILD, BUILD_ORDER, RECYCLER, BAG_SIZES, SHELF_CAP, GEAR, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, STACK, WAREHOUSE, FIXTURE, TIER_NAME, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_IDS, STAFF, STAFF_JOBS, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING, STAFF_FISH, FIXTURE_IDS, HERO, GUARD_GUN, RANCH, RANCH_IDS, PEN_CAP, FEED, MYSTERY, STAR, WS, WS_IDS, MACH, DISHES } from './config.js';
@@ -21,7 +22,7 @@ const IMG = {};
 /* 设计 71：厨房 2 没有自己的图标，用厨房的（凡是按 BUILD 的 key 找图标的都走这里） */
 export const BD_ICON = { kitchen2: 'kitchen' };
 const icFile = (k, id) => k === 'bd' && BD_ICON[id] ? BD_ICON[id] : id;
-for (const [k, ids] of [['junk', Object.keys(JUNK)], ['good', Object.keys(GOODS)], ['tr', Object.keys(TREASURE)], ['it', ['gear', 'worm', 'corn', 'rod', 'lic', 'm16', 'ref', 'scroll']], ['fish', FISH_IDS], ['tw', TOWER_IDS], ['bd', [...BUILD_ORDER, ...RANCH_IDS, ...WS_IDS]]]) for (const id of ids) if (!ICONS || ICONS.has(`${k}_${icFile(k, id)}`)) IMG[k + ':' + id] = `img/icons/${k}_${icFile(k, id)}.png`;   /* 设计 75：只记路径，用的时候再 A()（手机里的资源库要等开局检查完才有） */   // 设计 33：没有图标图片的新东西用色块
+for (const [k, ids] of [['junk', Object.keys(JUNK)], ['good', Object.keys(GOODS)], ['tr', Object.keys(TREASURE)], ['it', ['gear', 'worm', 'corn', 'rod', 'lic', 'm16', 'ref', 'scroll', 'tix']], ['fish', FISH_IDS], ['tw', TOWER_IDS], ['bd', [...BUILD_ORDER, ...RANCH_IDS, ...WS_IDS]]]) for (const id of ids) if (!ICONS || ICONS.has(`${k}_${icFile(k, id)}`)) IMG[k + ':' + id] = `img/icons/${k}_${icFile(k, id)}.png`;   /* 设计 75：只记路径，用的时候再 A()（手机里的资源库要等开局检查完才有） */   // 设计 33：没有图标图片的新东西用色块
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 /* 设计 39：小图标点一下 / 按住出名字（data-nm，见下面的 iconTip） */
 const nmOf = (kind, id) => { const o = kind === 'junk' ? JUNK[id] : kind === 'good' || kind === 'seed' ? GOODS[id] : kind === 'fish' ? FISH[id] : kind === 'tr' ? TREASURE[id] : kind === 'bd' ? BUILD[id] : null; return o ? esc(o.name) + (kind === 'seed' ? '种子' : '') : '' };
@@ -879,6 +880,9 @@ const PANELS = {
       it.push({ id: 'free', ic: icon('it', 'gear'), n: `×${GEAR.free}`, nm: '每日免费', sub: freeOk ? '<b class="good">领取</b>' : '今天领过了', cls: freeOk ? 'hot' : 'got', d: `<div class="deff">每天免费领 ${GEAR.free} 个发条，北京时间 0 点刷新。发条让一样建造少等 ${Math.round(GEAR.cut / 60)} 分钟。</div>${buyBtn('freeGear', null, freeOk, freeOk ? '领取' : '今天领过了')}` });
       for (const n of [1, 5]) { const c = TD.scroll * n;
         it.push({ id: 'scroll' + n, ic: icon('it', 'scroll'), n: `×${n}`, nm: `${n} 张尸潮券`, sub: coin(c), d: `<div class="deff">打尸潮要用。现在有 ${S.td.scrolls} 张。</div>${buyBtn('buyScroll', n, S.coins >= c, coin(c) + ' 买')}` }) }
+      /* 设计 108：召唤券（打副本用），超市 5 级以后卖；钓鱼区贵 20% */
+      if (S.lv.store >= FB.store && S.fb) for (const n of [1, 5]) { const c = tixCost(n, far);
+        it.push({ id: 'tix' + n, ic: icon('it', 'tix'), n: `×${n}`, nm: `${n} 张召唤券`, sub: coin(c), d: `<div class="deff">打副本用，挑战一次 1 张（不管第几关）。现在有 ${S.fb.tix || 0} 张。输了不退。${far ? '<br><span class="warn">这里贵 20%</span>' : ''}</div>${buyBtn('buyTix', n, S.coins >= c, coin(c) + ' 买')}` }) }
       /* 设计 56：晶石（炼宝用），超市 5 级以后卖 */
       if (S.lv.store >= FB.store) for (const [i, [n, c]] of CRYSTAL.packs.entries()) it.push({ id: 'crys' + n, ic: `<span class="icon img"><img src="${A('img/fb/eq_crystal.png')}" alt=""></span>`, n: `×${n}`, nm: `${n} 颗晶石`, sub: coin(c), tag: n * 200 > c ? `省 ${n * 200 - c}` : '',
         d: `<div class="deff">炼宝（找铁匠给装备升星）用。现在有 ${S.fb ? S.fb.crys : 0} 颗。也能用星星换（1 星 = ${CRYSTAL.perStar} 颗）。</div>${buyBtn('buyCrys', i, S.coins >= c, coin(c) + ' 买')}` });
@@ -915,7 +919,7 @@ const PANELS = {
     const cells = it.map(x => ({ id: x.id, cls: 'mcell ' + (x.cls || ''), html: `<div class="mic">${x.ic}${x.n ? `<em>${x.n}</em>` : ''}</div><b class="mnm">${x.nm}</b><span class="msub">${x.sub}</span>${x.tag ? `<span class="itag ok">${x.tag}</span>` : ''}` }));
     const detail = id => { const x = it.find(y => y.id === id); return x ? `<h5>${x.ic} ${x.full || x.nm}</h5>${x.d}` : '' };
     const res = g.tab === 'star' ? resChip(starIc, S.stars || 0) + resChip('<i class="ico-coin"></i>', Math.floor(S.coins))
-      : resChip('<i class="ico-coin"></i>', Math.floor(S.coins)) + resChip(icon('it', 'gear'), S.gear || 0) + resChip(icon('it', 'scroll'), S.td.scrolls);
+      : resChip('<i class="ico-coin"></i>', Math.floor(S.coins)) + resChip(icon('it', 'gear'), S.gear || 0) + resChip(icon('it', 'scroll'), S.td.scrolls) + (S.lv.store >= FB.store && S.fb ? resChip(icon('it', 'tix'), S.fb.tix || 0) : '');
     return frame('mall', { tabs, cols: 4, rows: 2, cells, detail, dw: 214, res, none: g.tab === 'ani' ? '超市 3 级以后在「建造」→「牧场」里盖动物棚' : '没有东西卖',
       empty: g.tab === 'star' ? '<p class="note">每样 1 颗星星。神秘商人交货时有机会送星星。</p>' : g.tab === 'ani' ? `<p class="note">${yard ? '买了直接放进棚里。' : '动物在院子里的商人那里买。'}</p>` : '<p class="note">点一样看详情、购买。</p>',
       help: `<b>院子商人</b><p>补给：每天免费领 ${GEAR.free} 个发条（北京时间 0 点刷新）；尸潮券打尸潮用；有垂钓证以后这里卖饵料和鱼竿。</p><p>设施：施工队永久多一个，能同时多建一样东西；垂钓证买一次永久有效。</p><p>员工武器：M16 给员工装上（在员工面板里装），伤害、射速、射程分开升。</p><p>动物：先在「建造」→「牧场」盖棚，在院子里的商人那里买，买了直接放进棚里。</p><p>星星兑换：每样 1 颗星星，星星是神秘商人交货时送的。</p>${far ? '<p class="warn">钓鱼区的商人贵 20%。</p>' : ''}` });

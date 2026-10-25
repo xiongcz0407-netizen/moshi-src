@@ -6,7 +6,7 @@ import * as FL from './fblogic.js';
 import { busy as refBusy, hold as refHold } from './refinefx.js';   /* 设计 80：敲打动画放着时「炼宝」灰掉 */
 
 export const crysIc = { toString: () => `<img class="crysic" src="${A('img/fb/eq_crystal.png')}" alt="">` };   /* 设计 75：用的时候才算网址 */
-const scrollIc = () => icon('it', 'scroll');
+const tixIc = () => icon('it', 'tix');   /* 设计 108：召唤券 */
 /* 装备图标：品质边框、角上星数 */
 /* 设计 85：套装（q-s）图标：左上角红色星星角标 + 边框流光；星越高越华丽（t0 0～3★、t1 4～7★、t2 8～11★、t3 12★），全是 CSS 动画，不跑 JS */
 export const setTier = st => st >= 12 ? 3 : st >= 8 ? 2 : st >= 4 ? 1 : 0;
@@ -57,7 +57,7 @@ function refView(S, k, { tabs, res, help }) {
     return frame(k, { tabs, cols: 5, rows: 3, cells, detail, dw: 250, res, help, none: '还没有装备，去副本打 BOSS 掉', empty: '<p class="note">点一件装备炼宝（穿着的也能炼）。</p>' });
 }
 export const FB_PANELS = {
-  /* 副本面板：左边 10 关，右边 BOSS 技能、能掉的套装件 / 传说、推荐装备线、要几张尸潮券 */
+  /* 副本面板：左边 10 关，右边 BOSS 技能、能掉的套装件 / 传说、推荐装备线、要几张召唤券（设计 108） */
   fb(S) {
     FL.fbFix(S);
     const cells = Array.from({ length: FB_MAX }, (_, i) => i + 1).map(n => { const B = BOSSES[n], lock = FL.fbLockWhy(S, n), won = S.fb.won[n] > 0;
@@ -66,12 +66,12 @@ export const FB_PANELS = {
     /* 设计 82：能掉的全列出来（按品质 4 行，从 fblogic.dropTable / firstDrop 读；82b：不写掉落率，每件写名字）；「挑战」固定在详情最下面一条 */
     /* 设计 105：第 n 关的名字（传说点图标看全名 + 特效）、Lv 牌子 */
     const smIc = (k, n) => { const D = ITEMS[k], nm = FL.nameAt(k, n) + (D.fx ? '：' + D.fx : ''); return `<span class="eqic sm q-${D.q}${D.q === 's' ? ' t0' : ''} eqtip" data-nm="${nm}" data-nmc="${QUAL[D.q].color}">${setDeco(D.q, 0)}<img src="${A('img/fb/eq_' + (D.ic || k) + '.png')}" alt="">${lvTag(D.set ? D.lv : n)}</span>` };
-    const detail = id => { const n = +id, B = BOSSES[n], why = FL.fbCanStart(S, n), need = FB.scrolls(n), lock = FL.fbLockWhy(S, n), fd = !(S.fb.won[n] > 0) && FL.firstDrop(n);
+    const detail = id => { const n = +id, B = BOSSES[n], why = FL.fbCanStart(S, n), need = FB.tix, have = S.fb.tix || 0, lock = FL.fbLockWhy(S, n), fd = !(S.fb.won[n] > 0) && FL.firstDrop(n);
       const ORD = { s: 0, l: 1, e: 2, n: 3 };   /* 设计 87：显示顺序套装 → 传说 → 史诗 → 普通（只改显示，dropTable 本身不动） */
       const rows = FL.dropTable(n).slice().sort((a, b) => ORD[a.q] - ORD[b.q]).map(r => `<div class="fbdq"><b style="color:${QUAL[r.q].tx}">${QUAL[r.q].name}</b><span class="fbdics">${r.keys.map(k => `<span class="fbdit">${smIc(k, n)}<small style="color:${QUAL[ITEMS[k].q].tx}">${FL.nameAt(k, n)}</small></span>`).join('')}</span></div>`).join('');
       const fdTxt = fd ? `<p class="fbfirst">第一次打赢必掉：${fd.what}（${fd.keys.length <= 3 ? fd.keys.map(k => FL.nameAt(k, n)).join(' / ') : `${fd.keys.length} 件里随机`}）</p>` : '';
-      const btn = S.td.scrolls < need && !lock ? `<button class="btn grey" data-act="needScroll">挑战</button>` : `<button class="btn" data-act="fbGo" data-arg="${n}" ${why ? 'disabled' : ''}>挑战</button>`;
-      const foot = lock ? `<span class="fbfl lk">🔒 ${lock}</span>` : `<span class="fbfl need${S.td.scrolls >= need ? '' : ' lack'}">${scrollIc()}尸潮券 ×${need}</span>`;   /* 82d：只写要几张（不写我有几张），居中 */
+      const btn = have < need && !lock ? `<button class="btn grey" data-act="needTix">挑战</button>` : `<button class="btn" data-act="fbGo" data-arg="${n}" ${why ? 'disabled' : ''}>挑战</button>`;
+      const foot = lock ? `<span class="fbfl lk">🔒 ${lock}</span>` : `<span class="fbfl need${have >= need ? '' : ' lack'}">${tixIc()}召唤券 ×${need}</span>`;   /* 82d：只写要几张（不写我有几张），居中 */
       return `<div class="fbdw"><div class="fbds">
         <h5>${bossIc(n)} ${B.name}<small>第 ${n} 关</small></h5>
         ${B.skills ? `<div class="dsub">技能（都会先在地上出红色预警）</div>${B.skills.map(([a, b]) => `<div class="fbsk"><b>${a}</b><span>${b}</span></div>`).join('')}` : '<p class="note">这一关还没开放，先打第 1 关刷装备。</p>'}
@@ -79,12 +79,12 @@ export const FB_PANELS = {
         <div class="fbdx">另外：<i class="ico-coin"></i>×${FB.coins(n)}　${crysIc}×${FB.crystals(n)}</div>
         <div class="drow"><span>推荐装备</span><b>${B.rec}</b></div>
         ${S.fb.best[n] ? `<div class="drow"><span>最快</span><b>${fmtS(S.fb.best[n])}</b></div>` : ''}
-        ${why && !lock && S.td.scrolls >= need ? `<p class="note warn">${why}</p>` : ''}
+        ${why && !lock && have >= need ? `<p class="note warn">${why}</p>` : ''}
       </div><div class="fbfoot">${foot}${btn}</div></div>` };
     return frame('fb', { cols: 2, rows: 5, cells, detail, dw: 250,
-      res: resChip(scrollIc(), S.td.scrolls) + resChip(crysIc, S.fb.crys),
-      top: `<span>只能主角一个人打，3 分钟后 BOSS 狂暴</span><span>尸潮券在院子商人那里买</span>`,
-      help: `<b>副本</b><p>超市 ${FB.store} 级开放。走进院子商人旁边的传送门，选一关挑战，打 BOSS 掉装备。第 n 关要 1 + n 张尸潮券（第 1 关 2 张）。</p><p>右下角：大按钮按住才开枪（有小丧尸先打小丧尸）；集火、翻滚、震荡弹有冷却。地上出红色预警就躲开，填满就打下来。震荡弹能打断白色施法条的技能，红色的大招打断不了。</p><p>3 分钟后 BOSS 狂暴（伤害 ×2、出招更快）。倒下就输，没有掉落，尸潮券不退。</p><p>第 2 关毒囊在北边崖下不会走动，要躲毒池和毒雾；看它的头就知道要放什么招（大招时眼睛变红）。</p><p>打赢：末日币、晶石、1 件装备。宝箱不开就回超市也照样给。</p>` });
+      res: resChip(tixIc(), S.fb.tix || 0) + resChip(crysIc, S.fb.crys),
+      top: `<span>只能主角一个人打，3 分钟后 BOSS 狂暴</span><span>召唤券在院子商人那里买</span>`,
+      help: `<b>副本</b><p>超市 ${FB.store} 级开放。走进院子商人旁边的传送门，选一关挑战，打 BOSS 掉装备。每次挑战 1 张召唤券（不管第几关，院子商人那里买，${FB.tixPrice} 末日币一张）。</p><p>右下角：大按钮按住才开枪（有小丧尸先打小丧尸）；集火、翻滚、震荡弹有冷却。地上出红色预警就躲开，填满就打下来。震荡弹能打断白色施法条的技能，红色的大招打断不了。</p><p>3 分钟后 BOSS 狂暴（伤害 ×2、出招更快）。倒下就输，没有掉落，召唤券不退。</p><p>第 2 关毒囊在北边崖下不会走动，要躲毒池和毒雾；看它的头就知道要放什么招（大招时眼睛变红）。</p><p>打赢：末日币、晶石、1 件装备。宝箱不开就回超市也照样给。</p>` });
   },
   /* 装备（设计36 第十二节；设计56 10-21：装备 / 背包 / 炼宝 / 技能 4 个页签，左右两栏各自滚动） */
   gear(S) {

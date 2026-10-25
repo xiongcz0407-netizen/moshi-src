@@ -1,7 +1,7 @@
 /* ================= 设计 56：副本的存档逻辑（装备、炼宝、技能、晶石、挑战和奖励）。打的过程在 fbcore.js ================= */
 import { FB, BOSSES, QUAL, SLOTS, STAT, AFF, MAIN, ITEMS, SETS, setOf, legOf, DROP, LV_NAMES, LEG_OLD, LEG_KEYS, LEG_GONE, LEG_SWAP, REFINE, CRYSTAL, SKILLS, SKILL_IDS, SKILL_MAX, skillCost } from './fbcfg.js';
 
-export const fbNew = () => ({ won: {}, bag: [], eq: { w: null, h: null, a: null, g: null, b: null, m: null }, crys: 0, sk: { focus: 1, roll: 1, stun: 1 }, nid: 1, run: 0, pend: null, best: {}, log: [] });
+export const fbNew = () => ({ tix: 0, won: {}, bag: [], eq: { w: null, h: null, a: null, g: null, b: null, m: null }, crys: 0, sk: { focus: 1, roll: 1, stun: 1 }, nid: 1, run: 0, pend: null, best: {}, log: [] });
 export function fbFix(S) {
   const d = fbNew(); S.fb = Object.assign(d, S.fb || {}); S.fb.eq = Object.assign(d.eq, S.fb.eq || {}); S.fb.sk = Object.assign({ focus: 1, roll: 1, stun: 1 }, S.fb.sk || {});
   for (const id of Object.keys(S.td.wins || {})) if (+id > 100) delete S.td.wins[id];   // 设计 56：英雄尸潮去掉了，旧存档的英雄关进度不留
@@ -79,8 +79,11 @@ export function fbLockWhy(S, n) {
   if (n > 1 && !(S.fb.won[n - 1] > 0)) return '先打赢前一关';
   return null;
 }
-export function fbCanStart(S, n) { const w = fbLockWhy(S, n); if (w) return w; if (S.td.scrolls < FB.scrolls(n)) return '尸潮券不够，去院子商人那里买'; if (S.fb.pend) return '上次的装备还没收下'; return null }
-export function fbStart(S, n) { if (fbCanStart(S, n)) return false; S.td.scrolls -= FB.scrolls(n); S.fb.run = n; return true }
+export function fbCanStart(S, n) { const w = fbLockWhy(S, n); if (w) return w; if ((S.fb.tix || 0) < FB.tix) return '召唤券不够，去院子商人那里买'; if (S.fb.pend) return '上次的装备还没收下'; return null }
+export function fbStart(S, n) { if (fbCanStart(S, n)) return false; S.fb.tix -= FB.tix; S.fb.run = n; return true }   // 设计 108：召唤券，不碰尸潮券
+/* 设计 108：买召唤券（far = 在钓鱼区，贵 20%） */
+export const tixCost = (n, far) => Math.round(FB.tixPrice * n * (far ? 1.2 : 1));
+export function buyTix(S, n = 1, far = false) { const c = tixCost(n, far); if (S.coins < c) return false; S.coins -= c; S.fb.tix = (S.fb.tix || 0) + n; return true }
 export function fbLose(S) { S.fb.run = 0 }
 const newItem = (S, k, lv) => ({ id: S.fb.nid++, k, lv: ITEMS[k].lv || lv, st: 0, crys: 0, nw: 1 });   // nw：新得到、还没看过（背包里画红点）
 const pick = (a, r) => a[Math.floor(r * a.length) % a.length];

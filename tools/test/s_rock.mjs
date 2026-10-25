@@ -3,7 +3,7 @@ export { pre } from './vtime.mjs';
 export default async (pg, shot) => {
   const W = ms => pg.waitForTimeout(ms), ev = (f, a) => pg.evaluate(f, a), T = process.env.TAGW || '844', SH = (process.env.SHOT || 'overview').split(','), PF = process.env.PFX || '102';
   pg.on('pageerror', e => console.log('PAGEERR', e.message));
-  await ev(() => { const S = __g.S; S.lv.store = Math.max(5, S.lv.store); S.td.scrolls = 99; S.fb.run = 0; S.fb.won = { 1: 1, 2: 1 }; S.fb.pend = null; __g.fbGo(3) });
+  await ev(() => { const S = __g.S; S.lv.store = Math.max(5, S.lv.store); S.td.scrolls = 99; S.fb.tix = 99; S.fb.run = 0; S.fb.won = { 1: 1, 2: 1 }; S.fb.pend = null; __g.fbGo(3) });
   for (let i = 0; i < 120 && !(await ev(() => __g.FBV.active() && __g.FBV.phase() === 'fight')); i++) await W(1000);
   await W(5000); await ev(() => { __vtStart() });
   const pump = (s, o = {}) => ev(([s, o]) => { for (let i = 0; i < Math.round(s * 30); i++) { const F = __g.FBV.fight(); F.player.hp = F.player.max; F.player.god = true; if (o.hold) { F.boss.skillT = 99; F.boss.basicCd = 99 } if (o.x != null) { F.player.x = o.x; F.player.z = o.z } if (o.bx != null) { F.boss.x = o.bx; F.boss.z = o.bz } __pump(1000 / 30) } }, [s, o]);

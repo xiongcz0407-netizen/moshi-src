@@ -4,6 +4,7 @@
    物资刷新、紧缺轮换照常走。顾客：进店挑货 → 去收银台排队 → 玩家站到收银台旁边才结账付钱；等太久会生气走掉。
    模拟机器人（docs/sim.mjs）也直接用这个文件。 */
 import { fbNew, fbFix } from './fblogic.js';
+import { FB } from './fbcfg.js';
 import { JUNK, JUNK_IDS, GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, RECYCLER, SHELF_CAP, BAG_SIZES, STACK,
   BUILD, MYSTERY, STAR, WS, WS_IDS, MACH, LUCK, DISHES, recipeOf, isKit, RANCH, RANCH_IDS, PEN_CAP, FEED, FISHPOND, GUARD_GUN, SHOP, GEAR, SPAWN, STREET_SPAWN, ZOMBIE, OFFLINE_CAP, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, FARM, WAREHOUSE, FIXTURE, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_SPOTS_N, STAFF, STAFF_JOBS, STAFF_FISH, HERO, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING } from './config.js';
 import { defaultLayout, fixLayout, layoutProblem, setExpanded, migrateOldDefault, defaultFix, frontCell, DOOR_CELL } from './layout.js';
@@ -83,10 +84,12 @@ export function migrate(o) {
   const bt50 = o.bt50;                            // 同上：0.13 建造时间减半前的存档没有这个                    // 先记下来：下面补字段会把它填成新版本
   /* 0.28 用户：动物要买，不再盖棚就送。之前测试版盖了棚的存档：动物清空，按送的那些退一半钱 */
   if (o.herd === undefined && o.lv) { let back = 0; for (const k of RANCH_IDS) if (o.lv[k] > 0) back += Math.round(PEN_CAP[o.lv[k]] * RANCH[k].price / 2); if (back) { o.coins = (o.coins || 0) + back; o.herdRefund = back } o.herd = {} }
+  const tixOld = !(o.fb && o.fb.tix !== undefined);   /* 设计 108：没有召唤券字段的老存档，改版送 3 张（只送一次） */
   const d = newState();
   for (const k of Object.keys(d)) if (o[k] === undefined) o[k] = d[k];
   for (const k of ['stock', 'treas', 'seeds', 'st', 'lv', 'td', 'bait', 'hero']) o[k] = Object.assign({}, d[k], o[k]);
   fbFix(o);
+  if (tixOld) { o.fb.tix = FB.tixGift; o.tixGift = FB.tixGift }
   delete o.xp; if (o.td && o.td.wins) o.td.best = tdCleared(o)   /* 设计 61：best 跟打赢过的关一致 */;   // 设计 60：经验点去掉了（旧存档直接删）
   /* 设计 59：主角血量不升级了。升过的退回末日币（每级 100×n）和工具箱，进游戏提示一次 */
   if (o.hero && o.hero.hp > 1) { let c = 0, t = 0; for (let n = 2; n <= o.hero.hp; n++) { const k = HERO.cost(n); c += k.coins; t += k.toolbox } o.coins = (o.coins || 0) + c; o.treas.toolbox = (o.treas.toolbox || 0) + t; o.hpRefund = { coins: c, toolbox: t, lv: o.hero.hp } }
