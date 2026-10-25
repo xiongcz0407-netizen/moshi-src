@@ -2,7 +2,7 @@
 import { tixCost } from './fblogic.js';   /* 设计 108 */
 import * as THREE from 'three';
 import { FB, CRYSTAL } from './fbcfg.js';
-import { isKit, FISHPOND, JUNK, GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, BUILD, BUILD_ORDER, RECYCLER, BAG_SIZES, SHELF_CAP, GEAR, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, STACK, WAREHOUSE, FIXTURE, TIER_NAME, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_IDS, STAFF, STAFF_JOBS, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING, STAFF_FISH, FIXTURE_IDS, HERO, GUARD_GUN, RANCH, RANCH_IDS, PEN_CAP, FEED, MYSTERY, STAR, WS, WS_IDS, MACH, DISHES } from './config.js';
+import { FREE, isKit, FISHPOND, JUNK, GOODS, GOOD_IDS, TREASURE, TREASURE_IDS, BUILD, BUILD_ORDER, RECYCLER, BAG_SIZES, SHELF_CAP, GEAR, STORE, TASKS, GREENHOUSE, CROPS, CROP_IDS, ORCHARD, TREES, STACK, WAREHOUSE, FIXTURE, TIER_NAME, canHold, TD, TD_MAX, tdLevel, TOWERS, TOWER_IDS, STAFF, STAFF_JOBS, FERT, CREW, FISH, FISH_IDS, FISH_RAR, FISHING, STAFF_FISH, FIXTURE_IDS, HERO, GUARD_GUN, RANCH, RANCH_IDS, PEN_CAP, FEED, MYSTERY, STAR, WS, WS_IDS, MACH, DISHES } from './config.js';
 import * as L from './logic.js';
 import { perfOpt, PERF_X } from './perf.js';
 import { CHANGELOG } from './changelog.js';
@@ -98,7 +98,7 @@ export const setBuildTab = t => { buildTab = t };
 /* 哪些按钮要亮红点：建造（有能升的、施工队空着）、员工（有人饿着罢工 / 救回来的人等你决定 / 没安排岗位）、
    尸潮（有没打赢过的关能打）、货架（有空着没选货的货柜）、仓库（有东西放满了）、设置（有新版本） */
 let extraDots = {};
-let dayFn = () => '';   // 设计 43：北京时间的日期（main 里的 bjDay），免费发条按它判断
+let dayFn = () => '';   // 设计 43：北京时间的日期（main 里的 bjDay），每日免费（设计 112：星星）按它判断
 export const setDayFn = f => { dayFn = f };
 export const setDot = (k, on) => { extraDots[k] = on };
 /* ---------- 消息框（0.14 用户要的）：不那么急的事（卖完了、没种子了、升级完了、员工回来了……）记在这里，菜单左边的按钮看；
@@ -881,7 +881,7 @@ const PANELS = {
     const buyBtn = (act, arg, ok, txt) => `<button class="btn" data-act="${act}"${arg != null ? ` data-arg="${arg}"` : ''} ${ok ? '' : 'disabled'}>${txt}</button>`;
     if (g.tab === 'sup') {
       const freeOk = L.freeReady(S, dayFn());   // 设计 43 修：以前看 extraDots.mall，V3.11 删了菜单的商城入口以后没人设它了，一直是「今天领过了」
-      it.push({ id: 'free', ic: icon('it', 'gear'), n: `×${GEAR.free}`, nm: '每日免费', sub: freeOk ? '<b class="good">领取</b>' : '今天领过了', cls: freeOk ? 'hot' : 'got', d: `<div class="deff">每天免费领 ${GEAR.free} 个发条，北京时间 0 点刷新。发条让一样建造少等 ${Math.round(GEAR.cut / 60)} 分钟。</div>${buyBtn('freeGear', null, freeOk, freeOk ? '领取' : '今天领过了')}` });
+      it.push({ id: 'free', ic: `<span class="icon img"><img src="${A('img/ui/icons/star_gold.png')}" alt=""></span>`, n: `×${FREE.star}`, nm: '每日免费', sub: freeOk ? '<b class="good">领取</b>' : '今天领过了', cls: freeOk ? 'hot' : 'got', d: `<div class="deff">每天免费领 ${FREE.star} 颗星星，北京时间 0 点刷新。星星可以在「星星兑换」里换末日币、发条、工具箱、刷新券、晶石。</div>${buyBtn('freeGear', null, freeOk, freeOk ? '领取' : '今天领过了')}` });
       /* 设计 109：尸潮券、召唤券各一格，详情里选买几张（−10 −5 −1 [n] +1 +5 +10、最多），去掉 5 张一包 */
       if (g.sel !== ticFor) { ticQty = 1; ticFor = g.sel }
       const ticD = (kind, unit, have, note, act, name) => { const max = Math.floor(S.coins / unit), q = Math.max(1, Math.min(ticQty, Math.max(1, max))); if (g.sel === kind) ticQty = q;
@@ -932,7 +932,7 @@ const PANELS = {
       : resChip('<i class="ico-coin"></i>', Math.floor(S.coins)) + resChip(icon('it', 'gear'), S.gear || 0) + resChip(icon('it', 'scroll'), S.td.scrolls) + (S.lv.store >= FB.store && S.fb ? resChip(icon('it', 'tix'), S.fb.tix || 0) : '');
     return frame('mall', { tabs, cols: 4, rows: 2, cells, detail, dw: 214, res, none: g.tab === 'ani' ? '超市 3 级以后在「建造」→「牧场」里盖动物棚' : '没有东西卖',
       empty: g.tab === 'star' ? '<p class="note">每样 1 颗星星。神秘商人交货时有机会送星星。</p>' : g.tab === 'ani' ? `<p class="note">${yard ? '买了直接放进棚里。' : '动物在院子里的商人那里买。'}</p>` : '<p class="note">点一样看详情、购买。</p>',
-      help: `<b>院子商人</b><p>补给：每天免费领 ${GEAR.free} 个发条（北京时间 0 点刷新）；尸潮券打尸潮用；有垂钓证以后这里卖饵料和鱼竿。</p><p>设施：施工队永久多一个，能同时多建一样东西；垂钓证买一次永久有效。</p><p>员工武器：M16 给员工装上（在员工面板里装），伤害、射速、射程分开升。</p><p>动物：先在「建造」→「牧场」盖棚，在院子里的商人那里买，买了直接放进棚里。</p><p>星星兑换：每样 1 颗星星，星星是神秘商人交货时送的。</p>${far ? '<p class="warn">钓鱼区的商人贵 20%。</p>' : ''}` });
+      help: `<b>院子商人</b><p>补给：每天免费领 ${FREE.star} 颗星星（北京时间 0 点刷新）；尸潮券打尸潮用；有垂钓证以后这里卖饵料和鱼竿。</p><p>设施：施工队永久多一个，能同时多建一样东西；垂钓证买一次永久有效。</p><p>员工武器：M16 给员工装上（在员工面板里装），伤害、射速、射程分开升。</p><p>动物：先在「建造」→「牧场」盖棚，在院子里的商人那里买，买了直接放进棚里。</p><p>星星兑换：每样 1 颗星星，星星是神秘商人交货时送的。</p>${far ? '<p class="warn">钓鱼区的商人贵 20%。</p>' : ''}` });
   },
   /* 消息框（旧的面板版，现在用下拉）：没读的标亮 */
   msg(S) {

@@ -449,7 +449,8 @@ export const SHOP = {
 export const MYSTERY = { store: 3, first: 120, gap: 1800, kinds: [1, 3], total: [10, 20], mult: 5, starP: 0.1, fishPrice: 30, refPrice: 100, refPack: [5, 0.9] };
 /* 0.31 星星（设计/17）：以后充值才有；现在只有神秘商人掉。兑换：1 星星 = 5000 末日币 / 5 个发条 / 3 个工具箱 */
 export const STAR = { coins: 5000, gear: 5, toolbox: 3, ref: 5 };   // 0.37 用户：刷新券也只能用星星换（1 颗 5 张）
-export const GEAR = { name: '发条', cut: 1800, price: 300, packs: [[1, 1], [5, 0.9], [20, 0.8]], free: 1 };   // 建造剩余时间 −30 分钟；商城卖 1 / 5 / 20 个（9 折、8 折），每天免费领 1 个
+export const GEAR = { name: '发条', cut: 1800, price: 300, packs: [[1, 1], [5, 0.9], [20, 0.8]] };   // 建造剩余时间 −30 分钟；商城卖 1 / 5 / 20 个（9 折、8 折）（设计 112：每日免费不再送发条）
+export const FREE = { star: 1 };   // 设计 112：院子商人每天免费领 1 颗星星（北京时间 0 点刷新）
 export const CREW = { cost: [1000, 2500, 5000] };   // 商城买施工队：第 1、2、3 个（永久，最多同时 4 个）
 export const FERT = { name: '肥料', cut: 1800, price: 200, packs: [[1, 1], [5, 0.9], [20, 0.8]] };   // 一块菜地或一棵果树剩余时间 −30 分钟；商城卖
 
