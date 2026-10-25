@@ -815,8 +815,8 @@ const FBV = createFB({ get player() { return player }, P, camera, moveDir, animH
 function gotDone() { if (S.fb.pend) return; if (UI.curPanel() === 'fbGot') UI.closePanel(); if (gotCb) { const c = gotCb; gotCb = null; c() } }
 /* 设计 74：超市够级、走到传送门附近或打开副本面板时，后台先把副本读好（失败不提示，过 30 秒才再试；点「挑战」时照常读） */
 let fbPreT = -1e9;
-function fbPreload() { const now = performance.now(); if (now - fbPreT < 30000) return; fbPreT = now; const two = S.fb.won[1] > 0, three = S.fb.won[2] > 0, four = S.fb.won[3] > 0;   /* 设计 114：第 3 关打赢过，第 4 关也先读 */   /* 设计 81：第 1 关打赢过，第 2 关（毒囊包）也先下、先读；设计 102：第 2 关打赢过，第 3 关也先读 */
-  AD.ensurePack('fb1').then(() => FBV.preload(1)).then(a => { if (!a) fbPreT = now + 270000; return two ? AD.ensurePack('fb2').then(() => FBV.preload(2)).then(() => three ? AD.ensurePack('fb3').then(() => FBV.preload(3)).then(() => four ? AD.ensurePack('fb4').then(() => FBV.preload(4)) : null) : null) : null }) }   /* 设计 75：先下进手机资源库，再读 */   // 后台读失败：5 分钟内不再自己读（断网时别一直下）
+function fbPreload() { const now = performance.now(); if (now - fbPreT < 30000) return; fbPreT = now; const two = S.fb.won[1] > 0, three = S.fb.won[2] > 0, four = S.fb.won[3] > 0, five = S.fb.won[4] > 0;   /* 设计 114：第 3 关打赢过，第 4 关也先读；设计 116：第 4 关打赢过，第 5 关也先读 */   /* 设计 81：第 1 关打赢过，第 2 关（毒囊包）也先下、先读；设计 102：第 2 关打赢过，第 3 关也先读 */
+  AD.ensurePack('fb1').then(() => FBV.preload(1)).then(a => { if (!a) fbPreT = now + 270000; return two ? AD.ensurePack('fb2').then(() => FBV.preload(2)).then(() => three ? AD.ensurePack('fb3').then(() => FBV.preload(3)).then(() => four ? AD.ensurePack('fb4').then(() => FBV.preload(4)).then(() => five ? AD.ensurePack('fb5').then(() => FBV.preload(5)) : null) : null) : null) : null }) }   /* 设计 75：先下进手机资源库，再读 */   // 后台读失败：5 分钟内不再自己读（断网时别一直下）
 function fbLoad(txt, work, fail) {
   const ov = $('#scavLoad'), bar = $('#scavBarI'); $('#scavTxt').textContent = txt; $('#scavTip').textContent = '地上出红色预警就躲开，填满就打下来；震荡弹能打断白色施法条'; bar.style.width = '10%'; ov.classList.remove('hidden');
   const t0 = performance.now();
@@ -1967,7 +1967,7 @@ function makePortraits() { try { UI.setPortraits(portraits(renderer)) } catch (e
 /* 设计 38：这次加载下了多少、用了几秒（性能小窗里显示） */
 const LOADSTAT = { sec: 0, mb: 0, files: 0, cached: 0, hero: '', heroAt: 0 };
 /* 后台下其他包：尸潮、钓鱼进游戏就下；副本超市够级才下；_hi 只在关掉「大模型减面」时下 */
-function packsTick() { if (!AD.dbOK()) return; AD.ensurePack('td').then(() => AD.ensurePack('fish')).then(() => { if (S && S.lv.store >= FB.store) AD.ensurePack('fb1') }).then(() => { if (S && S.fb && S.fb.won[1] > 0) return AD.ensurePack('fb2') }).then(() => { if (S && S.fb && S.fb.won[2] > 0) return AD.ensurePack('fb3') }).then(() => { if (S && S.fb && S.fb.won[3] > 0) return AD.ensurePack('fb4') }).then(() => { if (!perfOpt('lod')) AD.ensurePack('hi') }) }
+function packsTick() { if (!AD.dbOK()) return; AD.ensurePack('td').then(() => AD.ensurePack('fish')).then(() => { if (S && S.lv.store >= FB.store) AD.ensurePack('fb1') }).then(() => { if (S && S.fb && S.fb.won[1] > 0) return AD.ensurePack('fb2') }).then(() => { if (S && S.fb && S.fb.won[2] > 0) return AD.ensurePack('fb3') }).then(() => { if (S && S.fb && S.fb.won[3] > 0) return AD.ensurePack('fb4') }).then(() => { if (S && S.fb && S.fb.won[4] > 0) return AD.ensurePack('fb5') }).then(() => { if (!perfOpt('lod')) AD.ensurePack('hi') }) }
 function preloadImgs(list, onEach) { return Promise.all(list.map(src => new Promise(r => { const i = new Image(); i.onload = i.onerror = () => { onEach(); r() }; i.src = A(src) }))) }
 (async () => {
   camera.position.copy(START_POS).add(camOff).setZ(START_POS.z - 1.6 + camOff.z); camera.lookAt(START_POS.x, 0, START_POS.z - 1.6);
