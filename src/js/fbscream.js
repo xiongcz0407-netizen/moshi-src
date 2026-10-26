@@ -21,8 +21,8 @@ export function buildScream(api) {
   T.sky.wrapT = THREE.ClampToEdgeWrapping;
   /* 夜里：紫青夜空 */
   scene.background = new THREE.Color(0x231a3c); scene.fog = new THREE.Fog(0x231a3c, 42, 110);
-  scene.add(new THREE.HemisphereLight(0x9a88d0, 0x22303c, 1.25));
-  const moon = new THREE.DirectionalLight(0xa8dcff, 1.35); moon.position.set(7, 20, 9); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
+  scene.add(new THREE.HemisphereLight(0xa898dc, 0x3a4652, 1.75));   /* 设计 114c：整体提亮约 35%（环境光 1.25 → 1.75、月光 1.35 → 1.85），冷紫 + 青不变 */
+  const moon = new THREE.DirectionalLight(0xa8dcff, 1.85); moon.position.set(7, 20, 9); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
   Object.assign(moon.shadow.camera, { left: -16, right: 16, top: 26, bottom: -26, near: 1, far: 70 }); moon.target.position.set(0, 0, 3); scene.add(moon, moon.target);
   const X0 = ARENA.x0, X1 = ARENA.x1, Z0 = ARENA.z0, Z1 = ARENA.z1;
   const RX0 = X0 - 0.45, RX1 = X1 + 0.45, RZ0 = Z0 - 4.4, RZ1 = Z1 + 3.8;   // 整个楼顶（女儿墙里面）：北边多出来放信号塔小屋，南边放楼梯间
@@ -40,12 +40,12 @@ export function buildScream(api) {
   const node = (pack, name) => { const sc = g[pack] && g[pack].scene; if (!sc) return null; return name ? sc.getObjectByName(name) : sc };
 
   /* ---------- 地面：裂纹水泥楼顶 + 女儿墙 + 楼身往下 ---------- */
-  { const W = RX1 - RX0, L = RZ1 - RZ0, fl = new THREE.Mesh(new THREE.PlaneGeometry(W, L), new THREE.MeshLambertMaterial({ map: T.floor, color: 0xd8d4e0 })); T.floor.repeat.set(W / 4, L / 4);
+  { const W = RX1 - RX0, L = RZ1 - RZ0, fl = new THREE.Mesh(new THREE.PlaneGeometry(W, L), new THREE.MeshLambertMaterial({ map: T.floor, color: 0xdccfbd })   /* 设计 114c：新地面是浅灰水泥；乘一点暖色抵掉紫青灯光，看起来是灰不是蓝 */); T.floor.repeat.set(W / 4, L / 4);
     fl.rotation.x = -Math.PI / 2; fl.position.set((RX0 + RX1) / 2, 0, (RZ0 + RZ1) / 2); fl.receiveShadow = true; scene.add(fl);
     const wm = new THREE.MeshLambertMaterial({ color: 0x8a8494 }), H = 0.9, th = 0.4;
     const wall = (x0, x1, z0, z1, south) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, H, z1 - z0), south ? wm.clone() : wm); m.position.set((x0 + x1) / 2, H / 2, (z0 + z1) / 2); m.castShadow = m.receiveShadow = true; scene.add(m); if (south) occl.push(m); return m };
     wall(RX0 - th, RX1 + th, RZ0 - th, RZ0); wall(RX0 - th, RX1 + th, RZ1, RZ1 + th, true); wall(RX0 - th, RX0, RZ0, RZ1); wall(RX1, RX1 + th, RZ0, RZ1);
-    const cap = new THREE.MeshLambertMaterial({ color: 0x6c6678 });   // 墙头一圈压顶
+    const cap = new THREE.MeshLambertMaterial({ color: 0xc8c2d8, emissive: 0x2a2634 });   // 墙头一圈压顶（设计 114c：浅色，一眼看出场地边界）
     for (const [x0, x1, z0, z1] of [[RX0 - th - 0.05, RX1 + th + 0.05, RZ0 - th - 0.05, RZ0 + 0.05], [RX0 - th - 0.05, RX0 + 0.05, RZ0, RZ1], [RX1 - 0.05, RX1 + th + 0.05, RZ0, RZ1]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.1, z1 - z0), cap); m.position.set((x0 + x1) / 2, H + 0.05, (z0 + z1) / 2); scene.add(m) }
     const body = new THREE.Mesh(new THREE.BoxGeometry(W + 1, 30, L + 1), new THREE.MeshLambertMaterial({ color: 0x4a4458 })); body.position.set((RX0 + RX1) / 2, -15.02, (RZ0 + RZ1) / 2); scene.add(body);
     /* 女儿墙外：一圈城市天际线远景（不受雾影响） */
@@ -154,7 +154,8 @@ export function buildScream(api) {
     if (e.e === 'spkFix') { const v = spkOf(e.s); if (v) { v.broke = 0; v.horn.rotation.x = v.rx0; v.horn.rotation.z = v.rz0; part(G.ball, e.s.x, 3, e.s.z, { size: 1.4, grow: 1.6, life: 0.5, add: true, color: 0xff6040, op: 0.8 }) } return true }
     if (e.e === 'ringGo') { return true }
     if (e.e === 'ringGone') { const v = rings.get(e.id); if (v) { scene.remove(v); v.geometry.dispose(); v.material.dispose(); rings.delete(e.id) } return true }
-    if (e.e === 'half') { ctx.UI.toast('尖啸者半血：嗜血了——伤害更高、闪得更勤，喇叭修好了', 'bad', 2600); halfT = 0; return true }
+    if (e.e === 'half') { ctx.UI.toast('尖啸者半血：嗜血了——伤害更高、闪得更勤，喇叭修好了', 'bad', 2600); halfT = 0;
+      /* 设计 114c：嗜血开始红闪一下 0.6 秒；之后被打不再闪红边（见 hurtFlashOff） */ const f = document.getElementById('flash'); if (f) { f.style.animationDuration = '0.6s'; ctx.UI.flash(); setTimeout(() => { f.style.animationDuration = '' }, 700) } return true }
     return false;
   }
 
@@ -230,5 +231,7 @@ export function buildScream(api) {
   /* 镜头用的脸：头顶、下巴（世界坐标）。没有骨头（占位模型）时按身高算 */
   const face = () => { if (HEAD) { const h = HEAD.getWorldPosition(new THREE.Vector3()); return { x: h.x, z: h.z, top: h.y + 0.25, chin: h.y - 0.2 } } const y = boss.position.y; return { x: boss.position.x, z: boss.position.z, top: y + SCREAM_K + 0.1, chin: y + SCREAM_K * 0.82 } };
   const chestSpot = () => { const B = api.fight().boss; return { x: clamp(B.x + 2, ARENA.x0 + 1.5, ARENA.x1 - 1.5), z: clamp(B.z + 1.5, ARENA.z0 + 1.5, ARENA.z1 - 2) } };
-  return { tox: false, face, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus, pusFrame, chestSpot, doomFx, reset, bone, look, occl, coverVis, castName: k => SCREAM_NAME[k] || k };
+  /* 设计 114c：嗜血以后被打不闪红边（小乌鸦一直啄、鸦弹 3 只，一秒好几下，红边就一直挂着像在掉血）；血条、飘字照常 */
+  const hurtFlashOff = () => { const F = api.fight(); return !!(F && F.half) };
+  return { tox: false, hurtFlashOff, face, boss, mixer, acts, play, mats, onEvent, bossFrame, frame, spawnPus, pusFrame, chestSpot, doomFx, reset, bone, look, occl, coverVis, castName: k => SCREAM_NAME[k] || k };
 }
