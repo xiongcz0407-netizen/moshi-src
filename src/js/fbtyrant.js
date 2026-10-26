@@ -54,7 +54,7 @@ export function buildTyrant(api) {
   /* ---------- 北边：碎大培养舱（BOSS 从里面出来，地上一滩绿培养液）；南边：被炸开的防爆门；两边一排破培养舱（绿水、气泡）+ 控制台 ---------- */
   piece(node('tank'), { w: 4.2 }, 0, 0, Z0 - 2.2);
   { const m = new THREE.Mesh(flatGeo, new THREE.MeshLambertMaterial({ map: T.dec[4], transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -8 })); m.scale.setScalar(5); m.position.set(0, 0.017, Z0 + 0.6); m.renderOrder = 1; scene.add(m) }
-  const door = piece(node('door'), { w: 5.2 }, 0, 0, Z1 + 1.4); if (door) occl.push(door);
+  const door = piece(node('door'), { w: 5.2 }, 0, 0, Z1 + 1.4, Math.PI);   // 116B：门面朝 +Z，转过来朝北（朝场内） if (door) occl.push(door);
   const tubes = [], bubbles = [];
   const glass = new THREE.MeshLambertMaterial({ color: 0x7ab8a8, transparent: true, opacity: 0.28, depthWrite: false }), goo = new THREE.MeshBasicMaterial({ color: 0x30e080, transparent: true, opacity: 0.45, depthWrite: false, fog: false });
   for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) { const z = Z0 + 4 + i * 7.6, x = sd * (W0 / 2 + 0.2), broken = (i + (sd > 0 ? 1 : 0)) % 3 === 0;

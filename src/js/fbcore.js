@@ -36,7 +36,7 @@ export const STAGES = {
   /* 设计 116：第 5 关装甲暴君 · 废弃军事实验室。宽 14、长 32；南边被炸开的防爆门（主角从门里进来），北边碎大培养舱（BOSS 从里面出来）。
      BOSS 纯远程、走得慢，不锁战斗区。4 个掩体（翻倒手推车、弹药箱堆、断培养舱底座、倒下的金属柜）；4 个能量柱插座（护盾时升柱） */
   5: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 1.3, hitY: 3.0,
-    covers: [{ k: 'cart', x: -4.0, z: 5.4, hx: 0.95, hz: 0.6 }, { k: 'ammo', x: 3.9, z: -1.6, hx: 0.8, hz: 0.75 }, { k: 'base', x: -3.7, z: -5.4, hx: 0.85, hz: 0.85 }, { k: 'cabinet', x: 3.8, z: 8.6, hx: 1.05, hz: 0.45 }],
+    covers: [{ k: 'cart', x: -4.0, z: 5.4, hx: 0.95, hz: 0.6 }, { k: 'ammo', x: 3.9, z: -1.6, hx: 0.8, hz: 0.75 }, { k: 'base', x: -3.7, z: -5.4, hx: 0.85, hz: 0.85 }, { k: 'cabinet', x: 3.8, z: 8.6, hx: 0.75, hz: 0.64 }],   /* 116B：挡的框按模型宽深比（倒下的金属柜 0.33 × 0.28） */
     sockets: [{ x: -4.6, z: -9.6 }, { x: 4.6, z: -9.6 }, { x: -5.2, z: 1.6 }, { x: 5.2, z: 4.6 }] },
 };
 export let ARENA = null, COVERS = null;
@@ -133,9 +133,9 @@ export const TYRANT_CFG = {
   order: ['grid', 'missile', 'laser', 'pull', 'carpet', 'shield', 'emp', 'grid', 'cannon'],
 };
 /* 装甲暴君动作的时间（tyrant.glb，116B 的 tools/tyrant_rig 导出）。名字照设计116 第 2 节 */
-export const TYRANT_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.4, loop: 1, speed: 0.3 }, fire: { T: 0.9, loop: 1 }, sweep: { T: 2.0 }, missile: { T: 1.0, hit: 0.6 }, carpet: { T: 1.6, hit: 1.2 }, grid: { T: 1.2, hit: 1.0 },
+export const TYRANT_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.4, loop: 1, speed: 0.126 }, fire: { T: 0.9, loop: 1 }, sweep: { T: 2.0 }, missile: { T: 1.0, hit: 0.6 }, carpet: { T: 1.6, hit: 1.2 }, grid: { T: 1.2, hit: 1.0 },
   kneel: { T: 0.8 }, kneel_loop: { T: 2.0, loop: 1 }, shield_break: { T: 2.0 }, pull: { T: 1.2 }, shotgun: { T: 0.9, hit: 0.45 }, emp: { T: 1.5, hit: 1.3 }, charge: { T: 1.0, loop: 1 }, cannon: { T: 1.0, hit: 0.2 },
-  armor_break: { T: 1.6, hit: 0.5 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.4, hit: 1.8 } };
+  armor_break: { T: 1.6, hit: 0.5 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.4, hit: 1.85 } };   /* walk.speed：116B 给的 0.134 模型单位 / 秒 × 缩放（4.5 / 1.06）÷ TYRANT_K */
 export const TYRANT_NAME = { laser: '旋转激光', missile: '导弹齐射', grid: '激光网格（全场）', carpet: '地毯轰炸（全场）', shield: '能量护盾', pull: '电磁牵引', shotgun: '贴脸霰弹炮', emp: '电磁脉冲（全场）', cannon: '过载主炮（大招）' };
 export const SCREAM_NAME = { bolt: '鸦弹', push: '鸦群喷射', rings: '声波三环', horn: '喇叭音爆', flock: '乌鸦群', shriek: '刺耳尖叫（全场）', bomb: '广播轰炸（大招）' };
 const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -907,7 +907,7 @@ export function createFight(n, hero, opt = {}) {
     /* 半血：破甲（3 块装甲板炸飞落地当掩体） */
     if (!st.half && b.hp < b.max * 0.5 && !b.cast && b.act !== 'kneel' && b.act !== 'recover' && b.act !== 'pulling') { st.half = true; b.act = 'breakAnim'; b.at = TYRANT_ANIM.armor_break.T; b.plateT = TYRANT_ANIM.armor_break.hit; setAnim('armor_break'); E('half'); return }
     if (b.plateT > 0) { b.plateT -= dts; if (b.plateT <= 0) { const made = []; for (let i = 0; i < 3; i++) { for (let t = 0; t < 40; t++) { const a = rnd() * 6.283, r = 3 + rnd() * 3.5, x = b.x + Math.sin(a) * r, z = b.z + Math.cos(a) * r;
-        if (!inArena(x, z, 1.2) || inCover(x, z, 1.0) || hyp(x - P.x, z - P.z) < 1.6 || made.some(q => hyp(q.x - x, q.z - z) < 2.2)) continue; const c = { k: 'plate' + (i + 1), x, z, hx: 0.75, hz: 0.45, id: 'p' + st.nid++, from: { x: b.x, z: b.z } }; COVERS.push(c); made.push(c); break } }
+        if (!inArena(x, z, 1.2) || inCover(x, z, 1.0) || hyp(x - P.x, z - P.z) < 1.6 || made.some(q => hyp(q.x - x, q.z - z) < 2.2)) continue; const PL = [[0.64, 0.46], [0.48, 0.4], [0.39, 0.39]][i], c = { k: 'plate' + (i + 1), x, z, hx: PL[0], hz: PL[1], id: 'p' + st.nid++, from: { x: b.x, z: b.z } };   /* 116B：背甲、肩甲、臂甲，挡的框按模型宽深比 */ COVERS.push(c); made.push(c); break } }
         st.coverVer = (st.coverVer || 0) + 1; for (const c of made) E('coverNew', { c }); push(P, 0.42) } }
     /* 跪着开护盾：每 2 秒一轮机炮 */
     if (b.act === 'kneel') { b.look = 'p'; b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -1.2 * dts, 1.2 * dts); if (!b.shield) { b.act = 'idle'; setAnim('idle'); b.calm = TY.calm; return } b.kneelGun -= dts; if (b.kneelGun <= 0) { b.kneelGun = TY.kneelGun; gunBurst() } return }
