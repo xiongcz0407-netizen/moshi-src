@@ -497,7 +497,7 @@ export function createFB(ctx) {
       else if (e.e === 'shot') tracer(e);
       else if (e.e === 'hit') { const key = e.who === 'boss' ? 'b' : e.m.id, o = dmgAcc.get(key) || { a: 0, crit: false, t: 0, m: e.m }; o.a += e.a; o.crit = o.crit || e.crit; dmgAcc.set(key, o); if (e.who === 'boss') { for (const m of boss.userData.mats) m.emissive.setHex(0x553322); setTimeout(() => { if (!fight.rage) for (const m of boss.userData.mats) m.emissive.setHex(0) }, 70) } }
       else if (e.e === 'pdmg' && e.src === 'rubble') { rubbleFx(); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }   /* 设计 106/106c：碎石雨 */
-      else if (e.e === 'pdmg') { ctx.hurt(); ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }
+      else if (e.e === 'pdmg') { if (!(stg && stg.hurtFlashOff && stg.hurtFlashOff())) ctx.hurt();   /* 设计 114c：第 4 关嗜血后不闪红边 */ ctx.UI.floatText(new THREE.Vector3(P.x, 2.3, P.z), '-' + e.a, 'bad') }
       else if (e.e === 'release') {
         const w = e.w;
         if (e.k === 'slam') { const s = Math.sin(B.yaw), c = Math.cos(B.yaw), x = B.x + s * 3.15, z = B.z + c * 3.15; shock(B.x, B.z, w.r * 2.1, 0xfff0d8, 0.55); dust(B.x, B.z, 16, 1.1, 5, 2.6); dust(x, z, 6, 0.9, 3, 0.6); rocks(x, z, 8); mark(T.crack, x, z, 6, 6, Math.random() * 6); ctx.shake(0.6) }   // 56b：冲击波一圈细的，尘土贴地往外飘

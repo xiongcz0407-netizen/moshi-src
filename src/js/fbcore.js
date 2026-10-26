@@ -32,7 +32,7 @@ export const STAGES = {
      BOSS 远程、到处闪现、不追人，不锁战斗区。4 个掩体（空调外机、弯管道、圆水箱、配电箱）分散在中段；4 根立杆喇叭在四角（不挡人、不挡子弹，能打坏） */
   4: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 0.9, hitY: 2.2,
     covers: [{ k: 'ac', x: -4.0, z: 5.0, hx: 0.86, hz: 0.44 }, { k: 'pipe', x: 3.7, z: -1.8, hx: 0.84, hz: 0.47 }, { k: 'tank', x: -3.6, z: -5.2, hx: 0.68, hz: 0.91 }, { k: 'box', x: 3.9, z: 8.2, hx: 0.64, hz: 0.53 }],   /* 114B 的模型按 4.8 倍缩（空调 1.3 米高、水箱 1.9 米高），挡的框跟模型一样大 */
-    speakers: [{ x: -6.3, z: -12.3 }, { x: 6.3, z: -12.3 }, { x: 6.3, z: 18.3 }, { x: -6.3, z: 18.3 }] },   /* 顺时针（从上往下看）：西北 → 东北 → 东南 → 西南 */
+    speakers: [{ x: -6.3, z: -12.3 }, { x: 6.3, z: -12.3 }, { x: 6.3, z: 8 }, { x: -6.3, z: 8 }] },   /* 顺时针（从上往下看）：西北 → 东北 → 东南 → 西南。设计 114c：南边两根从 z 18.3 挪到 z 8（两边墙根），原来在右下角按钮底下 */
 };
 export let ARENA = null, COVERS = null;
 export function setStage(n) {
@@ -102,7 +102,7 @@ export const SCREAM_CFG = {
   hornWarn: 1.4, hornR: 11, hornA: 60 * Math.PI / 180, hornK: 1.2, hornPush: 3, hornWallK: 0.3,
   flockWarn: 1.3, flockW: 4, flockK: 1.0, crowN: 3, crowHp: 0.004, crowDps: 0.08, crowR: 1.0, crowSpd: 3.2,
   shriekWarn: 1.5, shriek: 90, confT: 2, confImm: 2,   /* 必吃伤害（躲不掉），fbsim 定；错乱结束后 2 秒内不再错乱 */
-  bombCast: 2.0, bombGap: 0.8, bombWarn: 1.0, bombRingK: 0.6, towerY: 4, tower: { x: 0, z: -14.2 },
+  bombCast: 2.0, bombGap: 0.8, bombWarn: 1.0, bombRingK: 0.6, towerY: 2.6, tower: { x: 0, z: -13.2 },   /* 设计 114c：广播轰炸时站在塔小屋的屋檐上（原来 4 米高、塔前 -14.2，跑出画面上面看不到脸） */
   spkHp: 0.02, rageK: 1.25,
   calm: 1.8, first: 3, gap: 6, gapRage: 5,
   order: ['rings', 'flock', 'horn', 'shriek', 'rings', 'horn', 'bomb', 'flock'],
