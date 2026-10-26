@@ -1,4 +1,4 @@
-/* 设计 114：第 4 关尖啸者——开场全景、每个技能、错乱、喇叭打坏、嗜血、脸在画面里（114c：广播轰炸主角中间 / 南边各一张、嗜血后 3 秒）。SHOTS=逗号分隔只截几张（默认全截） */
+/* 设计 114：第 4 关尖啸者——开场全景、每个技能、错乱、喇叭打坏、嗜血、脸在画面里（114c / 114d：广播轰炸主角中间 / 南边各一张、嗜血后 3 秒）。SHOTS=逗号分隔只截几张（默认全截） */
 export { pre } from './vtime.mjs';
 export default async (pg, shot) => {
   const W = ms => pg.waitForTimeout(ms), ev = (f, a) => pg.evaluate(f, a), T = process.env.TAGW || '844';
@@ -26,9 +26,9 @@ export default async (pg, shot) => {
   await set(0, -2, 0.5, 6); await cast('shriek'); await pump(1.2, { x: 0.5, z: 6 }); await sh('刺耳尖叫_读条'); await until('pconf', 2, { x: 0.5, z: 6 }); await pump(0.3); await sh('错乱');
   /* 尖叫后接闪现 B：落点黑影 → 喷射 */
   await until('blinkMark', 3, { free: 0 }); await pump(0.12); await sh('闪现_烟和落点黑影'); await until('blinkIn', 2); await pump(0.2); await sh('鸦群喷射'); await pump(2);
-  await set(0, -2, 0.5, 3); await cast('bomb'); await pump(1.0, { x: 0.5, z: 3 }); await sh('广播轰炸_BOSS在塔上_主角中间'); await pump(1.6, { x: 0.5, z: 3 }); await sh('广播轰炸_喇叭依次响'); await pump(4, { x: 0.5, z: 3 });
-  /* 设计 114c：主角在南边时 BOSS 在塔上也要看得到脸 */
-  await set(0, -2, 0.5, 16); await cast('bomb'); await pump(1.0, { x: 0.5, z: 16 }); await sh('广播轰炸_BOSS在塔上_主角南边'); await pump(5.6, { x: 0.5, z: 16 });
+  await set(0, -2, 0.5, 3); await cast('bomb'); await pump(1.0, { x: 0.5, z: 3 }); await sh('广播轰炸_主角中间'); await pump(1.6, { x: 0.5, z: 3 }); await sh('广播轰炸_喇叭依次响'); await pump(4, { x: 0.5, z: 3 });
+  /* 设计 114c / 114d：主角在南边时也要看得到 BOSS 的脸（114d 起广播轰炸不上塔） */
+  await set(0, -2, 0.5, 16); await cast('bomb'); await pump(1.0, { x: 0.5, z: 16 }); await sh('广播轰炸_主角南边'); await pump(5.6, { x: 0.5, z: 16 });
   /* 打坏一个喇叭 */
   await ev(() => { const F = __g.FBV.fight(), q = F.speakers[3]; F.player.x = q.x + 2; F.player.z = q.z - 2; q.hp = 1 }); await pump(0.2, { x: -4.3, z: 6 });
   await ev(() => { const F = __g.FBV.fight(), q = F.speakers[3]; q.hp = 0; q.dead = true; F.pend = [{ e: 'spkDie', s: q }] }); await pump(1.0, { x: -4.3, z: 6 }); await sh('喇叭打坏');

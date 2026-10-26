@@ -1,6 +1,6 @@
 /* ================= 设计 114：副本第 4 关「尖啸者 · 废弃广播电台楼顶」的画面（场地、尖啸者、喇叭、掩体、乌鸦、声波特效） =================
    战斗的数和规则在 fbcore.js（SCREAM_CFG、screamStep）；这里照 fbrock.js 的写法：buildScream(api) 返回这一关自己的 boss / 动作 / 每帧 / 事件。
-   素材（114B 出）：models/fb4/ screamer（BOSS，动作名见 SCREAM_ANIM）、tower_house（北边带信号塔的小屋）、stair_house（南边入口小屋，门朝北）、speaker（立杆喇叭，喇叭头节点 horn）、covers（节点 ac / pipe / tank / box）；
+   素材（114B 出）：models/fb4/ screamer（BOSS，动作名见 SCREAM_ANIM）、tower_house（北边带信号塔的小屋；114d 起 BOSS 不上塔，广播轰炸时塔顶红灯闪快）、stair_house（南边入口小屋，门朝北）、speaker（立杆喇叭，喇叭头节点 horn）、covers（节点 ac / pipe / tank / box）；
    img/fb4/ floor、skyline、fx_sound（3×2：声波环、音爆锥、声刃、电火花、黑羽毛、红色尖啸波纹）、fx_blink（3×2：黑紫烟团、落点黑影、羽毛旋涡、紫色错乱漩涡、暗红嗜血光环、红雾）、
    crow / crow_red（3×2：6 帧乌鸦，1～4 扇翅、5 滑翔、6 俯冲）、decals（3×2：裂纹、羽毛堆、锈水渍、断电线、碎玻璃）、boss_4（头像）。
    模型大小不靠素材自己的单位：一律按包围盒缩到要的高度 / 占地（素材换了也不用改这里）。 */
@@ -181,7 +181,8 @@ export function buildScream(api) {
   }
   /* ---------- 每帧：场地 ---------- */
   function frame(dt, clock, fight) {
-    redL.intensity = Math.sin(clock * 3) > 0.2 ? 3 : 0.4; redS.material.opacity = redL.intensity > 1 ? 1 : 0.25;
+    const bombing = !!((fight.boss.cast && fight.boss.cast.k === 'bomb') || (fight.bombQ && fight.bombQ.length) || (fight.warns || []).some(w => w.k === 'bombHorn'));   /* 设计 114d：广播轰炸时塔顶红灯闪快（BOSS 不上塔了，留一点「广播」的感觉） */
+    redL.intensity = Math.sin(clock * (bombing ? 14 : 3)) > 0.2 ? (bombing ? 5 : 3) : 0.4; redS.material.opacity = redL.intensity > 1 ? 1 : 0.25; redS.scale.setScalar(bombing ? 2.2 : 1.4);
     for (const s of deco) { const u = s.userData; u.a += u.sp * dt; u.f += dt * 8; s.position.set(Math.sin(u.a) * u.r, u.y + Math.sin(clock + u.a) * 0.6, (RZ0 + RZ1) / 2 + Math.cos(u.a) * u.r); s.material.map = T.crow[Math.floor(u.f) % 4]; s.scale.set(u.sz * (u.sp > 0 ? 1 : -1), u.sz, 1) }
     /* 乌鸦飞：直线 + 一点弧、扇翅膀；到了就散羽毛 */
     for (let i = crows.length - 1; i >= 0; i--) { const c = crows[i]; c.t += dt; if (c.t < 0) { c.s.visible = false; continue } c.s.visible = true; const k = Math.min(1, c.t / c.life);

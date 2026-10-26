@@ -121,4 +121,12 @@ import { heroStats } from '../../src/js/logic.js';
     ok(st.half && b2.hp === b2.max && a.dead, `设计 114：半血嗜血：没坏的喇叭回满血（${Math.round(b2.hp / b2.max * 100)}%），坏了的还是坏的`) }
   { const st = mk4(), P = st.player, B = st.boss; P.x = 0; P.z = 8; B.x = 0; B.z = 0; const q = st.speakers[0]; let shot = 0; for (let i = 0; i < 30 * 3; i++) { hold(st); B.x = 30; st.step(dt, { fire: true }); if (P.target === q) shot++ }
     ok(shot > 0 || Math.hypot(q.x - P.x, q.z - P.z) > 12, `设计 114：BOSS 不在射程里时打射程里的喇叭`) }
+  /* 设计 114d：广播轰炸不上塔——闪到主角北边 8～10 米、站地上；最后那道声波环从 BOSS 脚下出 */
+  for (const pz of [3, 16]) { const st = mk4(0.61), P = st.player, B = st.boss; P.x = 0.5; P.z = pz; B.x = 0; B.z = -2; hold(st); st.forceCast('bomb'); const d = Math.hypot(B.x - P.x, B.z - P.z), bx = B.x, bz = B.z;
+    let ring = null; for (let i = 0; i < 30 * 6 && !ring; i++) { hold(st); st.step(dt, {}); ring = (st.rings || []).find(r => r.k < 0) || null }
+    ok(!B.y && d >= 7.9 && d <= 10.1 && bz < pz && ring && Math.hypot(ring.x - bx, ring.z - bz) < 0.01, `设计 114d：主角在 z ${pz}，广播轰炸闪到 ${d.toFixed(1)} 米外（z ${bz.toFixed(1)}，高 ${B.y || 0}），声波环从 BOSS 脚下出（${ring ? 'ok' : '没有'}）`) }
+  /* 设计 114d：BOSS 在射程里时先打 BOSS，喇叭离得再近也不打；正在打喇叭时 BOSS 一能打就马上换 */
+  { const st = mk4(), P = st.player, B = st.boss, q = st.speakers[2]; P.x = q.x - 1.2; P.z = q.z; B.x = P.x - 1; B.z = P.z - 6; let spk = 0, boss = 0; for (let i = 0; i < 30 * 2; i++) { hold(st); st.step(dt, { fire: true }); if (P.target === q) spk++; if (P.target === B) boss++ }
+    B.x = 40; for (let i = 0; i < 30; i++) { hold(st); B.x = 40; st.step(dt, { fire: true }) } const onSpk = P.target === q; B.x = P.x - 1; hold(st); st.step(dt, { fire: true }); st.step(dt, { fire: true });
+    ok(spk === 0 && boss > 50 && onSpk && P.target === B, `设计 114d：BOSS 在射程里打 BOSS（BOSS ${boss} 帧、喇叭 ${spk} 帧）；BOSS 走远了打喇叭（${onSpk}），回来马上换回 BOSS（${P.target === B}）`) }
 }

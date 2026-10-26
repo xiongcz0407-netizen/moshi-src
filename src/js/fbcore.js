@@ -102,7 +102,7 @@ export const SCREAM_CFG = {
   hornWarn: 1.4, hornR: 11, hornA: 60 * Math.PI / 180, hornK: 1.2, hornPush: 3, hornWallK: 0.3,
   flockWarn: 1.3, flockW: 4, flockK: 1.0, crowN: 3, crowHp: 0.004, crowDps: 0.08, crowR: 1.0, crowSpd: 3.2,
   shriekWarn: 1.5, shriek: 90, confT: 2, confImm: 2,   /* 必吃伤害（躲不掉），fbsim 定；错乱结束后 2 秒内不再错乱 */
-  bombCast: 2.0, bombGap: 0.8, bombWarn: 1.0, bombRingK: 0.6, towerY: 2.6, tower: { x: 0, z: -13.2 },   /* 设计 114c：广播轰炸时站在塔小屋的屋檐上（原来 4 米高、塔前 -14.2，跑出画面上面看不到脸） */
+  bombCast: 2.0, bombGap: 0.8, bombWarn: 1.0, bombRingK: 0.6, bombR: [8, 10], tower: { x: 0, z: -13.2 },   /* 设计 114d：广播轰炸不上塔，闪到主角北边 8～10 米（bombR）；tower 只剩灭杀时塔那边的特效位置 */
   spkHp: 0.02, rageK: 1.25,
   calm: 1.8, first: 3, gap: 6, gapRage: 5,
   order: ['rings', 'flock', 'horn', 'shriek', 'rings', 'horn', 'bomb', 'flock'],
@@ -255,7 +255,7 @@ export function createFight(n, hero, opt = {}) {
     const cand = targetOf();
     if (L.tg && !inRange(L.tg, 1.5)) L.tg = null;                         // 远出 1.5 米：放
     if (L.tg) { L.out = inRange(L.tg) ? 0 : L.out + dt; if (L.out > 0.5) L.tg = null }   // 出射程 0.5 秒：放
-    if (cand && cand !== L.tg && (!L.tg || L.sw >= 0.4)) { L.tg = cand; L.out = 0; L.sw = 0 }
+    if (cand && cand !== L.tg && (!L.tg || L.sw >= 0.4 || (L.tg.spk && !cand.spk))) { L.tg = cand; L.out = 0; L.sw = 0 }   /* 设计 114d：正在打喇叭、BOSS / 小乌鸦能打了就马上换过去 */
     if (!L.tg && cand) { L.tg = cand; L.sw = 0 }
     return { tg: L.tg, shoot: L.tg && inRange(L.tg) ? L.tg : null };
   }
@@ -264,8 +264,8 @@ export function createFight(n, hero, opt = {}) {
     let best = null, bd = 1e9;
     for (const m of st.mobs) { if (m.dead || m.rise > 0) continue; const d = hyp(m.x - P.x, m.z - P.z); if (d < rng && d < bd && segHit(P.x, P.z, m.x, m.z, 0, true) === null) { best = m; bd = d } }
     if (best) return best;
-    if (!Bo.dead && !Bo.hidden && hyp(Bo.x - P.x, Bo.z - P.z) < rng + BR) return Bo;
-    /* 设计 114：BOSS 不在射程里（或闪走了）时，顺手打射程里没坏的喇叭 */
+    if (!Bo.dead && !Bo.hidden && hyp(Bo.x - P.x, Bo.z - P.z) < rng + BR && !(st.speakers && segHit(P.x, P.z, Bo.x, Bo.z, 0, true) !== null)) return Bo;
+    /* 设计 114：BOSS 不在射程里（或闪走了）时，顺手打射程里没坏的喇叭。114d：BOSS 被掩体挡着也算打不到 */
     if (st.speakers) { let sp = null, sd = 1e9; for (const q of st.speakers) { if (q.dead) continue; const d = hyp(q.x - P.x, q.z - P.z); if (d < rng && d < sd && segHit(P.x, P.z, q.x, q.z, 0, true) === null) { sp = q; sd = d } } if (sp) return sp }
     return null;
   }
@@ -639,6 +639,13 @@ export function createFight(n, hero, opt = {}) {
     if (!best) for (let i = 0; i < 60 && !best; i++) { const x = ARENA.x0 + 1 + rnd() * (ARENA.x1 - ARENA.x0 - 2), z = ARENA.z0 + 1 + rnd() * (ARENA.z1 - ARENA.z0 - 2); if (okSpot(x, z) && hyp(x - P.x, z - P.z) > 5) best = { x, z } }
     return best || { x: ARENA.boss.x, z: ARENA.boss.z };
   }
+  /* 设计 114d：广播轰炸的落点——主角北边 8～10 米（偏北 ±50°），规则跟闪现 A 一样（不出场地、不进掩体、不压喇叭杆）；找不到就用闪现 A 的落点 */
+  function bombSpot() {
+    let best = null, bs = -1e9;
+    for (let i = 0; i < 40; i++) { const a = Math.PI + (rnd() - 0.5) * 1.75, r = SC.bombR[0] + rnd() * (SC.bombR[1] - SC.bombR[0]), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r;
+      if (!okSpot(x, z)) continue; const sc = -Math.abs(x) * 0.15 + rnd(); if (sc > bs) { bs = sc; best = { x, z } } }
+    return best || blinkSpot('A');
+  }
   function startBlink(kind, after = null) {
     const q = blinkSpot(kind); if (!q) { if (after === 'push') kind = 'A'; else return false }
     const to = q || blinkSpot('A'); if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null;
@@ -668,7 +675,7 @@ export function createFight(n, hero, opt = {}) {
       if (st.half) { const x = clamp(P.x, ARENA.x0 + SC.flockW / 2, ARENA.x1 - SC.flockW / 2); c.ws.push(swarn({ type: 'line', x, z: ARENA.z0 - 0.3, yaw: 0, len: ARENA.z1 - ARENA.z0 + 0.6, w: SC.flockW, sd: 0 }, 'flock', c.dur)) }   // 嗜血：两条带交叉
       setAnim('spread', SCREAM_ANIM.spread.hit / c.dur) }
     else if (k === 'shriek') { c.dur = SC.shriekWarn; setAnim('scream', SCREAM_ANIM.scream.hit / c.dur) }
-    else if (k === 'bomb') { c.dur = SC.bombCast; E('blinkOut', { x: b.x, z: b.z, y: b.y || 0 }); b.x = SC.tower.x; b.z = SC.tower.z; b.y = SC.towerY; b.yaw = Math.atan2(P.x - b.x, P.z - b.z); E('blinkIn', { x: b.x, z: b.z, y: b.y, tower: true });
+    else if (k === 'bomb') { c.dur = SC.bombCast; const q = bombSpot(); E('blinkOut', { x: b.x, z: b.z, y: b.y || 0 }); b.x = q.x; b.z = q.z; b.y = 0; b.yaw = Math.atan2(P.x - b.x, P.z - b.z); E('blinkIn', { x: b.x, z: b.z, y: 0 });   /* 设计 114d：不上北边的塔，闪到主角北边 8～10 米的屋顶上（全程看得到脸） */
       for (const q of st.speakers) if (!q.dead) E('hornCharge', { s: q, dur: c.dur }); setAnim('scream', SCREAM_ANIM.scream.hit / c.dur) }
     b.cast = c; b.act = 'cast'; b.interruptible = k === 'horn' || k === 'flock' || k === 'push';
     E('cast', { k, dur: c.dur, ult: k === 'bomb', name: SCREAM_NAME[k], hide: !!c.hideBar });
@@ -703,8 +710,10 @@ export function createFight(n, hero, opt = {}) {
       rec = 0.3; c.thenB = true }
     else if (c.k === 'bomb') { const live = st.speakers.filter(q => !q.dead);
       live.forEach((q, i) => st.bombQ.push({ t: i * SC.bombGap, f: () => { const w = swarn({ type: 'fan', x: q.x, z: q.z, yaw: Math.atan2(P.x - q.x, P.z - q.z), r: SC.hornR, r0: 0.5, a: SC.hornA, spk: q.id, ult: true }, 'bombHorn', SC.bombWarn); w.spkRef = q } }));
-      ringGo(SC.tower.x, SC.tower.z, -1, Math.atan2(P.x - SC.tower.x, P.z - SC.tower.z) + (rnd() - 0.5) * 1.2, -(live.length * SC.bombGap + SC.bombWarn) * SC.ringSpd);
-      rec = live.length * SC.bombGap + SC.bombWarn + 0.6; c.thenA = true; b.onTower = true }
+      /* 设计 114d：最后那道全场声波环从 BOSS 脚下发出；缺口跟声波三环第 1 道一样，在主角那边偏一点（走得到） */
+      const pa = Math.atan2(P.x - b.x, P.z - b.z), sg = rnd() < 0.5 ? -1 : 1;
+      ringGo(b.x, b.z, -1, pa - sg * (0.15 + rnd() * 0.3), -(live.length * SC.bombGap + SC.bombWarn) * SC.ringSpd);
+      rec = live.length * SC.bombGap + SC.bombWarn + 0.6 }   /* 本来就在地上，放完不用闪回 */
     b.act = 'recover'; b.at = rec; b.lastK = c.k; b.then = c.thenB ? 'B' : c.thenA ? 'A' : null;
   }
   function screamRage() {   /* 灭杀：BOSS 回到地上、看得见；喇叭都修好 */
