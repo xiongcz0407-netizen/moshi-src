@@ -33,6 +33,11 @@ export const STAGES = {
   4: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 0.9, hitY: 2.2,
     covers: [{ k: 'ac', x: -4.0, z: 5.0, hx: 0.86, hz: 0.44 }, { k: 'pipe', x: 3.7, z: -1.8, hx: 0.84, hz: 0.47 }, { k: 'tank', x: -3.6, z: -5.2, hx: 0.68, hz: 0.91 }, { k: 'box', x: 3.9, z: 8.2, hx: 0.64, hz: 0.53 }],   /* 114B 的模型按 4.8 倍缩（空调 1.3 米高、水箱 1.9 米高），挡的框跟模型一样大 */
     speakers: [{ x: -6.3, z: -12.3 }, { x: 6.3, z: -12.3 }, { x: 6.3, z: 8 }, { x: -6.3, z: 8 }] },   /* 顺时针（从上往下看）：西北 → 东北 → 东南 → 西南。设计 114c：南边两根从 z 18.3 挪到 z 8（两边墙根），原来在右下角按钮底下 */
+  /* 设计 116：第 5 关装甲暴君 · 废弃军事实验室。宽 14、长 32；南边被炸开的防爆门（主角从门里进来），北边碎大培养舱（BOSS 从里面出来）。
+     BOSS 纯远程、走得慢，不锁战斗区。4 个掩体（翻倒手推车、弹药箱堆、断培养舱底座、倒下的金属柜）；4 个能量柱插座（护盾时升柱） */
+  5: { arena: { x0: -7, x1: 7, z0: -13, z1: 19, start: { x: 0, z: 17.6 }, boss: { x: 0, z: -9.5 } }, bossR: 1.3, hitY: 3.0,
+    covers: [{ k: 'cart', x: -4.0, z: 5.4, hx: 0.95, hz: 0.6 }, { k: 'ammo', x: 3.9, z: -1.6, hx: 0.8, hz: 0.75 }, { k: 'base', x: -3.7, z: -5.4, hx: 0.85, hz: 0.85 }, { k: 'cabinet', x: 3.8, z: 8.6, hx: 0.75, hz: 0.64 }],   /* 116B：挡的框按模型宽深比（倒下的金属柜 0.33 × 0.28） */
+    sockets: [{ x: -4.6, z: -9.6 }, { x: 4.6, z: -9.6 }, { x: -5.2, z: 1.6 }, { x: 5.2, z: 4.6 }] },
 };
 export let ARENA = null, COVERS = null;
 export function setStage(n) {
@@ -110,6 +115,28 @@ export const SCREAM_CFG = {
 /* 尖啸者动作的时间（screamer.glb，114B 的 tools/scream_rig 导出；hit = 出手 / 推到最前 / 叫到最响那一刻）。名字照设计114 第 2 节 */
 export const SCREAM_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.2, loop: 1, speed: 0.119 }, throw: { T: 0.9, hit: 0.5 }, push: { T: 0.8, hit: 0.45 }, spread: { T: 1.4, hit: 1.0 },
   scream: { T: 1.6, hit: 1.2 }, horn: { T: 1.4, hit: 1.2 }, vanish: { T: 0.25 }, appear: { T: 0.3 }, rage: { T: 1.8 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.0, hit: 1.55 } };   /* walk.speed：114B 给的 0.134 模型单位 / 秒 × 缩放（3.4 / 1.13）÷ SCREAM_K */
+/* 设计 116：装甲暴君（第 5 关）的数。普通技能 = BOSSES[5].dmg，大招 = ult。招式表见设计116 第 4 节。
+   不要动的手感数：安静 1.2 秒（calm）、封锁 3 秒（lockT）、牵引 1.2 秒（pullT）、霰弹炮预警 0.5 秒（shotWarn）、网格两段间隔 0.6 秒（gridGap）、地毯两波间隔 0.8 秒（carpetGap） */
+export const TYRANT_K = 4.5;   // BOSS 高约 4.5 米（主角 2.5 倍）：模型按包围盒高度缩到这么高
+export const TYRANT_CFG = {
+  walk: 0.9, walkHalf: 1.3, walkFrom: 9,
+  gunN: 3, gunN2: 5, gunR: 1, gunGap: 0.3, gunWarn: 0.6, gunK: 0.28, gunEvery: 1.6, gunGuard: 1.2, kneelGun: 2,
+  laserWarn: 1.2, laserLen: 16, laserW: 0.8, laserT: 2.0, laserT2: 2.0, laserK: 1.0,
+  missN: 5, missR: 1.6, missGap: 0.35, missWarn: 1.0, missK: 0.8, missFireT: 3, fireK: 0.12,
+  gridWarn: 1.4, gridGap: 0.6, gridW: 0.8, gridCell: 2.5, gridK: 0.9,
+  carpetWarn: 1.6, carpetGap: 0.8, carpetStep: 2.0, carpetR: 1.15, carpetSafe: 3, carpetSafeR: 1.7, carpetMove: 5, carpetK: 0.8, carpetFireP: 0.15, carpetFireT: 2,
+  pylonHp: 0.02, shieldDr: 0.8, arcK: 0.22, arcW: 0.6, breakT: 2, breakK: 1.3, shieldMax: 25,
+  pullWarn: 1.0, pullR: 4, pullT: 1.2, pullSpd: 9, pullStop: 1.8, shotWarn: 0.5, shotR: 5, shotA: Math.PI / 2, shotK: 1.4, shotPush: 3,
+  empWarn: 1.5, emp: 320, lockT: 3, lockImm: 3,
+  cannonWarn: 3.0, cannonLen: 34, cannonW: 1.6, cannonTurn: 0.42, meltT: 4, meltK: 0.2,
+  halfDr: -0.15, calm: 1.2, first: 3, gap: 5, gapHalf: 4.5,
+  order: ['grid', 'missile', 'laser', 'pull', 'carpet', 'shield', 'emp', 'grid', 'cannon'],
+};
+/* 装甲暴君动作的时间（tyrant.glb，116B 的 tools/tyrant_rig 导出）。名字照设计116 第 2 节 */
+export const TYRANT_ANIM = { idle: { T: 2.4, loop: 1 }, walk: { T: 1.4, loop: 1, speed: 0.126 }, fire: { T: 0.9, loop: 1 }, sweep: { T: 2.0 }, missile: { T: 1.0, hit: 0.6 }, carpet: { T: 1.6, hit: 1.2 }, grid: { T: 1.2, hit: 1.0 },
+  kneel: { T: 0.8 }, kneel_loop: { T: 2.0, loop: 1 }, shield_break: { T: 2.0 }, pull: { T: 1.2 }, shotgun: { T: 0.9, hit: 0.45 }, emp: { T: 1.5, hit: 1.3 }, charge: { T: 1.0, loop: 1 }, cannon: { T: 1.0, hit: 0.2 },
+  armor_break: { T: 1.6, hit: 0.5 }, hit: { T: 0.4 }, stagger: { T: 0.7 }, die: { T: 2.4, hit: 1.85 } };   /* walk.speed：116B 给的 0.134 模型单位 / 秒 × 缩放（4.5 / 1.06）÷ TYRANT_K */
+export const TYRANT_NAME = { laser: '旋转激光', missile: '导弹齐射', grid: '激光网格（全场）', carpet: '地毯轰炸（全场）', shield: '能量护盾', pull: '电磁牵引', shotgun: '贴脸霰弹炮', emp: '电磁脉冲（全场）', cannon: '过载主炮（大招）' };
 export const SCREAM_NAME = { bolt: '鸦弹', push: '鸦群喷射', rings: '声波三环', horn: '喇叭音爆', flock: '乌鸦群', shriek: '刺耳尖叫（全场）', bomb: '广播轰炸（大招）' };
 const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angD = (a, b) => { let d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)) };
@@ -163,7 +190,7 @@ export function inWarn(w, x, z, r = 0.35) {
 }
 
 export function createFight(n, hero, opt = {}) {
-  const SG = setStage(n), BR = SG.bossR, TOX = n === 2, ROCK = n === 3, SCR = n === 4;   /* 设计 114：第 4 关尖啸者 */   /* 设计 81：第 2 关毒囊（不走动，在北边崖下） */
+  const SG = setStage(n), BR = SG.bossR, TOX = n === 2, ROCK = n === 3, SCR = n === 4, TYR = n === 5;   /* 设计 116：第 5 关装甲暴君 */   /* 设计 114：第 4 关尖啸者 */   /* 设计 81：第 2 关毒囊（不走动，在北边崖下） */
   const B = BOSSES[n], rnd = opt.rng || Math.random, warnT = FB.warn(n);
   const st = {
     n, t: 0, clk: 0, locked: SG.lockZ == null, lockZ: SG.lockZ ?? null, over: 0, win: false, rage: false, ev: [], warns: [], mobs: [], shots: [], nades: [], nid: 1, pools: [], zones: [], hazards: [], moveK: 1, half: false, shrink: 0, bossR: BR, hitY: SG.hitY,
@@ -184,6 +211,7 @@ export function createFight(n, hero, opt = {}) {
   if (SCR) { const SC0 = SCREAM_CFG; Bo.act = 'wait'; Bo.skillT = SC0.first; Bo.look = 'p'; Bo.basicCd = 1.2; Bo.blinkT = SC0.blinkEvery[0]; Bo.blinkCd = 0; Bo.y = 0; Bo.hidden = false; st.rings = []; st.bombQ = [];
     st.speakers = SG.speakers.map((q, i) => ({ id: 'spk' + i, i, spk: true, x: q.x, z: q.z, yaw: Math.atan2(-q.x, (ARENA.z0 + ARENA.z1) / 2 - q.z), hp: B.hp * SC0.spkHp, max: B.hp * SC0.spkHp, dead: false }));
     Object.assign(st.stats, { conf: 0, pushHit: 0, hornHit: 0, spkKill: 0, blinkA: 0, blinkB: 0 }) }
+  if (TYR) { Bo.act = 'wait'; Bo.skillT = TYRANT_CFG.first; Bo.look = 'p'; Bo.gunCd = 1.2; st.queue = []; st.fires = []; st.melts = []; st.beam = null; st.pull = null; st.pylons = null; st.coverVer = 0 }
   /* ---------- 设计 83：会走动的 BOSS 找路、卡住换招（通用：这一关配置里有 walk 就用） ---------- */
   const WK = SG.walk || null; let NG = null;
   const navGrid = () => { const k = `${ARENA.x0},${ARENA.x1},${st.coverVer || 0}`; if (!NG || NG.k2 !== k) { NG = makeGrid(ARENA, COVERS, CFG.coverR); NG.k2 = k } return NG };
@@ -227,7 +255,7 @@ export function createFight(n, hero, opt = {}) {
     return a;
   }
   function hitEnemy(tg, dmg, crit, kind) {
-    if (tg === Bo) { if (Bo.dead) return; if (st.rage) { if (!(st.immT > 0)) { st.immT = 1; E('immune') } return }   /* 设计 106b：灭杀一开始 BOSS 无敌，不掉血（「免疫」字 1 秒最多一次） */ if (Bo.armorT > 0) dmg *= ROCK_CFG.armor; Bo.hp -= dmg; st.stats.dmg += dmg; if (hero.bleed) { Bo.bleed = 3; Bo.bleedDps = Math.max(Bo.bleedDps, dmg * 0.1) } if (hero.slow) Bo.slowHit = 1.5;
+    if (tg === Bo) { if (Bo.dead) return; if (st.rage) { if (!(st.immT > 0)) { st.immT = 1; E('immune') } return }   /* 设计 106b：灭杀一开始 BOSS 无敌，不掉血（「免疫」字 1 秒最多一次） */ if (Bo.armorT > 0) dmg *= ROCK_CFG.armor; if (TYR) { if (Bo.shield) dmg *= 1 - TYRANT_CFG.shieldDr; if (Bo.vuln > 0) dmg *= TYRANT_CFG.breakK; if (st.half) dmg *= 1 - TYRANT_CFG.halfDr }   /* 设计 116：护盾 −80%、破盾瘫着 +30%、破甲后 +15% */ Bo.hp -= dmg; st.stats.dmg += dmg; if (hero.bleed) { Bo.bleed = 3; Bo.bleedDps = Math.max(Bo.bleedDps, dmg * 0.1) } if (hero.slow) Bo.slowHit = 1.5;
       E('hit', { who: 'boss', a: Math.round(dmg), crit, kind }); if (Bo.hp <= 0) { Bo.hp = 0; bossDie() } }
     else if (tg.spk) { if (tg.dead) return; tg.hp -= dmg; E('hit', { who: 'spk', m: tg, a: Math.round(dmg), crit }); if (tg.hp <= 0) { tg.hp = 0; tg.dead = true; st.stats.spkKill++; E('spkDie', { s: tg }) } }   /* 设计 114：喇叭 */
     else { if (tg.dead) return; tg.hp -= dmg; E('hit', { who: 'mob', m: tg, a: Math.round(dmg), crit }); if (tg.hp <= 0) { tg.dead = true; tg.deadT = 0; st.stats.mobsKilled++; E('mobDie', { m: tg }) } }
@@ -240,7 +268,7 @@ export function createFight(n, hero, opt = {}) {
     return b.yaw;
   }
   function bossDie() {
-    Bo.dead = true; Bo.cast = null; st.warns.length = 0; Bo.act = 'dead'; if (SCR) { Bo.hidden = false; Bo.y = 0; Bo.onTower = false; st.rings.length = 0; st.bombQ.length = 0 } if (!TOX) Bo.yaw = fallYaw(Bo); Bo.look = null; setAnim('die');
+    Bo.dead = true; Bo.cast = null; st.warns.length = 0; Bo.act = 'dead'; if (SCR) { Bo.hidden = false; Bo.y = 0; Bo.onTower = false; st.rings.length = 0; st.bombQ.length = 0 } if (TYR) tyRage(); if (!TOX) Bo.yaw = fallYaw(Bo); Bo.look = null; setAnim('die');
     for (const m of st.mobs) if (!m.dead) { m.dead = true; m.deadT = 0; E('mobDie', { m }) }
     E('bossDie'); end(true);
   }
@@ -316,7 +344,7 @@ export function createFight(n, hero, opt = {}) {
   function doomStep(dt) {
     if (Bo.dead) return false;
     if (!st.rage) { if (st.t < FB.time) return false;
-      st.rage = true; if (SCR) screamRage(); if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
+      st.rage = true; if (SCR) screamRage(); if (TYR) tyRage(); if (st.rain) { st.rain = null; E('rainEnd') } Bo.armorT = 0; if (Bo.cast && Bo.cast.cancel) Bo.cast.cancel(); Bo.cast = null; st.warns.length = 0; Bo.interruptible = false; Bo.calm = 0; Bo.look = 'p';
       st.doom = { n: 0, t: 0, ph: 'cast' }; E('rage'); doomCast(); return true }
     const D = st.doom; D.t += dt; if (st.immT > 0) st.immT -= dt; if (Bo.cast) Bo.cast.t = D.ph === 'cast' ? D.t : Bo.cast.t;
     if (D.ph === 'cast' && D.t >= FB.doom.cast) { D.n++; D.ph = 'wait'; D.t = 0; Bo.cast = null; Bo.act = 'doomWait'; E('doomHit', { n: D.n });
@@ -325,12 +353,13 @@ export function createFight(n, hero, opt = {}) {
     return true;
   }
   function doomCast() { Bo.act = 'doom'; Bo.interruptible = false; Bo.cast = { k: 'doom', t: 0, dur: FB.doom.cast, ws: [], w: { ult: true }, doom: true }; Bo.yaw = Math.atan2(P.x - Bo.x, P.z - Bo.z);
-    setAnim(TOX ? 'enrage' : ROCK ? 'roar' : SCR ? 'scream' : 'enrage', ROCK ? ROCK_ANIM.roar.hit / FB.doom.cast : SCR ? SCREAM_ANIM.scream.hit / FB.doom.cast : 1); E('cast', { k: 'doom', dur: FB.doom.cast, ult: true, name: '灭杀（全场）' }) }
+    setAnim(TOX ? 'enrage' : ROCK ? 'roar' : SCR ? 'scream' : TYR ? 'charge' : 'enrage', ROCK ? ROCK_ANIM.roar.hit / FB.doom.cast : SCR ? SCREAM_ANIM.scream.hit / FB.doom.cast : 1); E('cast', { k: 'doom', dur: FB.doom.cast, ult: true, name: '灭杀（全场）' }) }
   function bossStep(dt) {
-    if (doomStep(dt)) { if (SCR) screamHazards(dt); return }
+    if (doomStep(dt)) { if (SCR) screamHazards(dt); if (TYR) tyHazards(dt); return }
     if (TOX) { toxStep(dt); return }
     if (ROCK) { rockStep(dt); return }
     if (SCR) { screamStep(dt); return }
+    if (TYR) { tyStep(dt); return }
     const b = Bo; if (b.dead) return;
     const tf = b.slow > 0 ? 0.5 : 1; if (b.slow > 0) b.slow -= dt;
     if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
@@ -771,11 +800,150 @@ export function createFight(n, hero, opt = {}) {
     if (b.blinkT <= 0) { const E2 = st.half ? SC.blinkEveryRage : SC.blinkEvery; b.blinkT = E2[0] + rnd() * (E2[1] - E2[0]); if (startBlink(rnd() < (st.half ? SC.blinkBRage : SC.blinkB) ? 'B' : 'A')) return }
     if (b.basicCd <= 0 && b.skillT > SC.boltGuard && d < 20) { screamCast('bolt'); return }
   }
+  /* ---------- 设计 116：装甲暴君（第 5 关）。纯远程、走得慢；技能之间安静 1.2 秒，安静时间一直机炮点射；大技能 5 秒一招，只在闲着（含安静）时倒数 ---------- */
+  const TY = TYRANT_CFG;
+  const twarn = (w, k, dur) => { w.id = st.nid++; w.k = k; w.t = 0; w.dur = dur; st.warns.push(w); return w };
+  const tdrop = w => { const i = st.warns.indexOf(w); if (i >= 0) st.warns.splice(i, 1) };
+  const inArena = (x, z, m = 0.6) => x > ARENA.x0 + m && x < ARENA.x1 - m && z > ARENA.z0 + m && z < ARENA.z1 - m;
+  /* 机炮点射：主角脚下小圆一连 3 个（半血 5 个），每个跟着主角出；掩体挡（BOSS 到圈心中间有掩体就打不到） */
+  function gunBurst() { const n = st.half ? TY.gunN2 : TY.gunN; for (let i = 0; i < n; i++) st.queue.push({ t: i * TY.gunGap, f: () => { if (Bo.dead || st.rage) return; twarn({ type: 'circle', x: clamp(P.x, ARENA.x0 + 0.5, ARENA.x1 - 0.5), z: clamp(P.z, ARENA.z0 + 0.5, ARENA.z1 - 0.5), r: TY.gunR }, 'gun', TY.gunWarn) } }); E('gunFire', { n, dur: (n - 1) * TY.gunGap + TY.gunWarn }) }
+  /* 激光网格：横线、竖线随机，但格子（两条线之间的空地）至少 2.5 米宽，而且主角附近一定有一条线 */
+  function gridLines(n, lo, hi, near) {
+    const W = TY.gridW, need = TY.gridCell + W;   // 两条线中心至少隔开这么多
+    for (let tr = 0; tr < 60; tr++) { const xs = [clamp(near + (rnd() - 0.5) * 1.6, lo + 0.6, hi - 0.6)];
+      for (let k = 0; k < 200 && xs.length < n; k++) { const v = lo + 0.6 + rnd() * (hi - lo - 1.2); if (xs.every(q => Math.abs(q - v) >= need)) xs.push(v) }
+      if (xs.length === n) return xs.sort((a, b) => a - b) }
+    const out = []; for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * (i + 0.5) / n); return out;   // 放不下就平均分
+  }
+  /* 地毯轰炸：全场一格一个圆（间隔 2 米），安全地 3～4 块（半血少 1 块）附近的圆不亮；第一块安全地离主角 2.5～5 米（跑得到） */
+  function carpetWave(prev) {
+    const nSafe = (st.half ? TY.carpetSafe - 1 : TY.carpetSafe) + (rnd() < 0.5 ? 1 : 0), safe = [];
+    const ok = (x, z) => inArena(x, z, 1.6) && !inCover(x, z, 0.8) && safe.every(q => hyp(q.x - x, q.z - z) > 4.5);
+    if (!prev) { for (let t = 0; t < 60; t++) { const a = rnd() * 6.283, r = 2.5 + rnd() * 2.5, x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if (ok(x, z)) { safe.push({ x, z }); break } } }
+    else for (const q of prev) { for (let t = 0; t < 60; t++) { const a = rnd() * 6.283, r = 2.6 + rnd() * 2.2, x = q.x + Math.sin(a) * r, z = q.z + Math.cos(a) * r; if (ok(x, z) && hyp(x - q.x, z - q.z) <= TY.carpetMove) { safe.push({ x, z }); break } } }   /* 第二波：每块安全地都在第一波某块安全地 5 米以内 */
+    for (let t = 0; t < 200 && safe.length < nSafe; t++) { const x = ARENA.x0 + 1.6 + rnd() * (ARENA.x1 - ARENA.x0 - 3.2), z = ARENA.z0 + 1.6 + rnd() * (ARENA.z1 - ARENA.z0 - 3.2); if (ok(x, z) && (!prev || prev.some(q => hyp(q.x - x, q.z - z) <= TY.carpetMove))) safe.push({ x, z }) }
+    const pts = []; for (let x = ARENA.x0 + 1; x < ARENA.x1; x += TY.carpetStep) for (let z = ARENA.z0 + 1; z < ARENA.z1; z += TY.carpetStep) if (!safe.some(q => hyp(q.x - x, q.z - z) < TY.carpetSafeR + TY.carpetR - 0.2)) pts.push({ x, z });
+    return { pts, safe };
+  }
+  function pylonsUp() {   /* 能量护盾：插座升柱（3 根，半血 4 根），柱子之间连电弧 */
+    const n = st.half ? 4 : 3, socks = [...SG.sockets].sort((a, b) => hyp(a.x - P.x, a.z - P.z) - hyp(b.x - P.x, b.z - P.z)).slice(0, n);
+    st.pylons = socks.map((q, i) => { const m = { id: st.nid++, pylon: true, x: q.x, z: q.z, yaw: 0, hp: B.hp * TY.pylonHp, max: B.hp * TY.pylonHp, rise: 0.5, stun: 0, cd: 0, dead: false, si: SG.sockets.indexOf(q) }; st.mobs.push(m); E('mobSpawn', { m }); return m });
+    st.shieldT = 0; E('shieldUp', { n });
+  }
+  function shieldOff(broken) { if (!st.pylons) return; for (const m of st.pylons) if (!m.dead) { m.dead = true; m.deadT = 0; m.quiet = true } st.pylons = null; Bo.shield = false; E('shieldDown', { broken }); if (broken) { Bo.act = 'stun'; Bo.at = TY.breakT; Bo.vuln = TY.breakT; Bo.cast = null; setAnim('shield_break'); st.stats.shieldT = (st.stats.shieldT || 0) + st.shieldT; st.stats.shieldN = (st.stats.shieldN || 0) + 1 } }
+  const arcSegs = () => { const ps = (st.pylons || []).filter(m => !m.dead && m.rise <= 0); if (ps.length < 2) return []; const out = []; for (let i = 0; i < ps.length; i++) { const a = ps[i], b = ps[(i + 1) % ps.length]; if (ps.length === 2 && i === 1) break; out.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z }) } return out };
+  function tyCast(k) {
+    const b = Bo, c = { k, t: 0, ws: [], w: { ult: k === 'cannon' } }, dx = P.x - b.x, dz = P.z - b.z;
+    st.stats.casts[k] = (st.stats.casts[k] || 0) + 1; b.yaw = Math.atan2(dx, dz); b.look = 'p';
+    c.cancel = () => { for (const w of c.ws) tdrop(w); if (k === 'missile') st.queue = st.queue.filter(q => q.c !== c) };
+    if (k === 'laser') { c.dur = TY.laserWarn; c.ws.push(twarn({ type: 'line', x: b.x, z: b.z, yaw: b.yaw, len: TY.laserLen, w: TY.laserW }, 'laserAim', c.dur)); setAnim('idle') }
+    else if (k === 'missile') { c.dur = missileQueue(c); setAnim('missile', TYRANT_ANIM.missile.hit / Math.min(TYRANT_ANIM.missile.hit, c.dur)) }
+    else if (k === 'grid') { c.dur = TY.gridWarn; const nh = st.half ? 5 : 4, nv = st.half ? 4 : 3;
+      for (const z of gridLines(nh, ARENA.z0, ARENA.z1, P.z)) c.ws.push(twarn({ type: 'line', x: ARENA.x0 - 0.2, z, yaw: Math.PI / 2, len: ARENA.x1 - ARENA.x0 + 0.4, w: TY.gridW, h: 1 }, 'gridH', TY.gridWarn));
+      for (const x of gridLines(nv, ARENA.x0, ARENA.x1, P.x)) c.ws.push(twarn({ type: 'line', x, z: ARENA.z0 - 0.2, yaw: 0, len: ARENA.z1 - ARENA.z0 + 0.4, w: TY.gridW, v: 1 }, 'gridV', TY.gridWarn + TY.gridGap));
+      setAnim('grid', TYRANT_ANIM.grid.hit / c.dur); E('alarm', { col: 'red', dur: TY.gridWarn + TY.gridGap }) }
+    else if (k === 'carpet') { c.dur = TY.carpetWarn; const W1 = carpetWave(null); c.safe = W1.safe; c.ws.push(twarn({ type: 'multi', pts: W1.pts, r: TY.carpetR, x: P.x, z: P.z, safe: W1.safe, wave: 1 }, 'carpet', c.dur));
+      setAnim('carpet', TYRANT_ANIM.carpet.hit / c.dur) }
+    else if (k === 'shield') { c.dur = TYRANT_ANIM.kneel.T; setAnim('kneel') }
+    else if (k === 'pull') { c.dur = TY.pullWarn; c.ws.push(twarn({ type: 'circle', x: b.x, z: b.z, r: TY.pullR, pull: 1 }, 'pullAim', c.dur)); setAnim('pull', 1) }
+    else if (k === 'shotgun') { c.dur = TY.shotWarn; c.ws.push(twarn({ type: 'fan', x: b.x, z: b.z, yaw: b.yaw, r: TY.shotR, r0: 0.6, a: TY.shotA }, 'shotgun', c.dur)); setAnim('shotgun', TYRANT_ANIM.shotgun.hit / c.dur) }
+    else if (k === 'emp') { c.dur = TY.empWarn; setAnim('emp', TYRANT_ANIM.emp.hit / c.dur); E('alarm', { col: 'blue', dur: c.dur }) }
+    else if (k === 'cannon') { c.dur = TY.cannonWarn; c.ws.push(twarn({ type: 'line', x: b.x, z: b.z, yaw: b.yaw, len: TY.cannonLen, w: TY.cannonW, ult: true }, 'cannonAim', c.dur)); setAnim('charge', 1) }
+    b.cast = c; b.act = 'cast'; b.interruptible = k === 'missile' || k === 'pull';
+    E('cast', { k, dur: c.dur, ult: k === 'cannon', name: TYRANT_NAME[k] });
+  }
+  /* 导弹齐射：主角周围依次 5 个圆（第 1 个在脚下），每个 1 秒预警，间隔 0.35 秒；没发的被打断就不发 */
+  function missileQueue(c) { for (let i = 0; i < TY.missN; i++) st.queue.push({ c, t: i * TY.missGap, f: () => { if (Bo.dead || st.rage) return; let x = P.x, z = P.z; if (i > 0) { const a = rnd() * 6.283, r = 1 + rnd() * 2.8; x = P.x + Math.sin(a) * r; z = P.z + Math.cos(a) * r }
+      const w = twarn({ type: 'circle', x: clamp(x, ARENA.x0 + 0.8, ARENA.x1 - 0.8), z: clamp(z, ARENA.z0 + 0.8, ARENA.z1 - 0.8), r: TY.missR }, 'miss', TY.missWarn); E('missGo', { x: w.x, z: w.z, fly: TY.missWarn, id: w.id }) } });
+    return (TY.missN - 1) * TY.missGap + 0.3 }
+  function tyRelease() {
+    const b = Bo, c = b.cast; b.cast = null; if (c.k !== 'grid') for (const w of c.ws) tdrop(w);   /* 网格的横线、竖线留着，到点由下面结算 */
+    let rec = 0.5, then = null;
+    if (c.k === 'laser') { const n = st.half ? 2 : 1, y0 = c.ws[0].yaw; st.beam = { t: 0, dur: st.half ? TY.laserT2 : TY.laserT, n, y0: st.half ? y0 : y0 - Math.PI / 2, span: Math.PI, dir: rnd() < 0.5 ? 1 : -1, hit: false, x: b.x, z: b.z };
+      if (st.beam.dir < 0 && !st.half) st.beam.y0 = y0 + Math.PI / 2; E('beamGo', { n }); setAnim('sweep', TYRANT_ANIM.sweep.T / st.beam.dur); rec = st.beam.dur + 0.3 }
+    else if (c.k === 'missile') { rec = TY.missWarn + 0.3 }
+    else if (c.k === 'grid') { rec = TY.gridGap + 0.4 }   // 竖线还挂着（0.6 秒后打）
+    else if (c.k === 'carpet') { const w = c.ws[0]; E('carpetHit', { pts: w.pts, wave: 1 }); if (inWarn(w, P.x, P.z, 0.3)) { hurtPlayer(bossDmg(false) * TY.carpetK, 'carpet'); st.stats.carpetHit = (st.stats.carpetHit || 0) + 1 } carpetFire(w.pts);
+      const W2 = carpetWave(c.safe); twarn({ type: 'multi', pts: W2.pts, r: TY.carpetR, x: P.x, z: P.z, safe: W2.safe, wave: 2 }, 'carpet2', TY.carpetGap); rec = TY.carpetGap + 0.4 }
+    else if (c.k === 'shield') { b.shield = true; pylonsUp(); b.act = 'kneel'; b.kneelGun = TY.kneelGun; setAnim('kneel_loop'); return }
+    else if (c.k === 'pull') { st.pull = { t: 0, dur: TY.pullT }; P.pullT = TY.pullT; E('pullGo', { dur: TY.pullT }); b.act = 'pulling'; b.interruptible = true; b.cast = { k: 'pull', t: 0, dur: TY.pullT, ws: [], w: { ult: false }, nm: '电磁牵引', cancel: () => { st.pull = null; P.pullT = 0 } }; return }
+    else if (c.k === 'shotgun') { const w = c.ws[0]; E('shotgunGo', { w }); if (inWarn(w, P.x, P.z) && hurtPlayer(bossDmg(false) * TY.shotK, 'shotgun') > 0) { st.stats.shotHit = (st.stats.shotHit || 0) + 1; const ex = P.x - b.x, ez = P.z - b.z, el = hyp(ex, ez) || 1; E('knock', { x: ex / el * TY.shotPush * 6, z: ez / el * TY.shotPush * 6 }) } rec = 0.3; then = 'missile' }
+    else if (c.k === 'emp') { E('empGo'); hurtPlayer(TY.emp, 'emp', true); if (!P.dead && !(P.lockImm > 0) && !(P.pullT > 0)) { P.lockT = TY.lockT; P.lockImm = TY.lockT + TY.lockImm; st.stats.lock = (st.stats.lock || 0) + 1; E('plock', { t: TY.lockT }) } rec = 0.3; then = 'carpet' }
+    else if (c.k === 'cannon') { const w = c.ws[0], L = w.len, t = segHit(w.x, w.z, w.x + Math.sin(w.yaw) * L, w.z + Math.cos(w.yaw) * L, 0, true), stop = t === null ? L : t * L, cv = t === null ? null : COVERS.find(q => { const hx = w.x + Math.sin(w.yaw) * stop, hz = w.z + Math.cos(w.yaw) * stop; return Math.abs(hx - q.x) < q.hx + 0.2 && Math.abs(hz - q.z) < q.hz + 0.2 });
+      const hitW = { ...w, len: stop }; E('cannonGo', { w: hitW, cv }); if (inWarn(hitW, P.x, P.z, 0.3)) hurtPlayer(bossDmg(true), 'cannon');
+      st.melts.push({ id: st.nid++, type: 'line', x: w.x, z: w.z, yaw: w.yaw, len: stop, w: TY.cannonW, t: 0, life: TY.meltT }); setAnim('cannon', 1); rec = 0.8 }
+    b.act = 'recover'; b.at = rec; b.lastK = c.k; b.then = then;
+  }
+  function carpetFire(pts) { for (const p of pts) if (rnd() < TY.carpetFireP) st.fires.push({ id: st.nid++, type: 'circle', x: p.x, z: p.z, r: TY.carpetR * 0.8, t: 0, life: TY.carpetFireT }) ; E('fires', { list: st.fires }) }
+  function tyHazards(dt) {
+    for (let i = st.queue.length - 1; i >= 0; i--) { const q = st.queue[i]; q.t -= dt; if (q.t <= 0) { st.queue.splice(i, 1); q.f() } }
+    /* 预警到点：机炮、导弹、网格（横线先打、0.6 秒后竖线）、地毯第二波 */
+    for (let i = st.warns.length - 1; i >= 0; i--) { const w = st.warns[i]; if (!w.k || w.t < w.dur) continue;
+      if (w.k === 'gun') { st.warns.splice(i, 1); const bl = segHit(Bo.x, Bo.z, w.x, w.z, 0, true), d = hyp(w.x - Bo.x, w.z - Bo.z), blocked = bl !== null && bl * d < d - 0.6;
+        E('gunHit', { x: w.x, z: w.z, blocked, bx: blocked ? Bo.x + (w.x - Bo.x) * bl : w.x, bz: blocked ? Bo.z + (w.z - Bo.z) * bl : w.z }); if (!blocked && inWarn(w, P.x, P.z)) hurtPlayer(bossDmg(false) * TY.gunK, 'gun') }
+      else if (w.k === 'miss') { st.warns.splice(i, 1); E('missHit', { x: w.x, z: w.z, id: w.id }); if (inWarn(w, P.x, P.z)) hurtPlayer(bossDmg(false) * TY.missK, 'missile'); st.fires.push({ id: st.nid++, type: 'circle', x: w.x, z: w.z, r: TY.missR * 0.8, t: 0, life: TY.missFireT }); E('fires', { list: st.fires }) }
+      else if (w.k === 'gridH' || w.k === 'gridV') { st.warns.splice(i, 1); E('gridHit', { w }); if (inWarn(w, P.x, P.z, 0.3)) { hurtPlayer(bossDmg(false) * TY.gridK, 'grid'); st.stats.gridHit = (st.stats.gridHit || 0) + 1 } }
+      else if (w.k === 'carpet2') { st.warns.splice(i, 1); E('carpetHit', { pts: w.pts, wave: 2 }); if (inWarn(w, P.x, P.z, 0.3)) { hurtPlayer(bossDmg(false) * TY.carpetK, 'carpet'); st.stats.carpetHit = (st.stats.carpetHit || 0) + 1 } carpetFire(w.pts) } }
+    /* 旋转激光：扫过主角那一下扣一次（掩体挡不住，翻滚无敌能穿） */
+    const Bm = st.beam; if (Bm) { Bm.t += dt; const u = Math.min(1, Bm.t / Bm.dur), ys = [];
+      for (let j = 0; j < Bm.n; j++) ys.push(Bm.y0 + j * Math.PI + Bm.dir * Bm.span * u);
+      Bm.ys = ys; Bm.x = Bo.x; Bm.z = Bo.z;
+      if (!Bm.hit && ys.some(y => inWarn({ type: 'line', x: Bm.x, z: Bm.z, yaw: y, len: TY.laserLen, w: TY.laserW }, P.x, P.z, 0.25))) { if (hurtPlayer(bossDmg(false) * TY.laserK, 'laser') > 0) { Bm.hit = true; st.stats.laserHit = (st.stats.laserHit || 0) + 1 } }
+      if (u >= 1) { st.beam = null; E('beamEnd') } }
+    /* 牵引：主角被吸向 BOSS（往外走走不过，翻滚能挣出一段） */
+    if (st.pull) { const Pl = st.pull; Pl.t += dt; const ex = Bo.x - P.x, ez = Bo.z - P.z, el = hyp(ex, ez);
+      if (el > TY.pullStop && !P.roll) { const v = Math.min(el - TY.pullStop, TY.pullSpd * dt); P.x += ex / el * v; P.z += ez / el * v; push(P, 0.42) }
+      if (Pl.t >= Pl.dur) { st.pull = null; P.pullT = 0; if (hyp(Bo.x - P.x, Bo.z - P.z) < TY.shotR) st.stats.pulled = (st.stats.pulled || 0) + 1; if (Bo.act === 'pulling' && !Bo.dead && !st.rage) { Bo.act = 'idle'; Bo.cast = null; tyCast('shotgun') } } }
+    /* 火、熔化的地面、护盾电弧：站在里面每 0.5 秒扣一次 */
+    let burn = 0;
+    for (let i = st.fires.length - 1; i >= 0; i--) { const f = st.fires[i]; f.t += dt; if (f.t >= f.life) { st.fires.splice(i, 1); E('fireGone', { id: f.id }); continue } if (hyp(P.x - f.x, P.z - f.z) < f.r + 0.2) burn = Math.max(burn, TY.fireK) }
+    for (let i = st.melts.length - 1; i >= 0; i--) { const f = st.melts[i]; f.t += dt; if (f.t >= f.life) { st.melts.splice(i, 1); E('meltGone', { id: f.id }); continue } if (inWarn(f, P.x, P.z, 0.1)) burn = Math.max(burn, TY.meltK) }
+    const arcs = arcSegs(); if (arcs.some(g => segDist(P.x, P.z, g) < TY.arcW / 2 + 0.3) && !P.roll) burn = Math.max(burn, TY.arcK);
+    if (burn > 0) { P.burnAcc = (P.burnAcc || 0) + dt; if (P.burnAcc >= 0.5) { P.burnAcc -= 0.5; hurtPlayer(bossDmg(false) * burn * 0.5, 'burn') } } else P.burnAcc = 0.25;
+    /* 柱子升起来、打掉；3 根都掉了破盾；护盾最多 25 秒 */
+    if (st.pylons) { st.shieldT += dt; for (const m of st.pylons) { if (m.rise > 0) m.rise -= dt; if (m.dead && !m.told) { m.told = true; if (!m.quiet) E('pylonDie', { m }) } }
+      if (st.pylons.every(m => m.dead)) shieldOff(true); else if (st.shieldT > TY.shieldMax) shieldOff(false) }
+    st.hazards = [...st.fires, ...st.melts, ...arcs.map(g => ({ type: 'segs', segs: [g], w: TY.arcW + 0.4, x: 0, z: 0 })), ...(st.beam ? st.beam.ys.map(y => ({ type: 'line', x: st.beam.x, z: st.beam.z, yaw: y, len: TY.laserLen, w: TY.laserW + 0.6, beam: 1 })) : [])];
+  }
+  function tyStep(dt) {
+    const b = Bo; tyHazards(dt); if (b.dead) return;
+    const tf = b.slow > 0 ? 0.5 : 1; if (b.slow > 0) b.slow -= dt;
+    if (b.bleed > 0) { b.bleed -= dt; b.hp -= b.bleedDps * dt; st.stats.dmg += b.bleedDps * dt; if (b.hp <= 0) { b.hp = 0; bossDie(); return } } else b.bleedDps = 0;
+    if (b.slowHit > 0) b.slowHit -= dt; if (b.vuln > 0) b.vuln -= dt;
+    const dts = dt * tf; b.gunCd -= dts;
+    const dx = P.x - b.x, dz = P.z - b.z, d = hyp(dx, dz);
+    if (b.act === 'wait') { b.look = 'p'; if (st.t > 0.6) { b.act = 'idle'; setAnim('idle') } return }
+    /* 半血：破甲（3 块装甲板炸飞落地当掩体） */
+    if (!st.half && b.hp < b.max * 0.5 && !b.cast && b.act !== 'kneel' && b.act !== 'recover' && b.act !== 'pulling') { st.half = true; b.act = 'breakAnim'; b.at = TYRANT_ANIM.armor_break.T; b.plateT = TYRANT_ANIM.armor_break.hit; setAnim('armor_break'); E('half'); return }
+    if (b.plateT > 0) { b.plateT -= dts; if (b.plateT <= 0) { const made = []; for (let i = 0; i < 3; i++) { for (let t = 0; t < 40; t++) { const a = rnd() * 6.283, r = 3 + rnd() * 3.5, x = b.x + Math.sin(a) * r, z = b.z + Math.cos(a) * r;
+        if (!inArena(x, z, 1.2) || inCover(x, z, 1.0) || hyp(x - P.x, z - P.z) < 1.6 || made.some(q => hyp(q.x - x, q.z - z) < 2.2)) continue; const PL = [[0.64, 0.46], [0.48, 0.4], [0.39, 0.39]][i], c = { k: 'plate' + (i + 1), x, z, hx: PL[0], hz: PL[1], id: 'p' + st.nid++, from: { x: b.x, z: b.z } };   /* 116B：背甲、肩甲、臂甲，挡的框按模型宽深比 */ COVERS.push(c); made.push(c); break } }
+        st.coverVer = (st.coverVer || 0) + 1; for (const c of made) E('coverNew', { c }); push(P, 0.42) } }
+    /* 跪着开护盾：每 2 秒一轮机炮 */
+    if (b.act === 'kneel') { b.look = 'p'; b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -1.2 * dts, 1.2 * dts); if (!b.shield) { b.act = 'idle'; setAnim('idle'); b.calm = TY.calm; return } b.kneelGun -= dts; if (b.kneelGun <= 0) { b.kneelGun = TY.kneelGun; gunBurst() } return }
+    if (b.act === 'pulling') { b.look = 'p'; if (b.cast) b.cast.t += dt; return }
+    if (b.act === 'stun' || b.act === 'recover' || b.act === 'breakAnim') { b.at -= dts; if (b.at <= 0) { const th = b.then; b.then = null; b.act = 'idle'; b.look = 'p'; setAnim('idle'); b.calm = TY.calm;
+      if (th && !st.rage) { b.calm = 0; tyCast(th) } } return }
+    if (b.act === 'cast') { const c = b.cast; c.t += dts;
+      if (c.k === 'cannonAim' || c.k === 'cannon') { const w = c.ws[0], want = Math.atan2(P.x - b.x, P.z - b.z); w.yaw += clamp(angD(want, w.yaw), -TY.cannonTurn * dts, TY.cannonTurn * dts); b.yaw = w.yaw }   /* 主炮红线跟着主角慢慢转（比主角绕着跑慢一点） */
+      else if (c.k === 'laser' || c.k === 'shotgun') { if (c.t < c.dur * 0.6) { b.yaw += clamp(angD(Math.atan2(dx, dz), b.yaw), -1.5 * dts, 1.5 * dts); c.ws[0].yaw = b.yaw } }
+      else if (c.k === 'pull' && c.ws[0]) { c.ws[0].x = b.x; c.ws[0].z = b.z }
+      if (c.t >= c.dur) tyRelease(); return }
+    /* 闲着：慢慢往主角那边挪（离 9 米以上才走，5 米以内不靠近）；安静时间一直机炮点射 */
+    b.look = 'p'; const turn = angD(Math.atan2(dx, dz), b.yaw); b.yaw += clamp(turn, -1.4 * dts, 1.4 * dts);
+    if (d > TY.walkFrom) { const v = TY.walk * (st.half ? TY.walkHalf : 1) * (b.slowHit > 0 ? 1 - hero.slow : 1) * dts * Math.max(0.3, Math.cos(Math.min(Math.abs(turn), Math.PI / 2)));
+      b.x += Math.sin(b.yaw) * v; b.z += Math.cos(b.yaw) * v; push(b, CFG.coverR); const wa = 'walk'; if (b.anim !== wa) setAnim(wa, 1); b.ts = TY.walk * (st.half ? TY.walkHalf : 1) / (TYRANT_ANIM.walk.speed * TYRANT_K) }
+    else if (b.anim !== 'idle') setAnim('idle');
+    b.skillT -= dts;
+    if (b.calm > 0) b.calm -= dts;
+    else if (b.skillT <= 0) { const k = TY.order[b.oi % TY.order.length]; b.oi++; b.skillT = st.half ? TY.gapHalf : TY.gap; tyCast(k); return }
+    if (b.gunCd <= 0 && b.skillT > TY.gunGuard && d < 22) { b.gunCd = TY.gunEvery; gunBurst() }
+  }
+  function tyRage() { shieldOff(false); st.beam = null; st.pull = null; P.pullT = 0; st.queue.length = 0 }
   /* ---------- 小丧尸 ---------- */
   function mobStep(dt) {
     for (const m of st.mobs) {
       if (m.dead) { m.deadT += dt; continue }
-      if (m.pus || m.crow) continue;   // 设计 81：脓包不走（毒囊那边管）；设计 114：小乌鸦尖啸者那边管
+      if (m.pus || m.crow || m.pylon) continue;   // 设计 81：脓包不走（毒囊那边管）；设计 114：小乌鸦尖啸者那边管
       if (m.rise > 0) { m.rise -= dt; continue }
       if (m.stun > 0) { m.stun -= dt; continue }
       const dx = P.x - m.x, dz = P.z - m.z, d = hyp(dx, dz); m.yaw = Math.atan2(dx, dz); m.cd -= dt;
@@ -799,6 +967,8 @@ export function createFight(n, hero, opt = {}) {
     st.clk += dt; if (!pre) st.t += dt;
     if (!pre && st.lockZ != null && ARENA.z1 > st.lockZ) ARENA.z1 = Math.max(st.lockZ, ARENA.z1 - 2.5 * dt);
     /* 设计 114：错乱——摇杆方向全反（走路、翻滚都反） */
+    if (P.lockImm > 0) P.lockImm -= dt; if (P.lockT > 0) { P.lockT -= dt; if (P.lockT <= 0) E('plockEnd') }   /* 设计 116：技能封锁——集火、翻滚、震荡弹用不了 */
+    if (P.lockT > 0 && (inp.skill === 'focus' || inp.skill === 'roll' || inp.skill === 'stun')) { E('lockedTry', { k: inp.skill }); inp = { ...inp, skill: null } }
     if (P.confImm > 0) P.confImm -= dt;
     if (P.confT > 0) { P.confT -= dt; if (P.confT <= 0) E('pconfEnd'); inp = { ...inp, mx: -(inp.mx || 0), mz: -(inp.mz || 0) } }
     if (hyp(inp.mx || 0, inp.mz || 0) >= 0.2) st.lastMv = { x: inp.mx, z: inp.mz, t: st.clk };   /* 设计 79：最近一次推摇杆的方向（翻滚用） */
@@ -821,7 +991,7 @@ export function createFight(n, hero, opt = {}) {
     if (s === 'focus' && !pre && P.cd.focus <= 0 && !Bo.dead && !Bo.hidden && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) { P.focus = SKILLS.focus.shots; P.focusT = 0; P.cd.focus = cdOf('focus'); E('focus') }
     if (s === 'stun' && !pre && P.cd.stun <= 0 && !Bo.dead && hyp(Bo.x - P.x, Bo.z - P.z) < hero.range + 4) {
       P.cd.stun = cdOf('stun'); const dur = SKILLS.stun.stun(sk('stun'));
-      if (Bo.cast && Bo.interruptible) { if (Bo.cast.cancel) Bo.cast.cancel(); else st.warns.splice(st.warns.indexOf(Bo.cast.w), 1); E('interrupt', { k: Bo.cast.k }); Bo.cast = null; Bo.act = 'stun'; Bo.at = dur; Bo.look = null; if (ROCK) setAnim('stagger', ROCK_ANIM.stagger.T / Math.max(0.8, dur)); else if (SCR) setAnim('stagger', SCREAM_ANIM.stagger.T / Math.max(0.6, dur)); else setAnim('hit', 0.35); st.stats.interrupts++ }
+      if (Bo.cast && Bo.interruptible) { if (Bo.cast.cancel) Bo.cast.cancel(); else st.warns.splice(st.warns.indexOf(Bo.cast.w), 1); E('interrupt', { k: Bo.cast.k }); Bo.cast = null; Bo.act = 'stun'; Bo.at = dur; Bo.look = null; if (ROCK) setAnim('stagger', ROCK_ANIM.stagger.T / Math.max(0.8, dur)); else if (SCR) setAnim('stagger', SCREAM_ANIM.stagger.T / Math.max(0.6, dur)); else if (TYR) setAnim('stagger', TYRANT_ANIM.stagger.T / Math.max(0.6, dur)); else setAnim('hit', 0.35); st.stats.interrupts++ }
       else { Bo.slow = 2; E('slowed') }
       for (const m of st.mobs) if (!m.dead && hyp(m.x - Bo.x, m.z - Bo.z) < 7) m.stun = 3;
       E('stunShot', { x: Bo.x, z: Bo.z });
@@ -886,7 +1056,7 @@ export function createFight(n, hero, opt = {}) {
     for (const w of st.warns) if (w !== (Bo.cast && Bo.cast.w)) w.t += dt;
     return st;
   }
-  st.step = step; st.cdOf = cdOf; st.forceCast = k => { Bo.act = TOX ? 'idle' : 'chase'; Bo.cast = null; if (!TOX) st.warns.length = 0; const keep = st.ev; st.ev = []; if (TOX) toxCast(k); else if (ROCK) { Bo.calm = 0; rockCast(k) } else if (SCR) { Bo.calm = 0; Bo.hidden = false; Bo.y = 0; screamCast(k) } else startCast(k); st.pend = st.ev; st.ev = keep };   // 截图、测试用
+  st.step = step; st.cdOf = cdOf; st.forceCast = k => { Bo.act = TOX ? 'idle' : 'chase'; Bo.cast = null; if (!TOX) st.warns.length = 0; const keep = st.ev; st.ev = []; if (TOX) toxCast(k); else if (ROCK) { Bo.calm = 0; rockCast(k) } else if (SCR) { Bo.calm = 0; Bo.hidden = false; Bo.y = 0; screamCast(k) } else if (TYR) { Bo.calm = 0; tyCast(k) } else startCast(k); st.pend = st.ev; st.ev = keep };   // 截图、测试用
   st.clearCovers = () => { if (!ROCK) return; const keep = st.ev; st.ev = st.pend || []; for (const c of realCovers()) coverGone(c, 'crumble'); st.pend = st.ev; st.ev = keep }; st.coverN = () => realCovers().length;   /* 设计 110：测试用（掩体扔光） */
   st.killPlayer = () => { if (st.over) return; const keep = st.ev; st.ev = []; P.hp = 0; P.dead = true; end(false); st.pend = st.ev; st.ev = keep };   /* 设计 109：测试用（打输） */
   st.killBoss = () => { if (st.over) return; const keep = st.ev; st.ev = []; Bo.hp = 0; bossDie(); st.pend = st.ev; st.ev = keep };   /* 设计 74：测试用（打赢） */

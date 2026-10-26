@@ -7,7 +7,7 @@ let S = mk(); FL.fbFix(S); S.fb.tix = 10;   /* 设计 108：副本用召唤券 *
 ok(!S.td.wins[103] && S.td.wins[3] === 1, '旧存档英雄关进度去掉，普通关留着');
 ok(FL.fbLockWhy({ ...S, lv: { store: 4 } }, 1) === '超市 5 级解锁', '超市 4 级：超市 5 级解锁');
 ok(FL.fbCanStart(S, 1) === null, '5 级、10 张召唤券：能打第 1 关');
-ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '先打赢前一关' && FL.fbLockWhy(S, 4) === '先打赢前一关' && FL.fbLockWhy(S, 5) === '还没开放', '设计 102 / 114：第 3、4 关开放了（要先打赢前一关），第 5 关还没开放');
+ok(FL.fbLockWhy(S, 2) === '先打赢前一关', '设计 81：第 2 关开放了，要先打赢第 1 关'); ok(FL.fbLockWhy(S, 3) === '先打赢前一关' && FL.fbLockWhy(S, 4) === '先打赢前一关' && FL.fbLockWhy(S, 5) === '先打赢前一关' && FL.fbLockWhy(S, 6) === '还没开放', '设计 102 / 114 / 116：第 3～5 关开放了（要先打赢前一关），第 6 关还没开放');
 FL.fbStart(S, 1); ok(S.fb.tix === 9 && S.td.scrolls === 10 && S.fb.run === 1, '设计 108：挑战第 1 关扣 1 张召唤券，尸潮券不动');
 FL.fbLose(S); ok(S.fb.run === 0 && !S.fb.pend && S.fb.crys === 0, '输了：没有掉落');
 FL.fbStart(S, 1); const c0 = S.coins; const r = FL.fbWin(S, 1, () => 0.3, 121);
@@ -59,13 +59,13 @@ import { heroStats } from '../../src/js/logic.js';
 { const T = mk(); FL.fbFix(T); for (const sl of ['w', 'h', 'a', 'g', 'b']) T.fb.eq[sl] = { id: sl, k: 's1_' + sl, lv: 5, st: 0 }; const g5 = FL.gearStats(T); T.fb.eq.h = null; const g4 = FL.gearStats(T); ok(g5.all - g4.all === 65 && g4.all === 10, `拾荒者 5 件全部伤害 +${g5.all - g4.all}%（要 65），4 件 +${g4.all}%`) }
 /* 设计 106：狂暴 = 灭杀：3 分钟到，不管多少血、有没有减伤 / 不灭之铠 / 不眠之心，8 秒内一定倒下；第 1 次扣最大生命 60%（无视减伤） */
 { const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
-  for (const n of [1, 2, 3, 4]) { const T = mk(); FL.fbFix(T); const h = { ...fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), dr: 0.6, armor1: true, heart: true }, st = createFight(n, h, { rng: () => 0.5 });
+  for (const n of [1, 2, 3, 4, 5]) { const T = mk(); FL.fbFix(T); const h = { ...fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), dr: 0.6, armor1: true, heart: true }, st = createFight(n, h, { rng: () => 0.5 });
     st.locked = true; st.t = 179.9; st.boss.hp = st.boss.max = 1e12; let first = null, dead = null; const dt = 1 / 30;
     for (let i = 0; i < 30 * 12 && !st.over; i++) { const hp0 = st.player.hp; st.step(dt, {}); if (first === null && st.player.hp < hp0 - 1) first = (hp0 - st.player.hp) / st.player.max; if (st.player.dead) dead = st.t - 180 }
     ok(dead !== null && dead <= 8 + 1 / 30 && first !== null && Math.abs(first - 0.6) < 0.02, `设计 106：第 ${n} 关 3 分钟到放灭杀，第 1 次扣 ${first === null ? '-' : Math.round(first * 100)}%（减伤 60% 也不管），${dead === null ? '没倒下' : dead.toFixed(1) + ' 秒倒下'}（≤ 8 秒）`) } }
 /* 设计 106b：灭杀一开始 BOSS 无敌（打上去血不掉），没打完 = 输 */
 { const { createFight } = await import('../../src/js/fbcore.js'); const { fbHero } = await import('../../src/js/fblogic.js');
-  for (const n of [1, 2, 3, 4]) { const T = mk(); FL.fbFix(T); const st = createFight(n, fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), { rng: () => 0.5 });
+  for (const n of [1, 2, 3, 4, 5]) { const T = mk(); FL.fbFix(T); const st = createFight(n, fbHero(T, { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }), { rng: () => 0.5 });
     st.locked = true; st.t = 179.95; st.boss.hp = 100; const dt = 1 / 30; st.step(dt, {}); st.step(dt, {});
     const b = st.boss; b.x = st.player.x; b.z = st.player.z - 4; let hp0 = b.hp;
     for (let i = 0; i < 30 * 10 && !st.over; i++) st.step(dt, { fire: true, skill: i % 30 === 0 ? 'focus' : i % 45 === 0 ? 'nade' : null });
@@ -129,4 +129,42 @@ import { heroStats } from '../../src/js/logic.js';
   { const st = mk4(), P = st.player, B = st.boss, q = st.speakers[2]; P.x = q.x - 1.2; P.z = q.z; B.x = P.x - 1; B.z = P.z - 6; let spk = 0, boss = 0; for (let i = 0; i < 30 * 2; i++) { hold(st); st.step(dt, { fire: true }); if (P.target === q) spk++; if (P.target === B) boss++ }
     B.x = 40; for (let i = 0; i < 30; i++) { hold(st); B.x = 40; st.step(dt, { fire: true }) } const onSpk = P.target === q; B.x = P.x - 1; hold(st); st.step(dt, { fire: true }); st.step(dt, { fire: true });
     ok(spk === 0 && boss > 50 && onSpk && P.target === B, `设计 114d：BOSS 在射程里打 BOSS（BOSS ${boss} 帧、喇叭 ${spk} 帧）；BOSS 走远了打喇叭（${onSpk}），回来马上换回 BOSS（${P.target === B}）`) }
+}
+
+/* 设计 116：装甲暴君——封锁、牵引、护盾、激光网格格子、地毯第二波、掩体挡主炮 */
+{ const M = await import('../../src/js/fbcore.js'), { createFight } = M; const { fbHero } = await import('../../src/js/fblogic.js');
+  const H = { dmg: 10, rate: 0.4, range: 7.5, nadeDmg: 45, nadeR: 2.6, nadeCd: 10 }, dt = 1 / 30;
+  const mk5 = (seed = 0.5) => { const T = mk(); FL.fbFix(T); let q = seed; const st = createFight(5, { ...fbHero(T, H), hp: 1e6, speed: 5 }, { rng: () => (q = (q * 9301 + 0.49297) % 1) }); st.player.max = st.player.hp = 1e6; st.t = 10; const b = st.boss; b.act = 'idle'; b.skillT = 99; b.gunCd = 99; return st };
+  const hold = st => { st.boss.skillT = 99; st.boss.gunCd = 99 };
+  { const st = mk5(), P = st.player, B = st.boss; P.x = 0; P.z = 6; B.x = 0; B.z = -4; st.forceCast('emp'); for (let i = 0; i < 30 * 1.6; i++) { hold(st); st.step(dt, {}) }
+    const lk = P.lockT > 0, cd0 = { ...P.cd }, ch = P.charges; st.step(dt, { skill: 'roll' }); st.step(dt, { skill: 'focus' }); st.step(dt, { skill: 'stun' });
+    const blocked = P.charges === ch && !P.roll && P.cd.focus === Math.max(0, cd0.focus - 3 * dt) * 0 + P.cd.focus && !(P.focus > 0);
+    for (let i = 0; i < 30 * 3; i++) { hold(st); st.boss.act = 'idle'; st.boss.cast = null; st.step(dt, {}) } const free = !(P.lockT > 0); const imm = P.lockImm > 0;
+    ok(lk && blocked && !(P.focus > 0) && free && imm, `设计 116：电磁脉冲后技能封锁 3 秒：翻滚、集火、震荡弹按不了（翻滚次数 ${ch} → ${P.charges}）；3 秒后解开、之后 3 秒内不再封锁（免疫 ${imm}）`) }
+  { const st = mk5(), P = st.player, B = st.boss; P.x = 0; P.z = 6; B.x = 0; B.z = -4; P.lockImm = 9; st.forceCast('emp'); for (let i = 0; i < 30 * 1.6; i++) { hold(st); st.step(dt, {}) }
+    ok(!(P.lockT > 0), '设计 116：封锁结束后 3 秒内再中电磁脉冲不封锁') }
+  const pullRun = roll => { const st = mk5(), P = st.player, B = st.boss; P.x = 0; P.z = 1; B.x = 0; B.z = -4; st.forceCast('pull'); let rolled = false;   /* 读条时站着（还在打），吸起来才往外跑 */
+    for (let i = 0; i < 30 * 2.3; i++) { hold(st); const d = Math.hypot(P.x - B.x, P.z - B.z); const sk = roll && !rolled && P.pullT > 0 && d < 4 ? (rolled = true, 'roll') : null; st.step(dt, { mx: 0, mz: P.pullT > 0 ? 1 : 0, skill: sk }); if (st.boss.act !== 'pulling' && !(P.pullT > 0) && i > 40) break }
+    return Math.hypot(P.x - B.x, P.z - B.z) };
+  { const a = pullRun(false), b = pullRun(true); ok(a < 5 && b >= 5, `设计 116：电磁牵引一直往外走被吸到 ${a.toFixed(1)} 米（霰弹炮够得着），往外翻滚挣到 ${b.toFixed(1)} 米（够不着）`) }
+  { const st = mk5(), P = st.player, B = st.boss; P.x = 0; P.z = 6; B.x = 0; B.z = -4; st.forceCast('shield'); for (let i = 0; i < 30 * 1.5; i++) { hold(st); st.step(dt, {}) }
+    const hp0 = B.hp; st.player.cd.focus = 99; P.x = B.x; P.z = B.z + 5; const shots = []; for (let i = 0; i < 30; i++) { hold(st); B.hp = hp0; st.step(dt, {}) }
+    const n = st.pylons ? st.pylons.length : 0; let dmgS = 0; { const h0 = B.hp; B.hp = 1e9; st.boss.hp = 1e9; const before = B.hp; st.pend = null; }
+    for (const m of st.pylons || []) { m.hp = 0; m.dead = true; m.deadT = 0 } hold(st); st.step(dt, {}); hold(st); st.step(dt, {});
+    ok(n === 3 && !B.shield && B.vuln > 0, `设计 116：能量护盾升 ${n} 根柱子，3 根都打掉就破盾（破盾瘫着受伤 +30%：${(B.vuln || 0).toFixed(1)} 秒）`) }
+  { const st = mk5(), B = st.boss; B.shield = true; const a0 = B.hp; st.boss.hp = 100000; st.boss.max = 1e6; const P = st.player; P.x = 0; P.z = B.z + 4; const hp1 = B.hp;
+    const hit = k => { const keep = B.hp; B.hp = 100000; B.shield = k; let got = 0; for (let i = 0; i < 30 * 2; i++) { hold(st); st.step(dt, { fire: true }); for (const e of st.ev) if (e.e === 'hit' && e.who === 'boss') got += e.a } return got };
+    const off = hit(false), on = hit(true); ok(on > 0 && on < off * 0.3, `设计 116：护盾时打 BOSS 伤害 ${on}，没护盾 ${off}（约 −80%）`) }
+  { let minCell = 99, n = 0; for (let sd = 0.05; sd < 1; sd += 0.09) { const st = mk5(sd), P = st.player; P.x = (sd - 0.5) * 10; P.z = -8 + sd * 20; st.forceCast('grid');
+      const hz = st.warns.filter(w => w.k === 'gridH').map(w => w.z).sort((a, b) => a - b), vx = st.warns.filter(w => w.k === 'gridV').map(w => w.x).sort((a, b) => a - b);
+      for (const arr of [hz, vx]) for (let i = 1; i < arr.length; i++) minCell = Math.min(minCell, arr[i] - arr[i - 1] - 0.8); n++ }
+    ok(minCell >= 2.5 - 1e-6, `设计 116：激光网格 ${n} 次，最小的格子 ${minCell.toFixed(2)} 米（≥ 2.5）`) }
+  { let worst = 0, n = 0; for (let sd = 0.05; sd < 1; sd += 0.09) { const st = mk5(sd), P = st.player; P.x = (sd - 0.5) * 8; P.z = -6 + sd * 18; st.forceCast('carpet'); const s1 = st.boss.cast.safe;
+      for (let i = 0; i < 30 * 1.7; i++) { hold(st); st.step(dt, {}) } const w2 = st.warns.find(w => w.k === 'carpet2'); if (!w2) continue; n++;
+      for (const q of w2.safe) worst = Math.max(worst, Math.min(...s1.map(p => Math.hypot(p.x - q.x, p.z - q.z)))) }
+    ok(n > 5 && worst <= 5 + 1e-6, `设计 116：地毯轰炸 ${n} 次，第二波每块空地离第一波最近的空地最远 ${worst.toFixed(2)} 米（≤ 5）`) }
+  { const st = mk5(), P = st.player, B = st.boss, c = M.COVERS.find(q => q.k === 'base'); B.x = c.x; B.z = c.z - 5; P.x = c.x; P.z = c.z + 3; st.forceCast('cannon'); const hp0 = P.hp;
+    for (let i = 0; i < 30 * 3.3; i++) { hold(st); P.x = c.x; P.z = c.z + 3; st.step(dt, {}) } const hid = hp0 - P.hp;
+    const st2 = mk5(), P2 = st2.player, B2 = st2.boss; B2.x = 0; B2.z = -6; P2.x = 0; P2.z = 4; st2.forceCast('cannon'); const h2 = P2.hp; for (let i = 0; i < 30 * 3.3; i++) { hold(st2); st2.step(dt, {}) }
+    ok(hid === 0 && h2 - P2.hp > 0, `设计 116：躲在掩体后面主炮打不到（扣 ${hid}），没挡扣 ${Math.round(h2 - P2.hp)}`) }
 }
